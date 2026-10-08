@@ -1,0 +1,205 @@
+// Ui — THE SPLIT SHELL. Half the screen is a picture that stays; the other half is the page, which scrolls.
+//
+//     [Layout] component Site() {
+//       live var path = Navigation.CurrentPath ?? "";
+//       render {
+//         SplitShell(chrome) {
+//           Outlet(retain: 8);
+//           slot art     { SplitArt(path == "/team" ? Textures.StylistsAtWork : Textures.FrontOfHouse, "The salon"); }
+//           slot actions { Button("Book", onPress: Book, tone: Tone.Primary); }
+//           slot footer  { EditorialFooter(chrome); }
+//         }
+//       }
+//     }
+//
+// FOR A SITE WHOSE PICTURES ARE THE ARGUMENT — a studio, a treatment menu, a portfolio, a hotel: on a wide screen one
+// photograph holds half the frame for as long as the reader is on the page, and the words scroll beside it. It is the
+// layout of the best beauty-studio and gallery sites (a services list scrolling beside a full-height portrait), and it
+// is not a card grid in any arrangement.
+//
+// ⭐ THE PICTURE IS THE LAYOUT'S, KEYED ON THE ROUTE. A page cannot fill its shell's slots (`ui-shell#slots`), so the
+//    layout chooses the picture for each page — `slot art { … }` with the route in hand — exactly as `aside` is chosen.
+//    `SplitArt(texture, alt)` is shaped for it: the photograph filling the panel, cropped to cover.
+//
+// ⭐ THE WORDMARK LIVES ON THE PICTURE. On a wide screen the brand is set large at the panel's foot in light type over
+//    a shade — the picture is where the eye lands first, so the name goes there — and the page column carries only the
+//    nav and the call to action.
+//
+// ⭐ THE BANDS:
+//   compact  < 768   a solid bar (the wordmark, the action, a menu button); the picture becomes a banner under it, 42%
+//                    of the viewport tall; then the page; the nav in the storefront's drawer.
+//   cozy/wide 768+   two columns, the picture 5/12 of the width and pinned to the viewport's full height, the page
+//                    7/12 with its own sticky nav row.
+//
+// ⚑ THE SLOTS: the six every shell has, plus `art`, `promo` and `footer`. `art` is a POSITION: an unfilled one leaves
+//   the panel as a quiet tint rather than inventing a picture.
+
+namespace Osysharp.Ui;
+
+/// THE SPLIT SHELL — a photograph pinned to one half of a wide screen while the page scrolls in the other, with the
+/// wordmark set large on the picture. A banner over the page on a phone. For a studio, a treatment menu, a portfolio —
+/// a site whose pictures are the argument. Takes the same `AppChrome` and slots as every other shell, plus `art`
+/// (the picture, chosen by the layout per route), `promo` and `footer`.
+///
+/// Slots, all optional:
+///   (default)   the routed page — `Outlet(retain: 8)`
+///   `art`       the picture for this route — `SplitArt(texture, alt)` is shaped for it; key it on the route
+///   `actions`   the call to action — a "Book" button
+///   `promo`     a thin announcement bar above everything
+///   `footer`    the footer, at the foot of the page column — `EditorialFooter(chrome, …)` suits it
+///   `search`, `aside`, `railFoot`, `primary` — rendered in the page column, so switching from another shell drops nothing
+///
+/// In a test the regions carry names: `Ui.Click("Team", within: "Site navigation")`, and on a phone `Ui.Click("Menu")`.
+/// need: a brand website with a big photo beside the content, a split-screen site, a portfolio or studio site, a treatment menu beside a portrait
+/// e.g. `SplitShell(chrome) { Outlet(retain: 8); slot art { SplitArt(Textures.FrontOfHouse, "The salon"); } slot actions { Button("Book", onPress: Book, tone: Tone.Primary); } }`
+[Composable]
+component SplitShell(AppChrome chrome) {
+  string overlay = "";
+  string overlayAt = "";
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  live var shown = overlayAt == path ? overlay : "";
+  live var menuOpen = shown == "menu";
+
+  action ToggleMenu() { overlay = shown == "menu" ? "" : "menu"; overlayAt = path; }
+  action CloseMenu() { if (menuOpen) { overlay = ""; } }
+  action DismissAll() { overlay = ""; }
+  action Navigated() { overlay = ""; }
+
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    SplitFrame(chrome, !Layout.AtLeast(Tablet), current, hasUser, hasMenu, menuOpen,
+               ToggleMenu, CloseMenu, DismissAll, Navigated) {
+      slot page { Slot; }
+      slot art { Slot("art"); }
+      slot promo { Slot("promo"); }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot footer { Slot("footer"); }
+      slot aside { Slot("aside"); }
+      slot railFoot { Slot("railFoot"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the split shell DRAWS, once the band is decided.
+[Composable, Part]
+component SplitFrame(AppChrome chrome, bool isPhone, string current, bool hasUser, bool hasMenu, bool menuOpen,
+                     Action onToggleMenu, Action onCloseMenu, Action onDismissAll, Action onNavigated) {
+  live var items = chrome.Primary();
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      Slot("promo");
+      if (isPhone) {
+        SplitPhoneBar(chrome, menuOpen, onToggleMenu, onNavigated) { slot actions { Slot("actions"); } }
+        Box(h: "42vh", position: Position.Relative, overflow: Overflow.Hidden, bg: Colors.Muted) { Slot("art"); }
+        Stack(gap: 0, role: UiRole.Main, label: "Page", minW: "0") {
+          Slot("search");
+          Slot("page");
+          Slot("aside");
+          Slot("railFoot");
+        }
+        Slot("primary");
+        Slot("footer");
+      }
+      if (!isPhone) {
+        Box(display: Display.Grid, cols: "minmax(0, 5fr) minmax(0, 7fr)", align: Align.Start) {
+          // The picture, pinned to the viewport while the page column scrolls past it.
+          Box(position: Position.Sticky, top: "0", h: "100vh", overflow: Overflow.Hidden, bg: Colors.Muted) {
+            Slot("art");
+            SplitWordmark(chrome, onNavigated);
+          }
+          Stack(gap: 0, minW: "0") {
+            SplitNavRow(items, current, onNavigated) { slot actions { Slot("actions"); } }
+            Stack(gap: 0, role: UiRole.Main, label: "Page", minW: "0", minH: "70vh") {
+              Slot("search");
+              Slot("page");
+              Slot("aside");
+              Slot("railFoot");
+            }
+            Slot("primary");
+            Slot("footer");
+          }
+        }
+      }
+    }
+
+    if (menuOpen && isPhone) {
+      StorefrontScrim(onCloseMenu);
+      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+    }
+  }
+}
+
+/// The wordmark at the foot of the picture — large, light, over a shade that rises from the bottom edge.
+[Composable, Part]
+component SplitWordmark(AppChrome chrome, Action onNavigated) {
+  variants {
+    base { Position = Position.Absolute; Left = "0"; Right = "0"; Bottom = "0"; Px = 8; Pb = 8; Pt = 24;
+           Color = Colors.OnImage; BgImage = "linear-gradient(to top, rgb(0 0 0 / 0.5), rgb(0 0 0 / 0))"; }
+  }
+  render {
+    Box(role: UiRole.Banner, label: "Site header") {
+      Link(href: chrome.Home, label: chrome.Product, onClick: onNavigated) {
+        Text(chrome.Product, fontFamily: Font.Display, fontSize: "clamp(2.5rem, 5vw, 5rem)", fontWeight: FontWeight.Bold,
+             lineHeight: "0.9", letterSpacing: "-0.02em", color: "inherit");
+      }
+    }
+  }
+}
+
+/// The page column's nav row — the nav and the action, sticky at the top of the column, on the page's ground.
+[Composable, Part]
+component SplitNavRow(NavItem[] items, string current, Action onNavigated) {
+  variants {
+    base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Bg; Color = Colors.OnBg;
+           BorderBW = 1; Border = Colors.Border; Px = 8; }
+  }
+  render {
+    Row(align: Align.Center, justify: Justify.Between, gap: 4, minH: Length.EditorialHeaderH) {
+      Row(role: UiRole.Navigation, label: "Site navigation", align: Align.Center, gap: 6, minW: "0", wrap: Wrapping.Wrap) {
+        foreach (var item in items) {
+          EditorialNavLink(item.Label, item.FirstRoute(), item.State(current) == NavState.Current, onNavigated);
+        }
+      }
+      Row(align: Align.Center, justify: Justify.End, gap: 2) { Slot("actions"); }
+    }
+  }
+}
+
+/// The phone bar — the wordmark, the action and the menu button, solid over the page.
+[Composable, Part]
+component SplitPhoneBar(AppChrome chrome, bool menuOpen, Action onToggleMenu, Action onNavigated) {
+  variants {
+    base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Bg; Color = Colors.OnBg;
+           BorderBW = 1; Border = Colors.Border; Px = 4; }
+  }
+  render {
+    Row(role: UiRole.Banner, label: "Site header", align: Align.Center, justify: Justify.Between, gap: 2,
+        minH: Length.AppBarH) {
+      EditorialBrand(chrome, onNavigated);
+      Row(align: Align.Center, gap: 1) {
+        Slot("actions");
+        EditorialMenuButton(menuOpen, onToggleMenu);
+      }
+    }
+  }
+}
+
+/// THE SPLIT SHELL'S PICTURE — a photograph filling the panel, cropped to cover. `focus` moves the crop when the subject
+/// sits away from the middle (`"center 30%"`).
+/// need: the picture for a split shell's panel, a full-height photo beside the page
+/// e.g. `slot art { SplitArt(Textures.FrontOfHouse, "The salon's front room"); }`
+[Composable]
+component SplitArt(Textures texture, string alt, string focus = "center") {
+  render {
+    Image(texture: texture, alt: alt, w: "100%", h: "100%", objectFit: ObjectFit.Cover, objectPosition: focus);
+  }
+}

@@ -1,0 +1,13 @@
+// The producer's test project for Osysharp.Ui — a framing workshop: the orders it takes, each order's page with what
+// other parts of the app add to it (a badge beside its name, a panel under it), and the workshop's settings area — its
+// own sections and the ones it announces, who changed them, and the rules its head office sets.
+//
+// ⭐ IT READS THE WORKING TREE: the repository's `osy.workspace` lists the platform's capability directories, so
+//    `use Osysharp.Ui;` resolves from the directory above this one, not from the copy the binary carries.
+app UiKitTests {
+  model "model/**/*.osy";
+  tests "**/*.test.osy";
+  use Osysharp.Ui;
+  // Keeps a change trail, which is how a settings section learns who last changed it ("Changed by …").
+  use Osysharp.Observability;
+}

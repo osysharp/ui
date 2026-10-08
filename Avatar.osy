@@ -1,0 +1,34 @@
+// Ui — Avatar, the kit's person/entity mark (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A circular avatar. `Avatar(initials: "FT")` or `Avatar(src: user.PhotoUrl, initials: "FT")` — the initials
+/// show whenever `src` is empty, so one call site covers both states without the caller branching. With NEITHER it
+/// draws a person glyph, so a row for somebody with no photograph and no name still reads as a person rather than
+/// as an empty circle.
+/// In a test it is found by its accessible name: `Assert.Visible("Ada Lovelace")`.
+/// need: show a person as a circle, initials or a photograph beside a name
+[Composable]
+component Avatar(string initials = "", string src = "", string alt = "", Size size = Size.Md) {
+  variants {
+    base {
+      Rounded = Radius.Circle; Overflow = Overflow.Hidden; Bg = Colors.Muted; Color = Colors.TextMuted;
+      FontWeight = FontWeight.Semibold; WhiteSpace = WhiteSpace.Nowrap;
+    }
+    size {
+      Sm { W = Length.AvatarSm; H = Length.AvatarSm; FontSize = FontSize.Caption; }
+      Md { W = Length.AvatarMd; H = Length.AvatarMd; FontSize = FontSize.Label; }
+      Lg { W = Length.AvatarLg; H = Length.AvatarLg; FontSize = FontSize.Subhead; }
+    }
+  }
+
+  render {
+    Row(align: Align.Center, justify: Justify.Center) {
+      if (src != "") { Image(src: src, alt: alt); }
+      if (src == "" && initials != "") { Text(initials); }
+      // ⚠ THE THIRD STATE, which used to draw NOTHING while `ShellUser.Initials` promised "a neutral person glyph".
+      //   An empty circle beside a name reads as a broken image, not as an avatar.
+      if (src == "" && initials == "") { Icon(Icons.User, size: 16); }
+    }
+  }
+}

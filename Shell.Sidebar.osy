@@ -1,0 +1,770 @@
+// ⭐ SHIPPED — in `Platform.Core.csproj`, in `Osysharp.Ui` 2.3.0, and rendered: `demo/shell-showcase` mounts it and
+//    `osy test --pixels` photographs it into `osy-shots/`.
+//
+// ⚠ THIS HEADER USED TO CARRY A DIAGNOSIS, AND IT WAS WRONG — recorded because it is the interesting part and
+//   because acting on it would cost an afternoon. It said the blocker was `UiComponentTreeLoader` recursing
+//   (element nesting x component chain) deep and that the fix was to walk the render tree with an explicit stack.
+//   Re-measured 2026-09-06 with a depth probe on the real compile:
+//
+//     ui.BuildNode (loader, read side)   depth 10
+//     ui.EmitNode  (emitter, write side) depth 10
+//     expr.LoadNode (expression read)    depth 45+   <- the runaway
+//     expr.WriteNode (expression write)  depth 55
+//
+//   `DiscoverAndBuildAsync` is already an ITERATIVE BFS across components, so the component chain never nests at
+//   all; both UI walks are ten levels deep and an explicit-stack rewrite of either would have removed ~10 frames
+//   out of ~200. The runtime's own stack dump names the real one: `ExpressionTreeSerializer.LoadNodeAsync`,
+//   "Repeated 52 times".
+//
+// ⚑ WHAT ACTUALLY BROKE, at both ends:
+//     * THE PRODUCER — `Icon(<enum> value)` lowered to ONE TERNARY PER MEMBER, right-leaning. The kit's own
+//       54-member `Glyph` enum (deleted since — see below) built a 53-level expression spine for every
+//       `Icon(row.Icon)` in this file. Two things fixed it and the SECOND is the one that matters here: an
+//       int-keyed enum now folds to a BALANCED binary search (54 members cost 6 levels), and a nav row's glyph is
+//       now the app's own string-keyed `Icons`, whose `[Icon]` IS its `[Value]` — so the fold is the IDENTITY and
+//       costs ZERO nodes. Guarded by `IconEnumFoldDepthTests`, which asserts the depth rather than a limit.
+//     * THE WALK — one nesting level of `LoadNodeAsync` costs ~29 KB of stack in Debug and ~10.5 KB in Release
+//       (measured with a stack-pointer probe; the two methods are 769- and 815-line switches, so the JIT frame is
+//       the union of every arm's locals). ~50 levels is ~1.4 MB, past a request thread's stack, and a
+//       StackOverflowException is UNCATCHABLE — the process aborts. Both walks are bounded now
+//       (`DeepTreeWalk` + `OsySharpCompilerLimits.MaxNestingDepth`), so the ceiling is a message instead of a SIGABRT.
+//
+// ⛔ SO THE CEILING IS NOT "nine chained components" AND NEVER WAS. Composition depth was never the constraint —
+//   EXPRESSION depth was. Write the shell's components at whatever depth reads best; what to avoid is a
+//   40+-level chain inside a single expression, and the bound says so by name if you ever build one.
+
+// Ui — THE SIDEBAR SHELL. One of four arrangements of the one `AppChrome` contract (`Shell.osy`).
+//
+//     [Layout] component Shell() {
+//       render { SidebarShell(chrome) { Outlet(retain: 8); } }
+//     }
+//
+// THREE ARRANGEMENTS, NOT TWO, AND EACH IS A DESIGN. The bands are the kit's own `Breakpoints`:
+//
+//   compact  < 768   the rail is an off-canvas DRAWER; the top bar carries the menu button, the page title and a
+//                    mark-only identity chip; menus are BOTTOM SHEETS within thumb reach; `aside` stacks under the
+//                    page rather than disappearing. Every target is at least `Length.Touch`, and nothing that
+//                    matters is reachable only by hovering.
+//   cozy     768+    the rail DOCKS as a 64px icon strip — always visible, never a click away from knowing where
+//                    you are — and a nested group opens as a FLYOUT beside it. One content column.
+//   wide     1100+   the rail opens to its full 264px with labels, badges and section headings; the page and its
+//                    `aside` sit SIDE BY SIDE. This is the band that has room, and it uses it.
+//
+// ⚑ THE BAND IS READ ONCE, AT RENDER TIME (`Layout.AtLeast`), and everything follows from it — the rail's width,
+//   whether a group is an accordion or a flyout, whether the menu is a dropdown or a sheet, whether `aside` is a
+//   column or a section. Expressing those as CSS alone would mean rendering both arrangements and hiding one,
+//   which is how a shell ends up with two nav trees in the DOM and a screen reader reading both.
+
+namespace Osysharp.Ui;
+
+/// Whether an off-canvas drawer is showing. A variant dimension so the slide is a CSS transition rather than a
+/// mount. Shared with `RailShell`, whose phone band is the same off-canvas drawer for the same reason.
+public enum RailDrawer { Closed, Open }
+
+// `NavState` used to be declared here and now lives in `Shell.osy` — four shells need the same three steps, and a
+// second arrangement re-declaring it is how two of them end up disagreeing about which row reads as the one you
+// are standing on.
+
+/// THE SIDEBAR SHELL — a persistent left rail, a contextual top bar, the page, and an optional right rail. For ENTERPRISE and OPERATIONAL applications with many areas and a real hierarchy: back-office, administration consoles, internal business tools.
+/// Modelled on the shape every serious admin tool converges on, and responsive across three bands (see the file
+/// header). Takes the same `AppChrome` and the same slots as every other shell, so switching is one word.
+///
+/// Slots, all optional:
+///   (default)   the routed page — put your `Outlet(retain: 8)` here
+///   `search`    the global search affordance in the top bar — `ShellSearch(…)` is shaped for it
+///   `actions`   top-bar controls right of search — a notification button, a primary call to action
+///   `railFoot`  pinned at the foot of the rail — `ShellFootCard(…)` is shaped for it. Hidden when the rail is
+///               an icon strip, because a card cannot be 64px wide and a truncated one is worse than none.
+///   `aside`     a right rail. A COLUMN beside the page at 1100+, a section under it below that — never dropped,
+///               because a phone that silently loses a panel has lost content, not layout.
+///
+/// In a test the regions carry names, so scope to them: `Ui.Click("Users", within: "Main navigation")`.
+/// need: an app shell with a sidebar, a dashboard layout with nav, the frame around every page
+/// e.g. `SidebarShell(chrome) { Outlet(retain: 8); slot search { ShellSearch("Search", onPress: Palette); } }`
+[Composable]
+component SidebarShell(AppChrome chrome) {
+  bool drawerOpen = false;      // phone only — the rail slid in over a scrim
+  // The reader's own choice, honoured only where there is room to expand — and REMEMBERED in their browser
+  // (D-HELPDESKDESIGN1), so a rail collapsed on one page is collapsed on the next and on the next visit.
+  [Remembered] bool collapsed = false;
+  bool userMenuOpen = false;
+  // EXPANSION MEMORY, as two sets rather than one. A group is open when it holds the current page — which is what
+  // makes a deep link arrive with its parent already open — so a single "open" set could not express "I closed the
+  // one I am inside", and the reader's collapse would spring back on the next render. `closed` is that veto.
+  List<string> opened = [];
+  List<string> closed = [];
+  // The group whose FLYOUT is showing beside the icon rail ("" = none). One at a time, by key.
+  string flyout = "";
+
+  live var path = Navigation.CurrentPath ?? "";
+  // ONE current route for the whole tree — longest match wins, so exactly one row is ever lit. See
+  // `AppChrome.CurrentRoute`: a per-row test lights `/settings` AND `/settings/users` on the child's page.
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  action OpenDrawer() { drawerOpen = true; }
+  action CloseDrawer() { drawerOpen = false; flyout = ""; }
+  action ToggleCollapse() { collapsed = !collapsed; flyout = ""; }
+  action CloseUserMenu() { userMenuOpen = false; }
+  // ⭐ ONE ACT, NOT TWO. Opening the identity menu on a phone CLOSES the drawer first — a sheet over an open drawer
+  //    would sit above the drawer and below its scrim, which is the exact "trapped under the scrim" failure a
+  //    layered shell is judged on. Closing it is also simply right: you have finished with the nav.
+  action ToggleUserMenu() { userMenuOpen = !userMenuOpen; drawerOpen = false; flyout = ""; }
+  // Everything the shell owns, shut. Runs BEFORE an app's own menu action, so a `Dialog.Open` from a menu item
+  // opens over a clean page rather than over a menu nobody dismissed.
+  action DismissAll() { userMenuOpen = false; drawerOpen = false; flyout = ""; }
+  // ⛔ THE ACCORDION NEVER WORKED BY CLICK, AND THIS IS THE FIX. Measured 2026-09-06: pressing a group that was
+  //    not already on the trail did NOTHING — no error, no movement, the chevron simply never turned. It shipped
+  //    that way because the only test of expansion asserted the AUTO-OPEN case (a deep link arriving with its
+  //    parent already open), which is a different code path and works; nothing ever pressed the control.
+  //
+  //    Two independent faults, and either alone is enough to break it:
+  //      1. THE LOGIC COULD NOT KNOW WHAT IT WAS FLIPPING. `opened`/`closed` are an override pair over a base
+  //         state that depends on the ROUTE (`onTrail`), so "toggle" is not derivable from the two lists alone —
+  //         and the old body guessed, unconditionally adding to `closed`. For a group already closed that is a
+  //         no-op, which is exactly the observed nothing. The caller knows the rendered state, so it now says so.
+  //      2. IT MUTATED THE LISTS IN PLACE. `closed.Add(key)` changes a list the component still holds the same
+  //         reference to; the fields are REASSIGNED here so the change is one a re-render can see.
+  action ToggleGroup(string key, bool isOpen) {
+    // Rebuilt rather than mutated — see fault 2. Both lists drop the key first, then exactly one takes it back,
+    // so a group can never be in `opened` and `closed` at once (which the old body could produce).
+    List<string> nextOpened = [];
+    foreach (var k in opened) { if (k != key) { nextOpened.Add(k); } }
+    List<string> nextClosed = [];
+    foreach (var k in closed) { if (k != key) { nextClosed.Add(k); } }
+    if (isOpen) { nextClosed.Add(key); } else { nextOpened.Add(key); }
+    opened = nextOpened;
+    closed = nextClosed;
+  }
+  action ToggleFlyout(string key) { if (flyout == key) { flyout = ""; } else { flyout = key; } }
+  action CloseFlyout() { flyout = ""; }
+  // A nav row was followed. On a phone that means the drawer's job is done; everywhere it means a flyout is stale.
+  action Navigated() { drawerOpen = false; flyout = ""; }
+
+  variants { base { Display = Display.Flex; MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    // ⚠ THE BAND IS READ HERE AND NOWHERE ELSE. `Layout.AtLeast` measures a RENDERED container, so it is legal in
+    //   `render` and refused in a `live var` or an action — which is right, and is why the two band facts travel as
+    //   parameters instead of as state. One read, one answer, passed down.
+    SidebarFrame(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), current, hasUser, hasMenu,
+                 collapsed, drawerOpen, userMenuOpen, opened, closed, flyout,
+                 OpenDrawer, CloseDrawer, ToggleCollapse, ToggleUserMenu, CloseUserMenu, DismissAll,
+                 ToggleGroup, ToggleFlyout, CloseFlyout, Navigated) {
+      slot page { Slot; }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot railFoot { Slot("railFoot"); }
+      slot aside { Slot("aside"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the shell DRAWS, once the band has been decided. Split from `SidebarShell` because `Layout.AtLeast`
+/// is readable only inside a `render` block, so the two band facts have to arrive as parameters rather than being
+/// computed alongside the state they interact with.
+[Composable, Part]
+component SidebarFrame(
+    AppChrome chrome, bool isPhone, bool isWide, string current, bool hasUser, bool hasMenu,
+    bool collapsed, bool drawerOpen, bool userMenuOpen,
+    List<string> opened, List<string> closed, string flyout,
+    Action onOpenDrawer, Action onCloseDrawer, Action onToggleCollapse, Action onToggleUserMenu,
+    Action onCloseUserMenu, Action onDismissAll,
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+  // ICON-ONLY is the BAND and the reader's choice together. On a phone the rail is a full-width drawer and is never
+  // an icon strip; in the cozy band it always is; in the wide band the reader decides.
+  live var iconOnly = !isPhone && (collapsed || !isWide);
+
+  render {
+    Row(align: Align.Stretch, minH: Length.Screen) {
+      SidebarRail(chrome, iconOnly, isPhone, current, opened, closed, flyout,
+                  drawerOpen ? RailDrawer.Open : RailDrawer.Closed,
+                  onToggleCollapse, onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated) {
+        slot railFoot { Slot("railFoot"); }
+      }
+      // The scrim behind the drawer — phone only, and only while it is open. Its own component hides it at Tablet,
+      // so a resize with the drawer open cannot leave a dimmed desktop.
+      if (drawerOpen) { ShellScrim(onCloseDrawer); }
+
+      // ── the work column ──────────────────────────────────────────────────────────────────────────────
+      // `minW: "0"` is what lets a wide table scroll INSIDE this column instead of pushing the whole shell
+      // sideways. Without it a flex child refuses to shrink below its content and the page gets a horizontal
+      // scrollbar — the one thing that must never happen at any width.
+      Stack(gap: 0, grow: 1, minW: "0", h: chrome.Panes ? Length.Screen : "auto") {
+        SidebarTopBar(chrome, isPhone, hasUser, hasMenu, userMenuOpen, onOpenDrawer, onToggleUserMenu,
+                      onCloseUserMenu, onDismissAll) {
+          slot search { Slot("search"); }
+          slot actions { Slot("actions"); }
+        }
+        ShellBody(isWide, arrangement: chrome.Panes ? ShellPage.Panes : ShellPage.Document) {
+          slot page { Slot("page"); }
+          slot aside { Slot("aside"); }
+        }
+        // A task's COMMIT BAR. This arrangement is not task-shaped, but the slot is placed in all four so that
+        // switching arrangement never DROPS an app's primary action — the record's promise is that you lose the
+        // layout and nothing else. A POSITION only; `ShellTaskBar` brings the chrome, so an unfilled slot is free.
+        Slot("primary");
+        // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+        KeyboardSheet();
+      }
+    }
+
+    // The identity SHEET — phone only. Rendered at the frame's root, outside the rail, so no transform or overflow
+    // of the rail's can clip it and it stacks over everything the shell draws.
+    if (userMenuOpen && isPhone && hasMenu) {
+      ShellSheet("Account", onCloseUserMenu) {
+        ShellSheetIdentity(chrome.User);
+        Divider();
+        ShellMenuItems(chrome.User.Menu, onDismissAll);
+      }
+    }
+  }
+}
+
+// ── the rail ────────────────────────────────────────────────────────────────────────────────────────────
+
+/// The left rail: brand, nav, and whatever the app pinned at its foot. A `nav` LANDMARK, so a screen reader can
+/// jump straight past it — the cheapest large accessibility win a shell has.
+[Composable, Part]
+component SidebarRail(
+    AppChrome chrome, bool iconOnly, bool isPhone, string current,
+    List<string> opened, List<string> closed, string flyout, RailDrawer drawer,
+    Action onToggleCollapse, Action<string, bool> onToggleGroup, Action<string> onToggleFlyout,
+    Action onCloseFlyout, Action onNavigated) {
+  variants {
+    // MOBILE: a fixed off-canvas drawer, slid out on a transform (which animates on the compositor and, unlike
+    // `left`, costs no layout). At Tablet it becomes an ordinary in-flow column.
+    // ⚠ `Shrink = 0` at Tablet: a rail that shrinks is a rail that moves the whole page sideways whenever a wide
+    //   table lands in it. Measured on `admin` before it was set — 264px beside an empty page, 202px beside a full
+    //   one, and the content column jumping on every navigation.
+    base { Position = Position.Fixed; Top = "0"; Bottom = "0"; Left = "0"; Z = ZIndex.Drawer;
+           Bg = Colors.Surface; BorderRW = 1; Border = Colors.Border; Shadow = Shadow.Deep;
+           Transition = "transform 180ms cubic-bezier(.2,.8,.2,1), width 160ms cubic-bezier(.2,.8,.2,1)";
+           TranslateX = "-100%";
+           Tablet { Position = Position.Static; TranslateX = "0"; Z = "auto"; Shrink = 0; Shadow = "none"; } }
+    // Closed, the drawer sits past the left edge and casts NO shadow: a deep shadow spills ~40px beyond its own edge, so
+    // a closed drawer shaded the left of every phone page (seen in the Inbox kit's phone shots, 2026-10-01).
+    drawer { Open { TranslateX = "0"; } Closed { Shadow = "none"; } }
+  }
+  render {
+    // ⚠ The landmark is NAMED. A page with two `nav` regions (a sidebar and a breadcrumb) is unnavigable without
+    //   names, and the name is also what a test scopes to with `within:`.
+    // THE WIDTH IS AN INLINE CONDITIONAL, not three variant blocks and not a computed local: it derives from the
+    // same `iconOnly` the render branches on, and two sources of truth for one fact is how a rail ends up 60px
+    // wide with labels in it. Every branch is a `Length` TOKEN, because a style value names the vocabulary it
+    // comes from — `RailDrawerW` exists so the phone branch is a token like the other two rather than a string.
+    // ⛔ NO `h: "100%"` HERE, AND THAT IS THE WHOLE REASON THE RAIL IS FULL HEIGHT. It had one, and it did the
+    //    OPPOSITE of what it reads as — measured 2026-09-06 on the first render of this shell: the rail came out
+    //    264x386 inside a 1280x900 flex row. Two things go wrong at once. `SidebarShell` gets its height from
+    //    `MinH = Length.Screen`, so its COMPUTED `height` is `auto` and a percentage child has nothing to resolve
+    //    against, falling back to content height; and an explicit cross-size DEFEATS the parent's
+    //    `align-items: stretch`, which is what would otherwise have made it 900 for free. So the declaration that
+    //    looks like it fills the column is exactly what stops it. Stretch is the default — say nothing.
+    // ⚠ It only shows in the DOCKED bands. On a phone the rail is `Position.Fixed` with `Top/Bottom = 0`, which
+    //   sizes it to the viewport whatever this says, so the compact band looked right throughout.
+    Stack(gap: 0, role: UiRole.Navigation, label: "Main navigation",
+          w: isPhone ? Length.RailDrawerW : (iconOnly ? Length.RailNarrowW : Length.RailW),
+          pt: "env(safe-area-inset-top)") {
+      Row(gap: 2, align: Align.Center, minW: "0", px: 2, py: 2, minH: Length.AppBarH) {
+        ShellBrand(chrome, markOnly: iconOnly);
+        if (!iconOnly) { Spacer(); }
+        // The collapse control belongs only where collapsing means something. On a phone the rail is a drawer (you
+        // close it, you do not narrow it) and in the cozy band it is already as narrow as it goes — an affordance
+        // that changes nothing is worse than none.
+        if (!isPhone) { SidebarCollapseButton(iconOnly, onToggleCollapse); }
+      }
+      Divider();
+      // THE SCROLLING REGION. `overflowY` flips to `Visible` while a flyout is open, because a flyout is positioned
+      // beside a row and an `auto` overflow clips on BOTH axes — the collapsed rail's submenu would be cut off at
+      // 64px. A transient panel is worth a transiently unscrollable list.
+      Stack(gap: 1, grow: 1, minH: "0", overflowY: flyout != "" ? Overflow.Visible : Overflow.Auto,
+            px: 2, py: 2, scrollbarWidth: ScrollbarWidth.Thin) {
+        if (chrome.Loading) { ShellNavSkeleton(iconOnly); }
+        if (!chrome.Loading) {
+          // PINNED and RECENT first — the reader's own shortcuts, above the app's map (D-HELPDESKDESIGN1).
+          ShellShortcuts(chrome, iconOnly, onNavigated);
+          if (chrome.Nav.Length == 0) { SidebarNavEmpty(iconOnly); }
+          foreach (var item in chrome.Nav) {
+            SidebarNavNode(item, iconOnly, current, opened, closed, flyout,
+                           onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated);
+          }
+        }
+      }
+      // The foot slot is a CARD, and a card cannot be 64px wide. Hidden rather than truncated when the rail is an
+      // icon strip: a clipped help card reads as a rendering bug, and its absence reads as a narrow rail.
+      if (!iconOnly) {
+        Stack(gap: 0, px: 3, pb: 3, pt: 2) { Slot("railFoot"); }
+      }
+      Box(h: "env(safe-area-inset-bottom)", decorative: true);
+    }
+  }
+}
+
+/// The chevron that narrows the rail. Only rendered in the wide band; `Laptop`-gated so a resize cannot strand it.
+[Composable, Part]
+component SidebarCollapseButton(bool iconOnly, Action onToggle) {
+  live var name = iconOnly ? "Expand navigation" : "Collapse navigation";
+  variants {
+    base { Display = Display.None; Laptop { Display = Display.InlineFlex; } W = Length.ControlSm; H = Length.ControlSm;
+           Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast; Shrink = 0;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    // ⚑ `expanded:` — the state, not only the NAME. The label already changes ("Expand"/"Collapse navigation"), and
+    //    a changing name is not a state: a screen reader announces the button's current purpose but never says the
+    //    navigation IS collapsed, and `Ui.Check` has nothing to read at all. Its twin `RailExpandButton` has carried
+    //    this since it was written; this button simply never got it.
+    Pressable(onClick: onToggle, label: name, expanded: !iconOnly) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") {
+        Icon(iconOnly ? Icons.ChevronRight : Icons.ChevronLeft, size: 16);
+      }
+    }
+  }
+}
+
+/// What the rail shows when the app declared no nav at all. A shell owns this one: an empty column reads as a
+/// broken rail, and a sentence reads as an app that has not been given its sections yet.
+[Composable, Part]
+component SidebarNavEmpty(bool iconOnly) {
+  render {
+    if (!iconOnly) {
+      Stack(gap: 1, px: 2, py: 4, label: "No navigation") {
+        Text("No sections yet", fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.OnSurface);
+        Text("Add a NavItem to this app's chrome to fill this rail.", fontSize: FontSize.Caption,
+             color: Colors.TextMuted, lineHeight: 1.45);
+      }
+    }
+    if (iconOnly) {
+      Row(justify: Justify.Center, py: 4, label: "No navigation") { Icon(Icons.Folder, size: 18, color: Colors.TextMuted); }
+    }
+  }
+}
+
+// ── one node of the nav tree ────────────────────────────────────────────────────────────────────────────
+
+/// ONE TOP-LEVEL ENTRY and everything under it, to the depth this shell renders.
+///
+/// ⛔ THREE COMPONENTS, ONE PER LEVEL, RATHER THAN ONE THAT RECURSES — and that is a platform constraint, not a
+/// preference. A component that calls ITSELF compiles, and then the first load of its stored render tree kills the
+/// server with an uncatchable stack overflow: the tree loader inlines a call, so a self-call is an infinite
+/// expansion. Measured 2026-09-06 (`UiComponentTreeLoader.BuildNodeAsync`/`BuildChildrenAsync` repeated to
+/// exhaustion, SIGABRT via `EEPolicy::HandleFatalStackOverflow`) — and because the kit is composed into EVERY app,
+/// one recursive kit component took `osy compile` down for every app in the repo, not just this one. Until the
+/// compiler refuses that with a diagnostic, a kit component may not recurse.
+///
+/// ⚑ SO THE NESTED DEPTH IS THREE, DECIDED AND DOCUMENTED. Section → group → leaf covers what a real admin tool
+/// needs (Administration → Settings → Policy), and everything BELOW the third indent is flattened to it rather than
+/// dropped: those rows appear beside their parent's, at the same indent. Nothing a caller declares is silently
+/// lost — a nav item that renders nowhere is worse than one that renders a step too shallow.
+///
+/// ⚠ THAT LAST SENTENCE WAS FALSE UNTIL 2026-09-06, AND FALSE IN THE ONE DIRECTION THAT MATTERS. The flattening
+/// read `item.Children` — ONE level past the leaf — so a FIFTH level was dropped: declared, rendered nowhere, and
+/// not even marked current when the reader was standing on its own route. Measured: on a five-level nav the rail
+/// drew L2/L3/L4 and the page at `/l2/l3/l4/l5` showed no current row at all, which reads as a broken app rather
+/// than a deep tree. It reads `item.Descendants()` now — the tree's ONE walk, iterative and unbounded, shared with
+/// `BestMatch`, so what renders and what lights cannot disagree about how deep the nav goes.
+///
+/// ⛔ "MAY NOT RECURSE" IS NOT "MUST BE BOUNDED", and conflating them is what caused that. A COMPONENT still may
+/// not call itself — hence three components, one per level — but a METHOD can walk any depth with an explicit
+/// index cursor, which needs nothing from the platform. Reach for the cursor before hand-unrolling a loop.
+[Composable, Part]
+component SidebarNavNode(
+    NavItem item, bool iconOnly, string current,
+    List<string> opened, List<string> closed, string flyout,
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+  live var shape = item.Shape();
+  live var onTrail = item.HasRoute(current);
+  // OPEN BY DEFAULT WHEN IT HOLDS THE CURRENT PAGE. This is the line that makes a deep link arrive with its parent
+  // already open — the specific thing whose absence makes a shell feel fake — and the `closed` veto is what lets a
+  // reader shut it anyway without it springing back.
+  live var isOpen = opened.Contains(item.Key()) || (onTrail && !closed.Contains(item.Key()));
+
+  render {
+    // A SECTION — a heading over children that are always visible. In an icon rail there is no room for the
+    // heading, so it degrades to a hairline: the grouping survives, the words do not.
+    // An EMPTY section draws nothing — a heading over no links is a promise the rail does not keep (a shared-views
+    // section before anybody has shared one).
+    if (shape == NavKind.Section && item.Children.Length > 0) {
+      if (!iconOnly) { Row(px: 2, pt: 4, pb: 1) { SectionLabel(item.Label); } }
+      if (iconOnly) { Box(py: 2) { Divider(); } }
+      foreach (var child in item.Children) {
+        SidebarNavBranch(child, iconOnly, current, opened, closed, flyout,
+                         onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated);
+      }
+    }
+
+    // A GROUP or a LINK at the top level — the same two presentations the level below has.
+    if (shape != NavKind.Section) {
+      SidebarNavBranch(item, iconOnly, current, opened, closed, flyout,
+                       onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated);
+    }
+  }
+}
+
+/// LEVEL 1 — a group that discloses, or a link. Two presentations, chosen by whether there are words on screen:
+///   labelled rail → an ACCORDION, children indented underneath
+///   icon rail     → a FLYOUT beside the row
+/// ⛔ THE FLYOUT OPENS ON A CLICK, NOT ON HOVER, and that is not a preference. A hover-only disclosure does not
+///    exist on a touch screen: the children would be unreachable, which is the same as not shipping them.
+[Composable, Part]
+component SidebarNavBranch(
+    NavItem item, bool iconOnly, string current,
+    List<string> opened, List<string> closed, string flyout,
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+  live var shape = item.Shape();
+  live var onTrail = item.HasRoute(current);
+  live var isOpen = opened.Contains(item.Key()) || (onTrail && !closed.Contains(item.Key()));
+  live var isCurrent = item.To == current && current != "";
+
+  render {
+    if (shape == NavKind.Group) {
+      if (!iconOnly) {
+        // ⛔ A GROUP CARRYING A `To` NAVIGATES AS WELL AS DISCLOSING — the shape `NavKind.Group` has documented
+        //    since the contract shipped, and which nothing implemented. This row was unconditionally a
+        //    `Pressable`, so a group's OWN route was unreachable from the rail: measured on
+        //    `demo/shell-showcase`, `/settings` is a declared page with a `[Title]`, sitting in the nav, that no
+        //    sequence of clicks in the rail could open. Two targets in one row is how every real product solves
+        //    this, and the chevron takes its own accessible name so the two do not answer to the same words.
+        if (item.To != "") {
+          SidebarNavSplit(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+                          isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated);
+        }
+        if (item.To == "") {
+          SidebarNavRow(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+                        true, isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated);
+        }
+        if (isOpen) {
+          foreach (var child in item.Children) {
+            SidebarNavLeaf(child, current, onNavigated);
+          }
+        }
+      }
+      if (iconOnly) {
+        Box(position: Position.Relative) {
+          SidebarNavMarkRow(item, onTrail ? NavState.Trail : NavState.Idle, true,
+                            flyout == item.Key(), () => onToggleFlyout(item.Key()), onNavigated);
+          if (flyout == item.Key()) {
+            Backdrop(onCloseFlyout);
+            SidebarFlyout(item.Label) {
+              foreach (var child in item.Children) {
+                SidebarNavLeaf(child, current, onNavigated);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (shape != NavKind.Group) {
+      if (!iconOnly) {
+        SidebarNavRow(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+                      false, false, onNavigated, onNavigated);
+      }
+      if (iconOnly) {
+        SidebarNavMarkRow(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+                          false, false, onNavigated, onNavigated);
+      }
+    }
+  }
+}
+
+/// A GROUP THAT NAVIGATES AND DISCLOSES — a link for the route, a chevron for the children, in one row.
+///
+/// ⚠ THE CONTENTS ARE WRITTEN OUT rather than reusing `SidebarNavRow`, deliberately and for this file's own stated
+/// reason: the row would need a `Grow` it must not have anywhere else — these rows sit in a COLUMN, where a
+/// `flex-grow` stretches them VERTICALLY instead of filling the width. This file already duplicates row contents on
+/// purpose (see `SidebarNavRow`), so the shape is the house style rather than an exception to it.
+[Composable, Part]
+component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisclose, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; FontSize = FontSize.Body;
+           Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; } }
+    state {
+      Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
+      Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
+      Idle    { }
+    }
+  }
+  render {
+    Row(align: Align.Center, gap: 0, w: "100%", minW: "0") {
+      SidebarSplitLink(item, state, onNavigated);
+      SidebarSplitChevron(item, open, onDisclose);
+    }
+  }
+}
+
+/// The navigating half. A `Link`, never a `Pressable` calling `Navigation.Go` — a link is what gives middle-click,
+/// open-in-new-tab, a status-bar preview and the "current page" a screen reader announces.
+[Composable, Part]
+component SidebarSplitLink(NavItem item, NavState state, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense; Rounded = Radius.Md;
+           Color = "inherit";
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+      Row(gap: 3, align: Align.Center, w: "100%", h: "100%", minW: "0", pl: 2) {
+        Icon(item.Icon, size: 18);
+        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis);
+        if (item.Badge != "") { ShellNavBadge(item); }
+      }
+    }
+  }
+}
+
+/// The disclosing half, with its OWN accessible name — "Settings sub-pages". Two controls in one row must not
+/// answer to the same words, or a screen reader offers two identical buttons and a test cannot say which it meant.
+[Composable, Part]
+component SidebarSplitChevron(NavItem item, bool open, Action onToggle) {
+  live var name = item.Label + " sub-pages";
+  variants {
+    base { Display = Display.InlineFlex; Shrink = 0; W = Length.ControlSm; MinH = Length.TouchDense;
+           Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onToggle, label: name, expanded: open) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") {
+        Icon(open ? Icons.ChevronDown : Icons.ChevronRight, size: 14);
+      }
+    }
+  }
+}
+
+/// LEVEL 2 — a row inside an open group, and the flattened tail of anything deeper. A child of a child renders
+/// here too, at this indent: the tree may be deeper than the rail draws, and nothing in it disappears.
+[Composable, Part]
+component SidebarNavLeaf(NavItem item, string current, Action onNavigated) {
+  live var isCurrent = item.To == current && current != "";
+  live var onTrail = item.HasRoute(current);
+
+  render {
+    SidebarNavRow(item, true,
+                  isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+                  false, false, onNavigated, onNavigated);
+    // ⭐ EVERYTHING BELOW THIS LEVEL, AT ANY DEPTH, flattened to this indent rather than dropped — which is what
+    //    makes "nothing a caller declares is silently lost" true rather than aspirational. It read
+    //    `item.Children`, one level, so a FIFTH level vanished: declared, never rendered, and not even current
+    //    when the reader was standing on its own route. `Descendants()` is the tree's one walk (see `NavItem`),
+    //    iterative and unbounded, and it is the same walk `BestMatch` uses — so what LIGHTS and what RENDERS
+    //    cannot disagree about how deep the nav goes.
+    foreach (var deeper in item.Descendants()) {
+      SidebarNavRow(deeper, true, deeper.To == current && current != "" ? NavState.Current : NavState.Idle,
+                    false, false, onNavigated, onNavigated);
+    }
+  }
+}
+
+/// The panel a collapsed rail's group opens beside itself. Absolutely positioned against the ROW, so it needs no
+/// measurement and no JavaScript — and the rail deliberately does not clip while one is open (see `SidebarRail`).
+[Composable, Part]
+component SidebarFlyout(string label) {
+  variants {
+    base { Position = Position.Absolute; Left = "100%"; Top = "0"; Ml = 2; MinW = "220px"; Z = ZIndex.Popover;
+           Bg = Colors.Surface; BorderW = 1; Border = Colors.Border; Rounded = Radius.Md; Shadow = Shadow.Floating;
+           P = 2; }
+  }
+  render {
+    Stack(gap: 1, role: UiRole.Menu, label: label) {
+      Row(px: 2, pb: 1) { SectionLabel(label); }
+      Slot;
+    }
+  }
+}
+
+/// ONE ROW — the whole visual language of the nav in one place: the glyph, the label, the badge, the disclosure
+/// chevron, and the three-step active scale.
+///
+/// ⚠ IT IS A `Link` WHEN IT NAVIGATES AND A `Pressable` WHEN IT DISCLOSES, and the difference is not cosmetic: a
+/// link is what gives middle-click, open-in-new-tab, a status-bar preview and the `current:` state a screen reader
+/// announces as "current page". A `Pressable` that calls `Navigation.Go` looks identical and has none of them.
+[Composable, Part]
+component SidebarNavRow(
+    NavItem item, bool isNested, NavState state, bool discloses, bool open,
+    Action onPress, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Md; FontSize = FontSize.Body;
+           Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      // CURRENT is a filled row: the strongest signal, and the only one that uses the accent as a background.
+      Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
+      // TRAIL is an ancestor of the page you are on — present but not shouting. Weight and colour, no fill, which
+      // is what keeps exactly one row reading as "here".
+      Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
+      Idle    { }
+    }
+  }
+  render {
+    // ⚠ THE CONTENTS ARE WRITTEN TWICE rather than shared through a "…Face" component, and that is deliberate: a
+    //   shared wrapper is one more link in the CHAIN the tree loader walks in a single recursion, and the shell is
+    //   the deepest composition in the kit. The truncation trio (`Nowrap` + `Hidden` + `Ellipsis`) is what stops a
+    //   35-character label widening the rail or wrapping into a two-line row.
+    if (discloses) {
+      Pressable(onClick: onPress, label: item.Label, expanded: open) {
+        Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
+          Icon(item.Icon, size: 18);
+          Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+               textOverflow: TextOverflow.Ellipsis);
+          if (item.Badge != "") { ShellNavBadge(item); }
+          Icon(open ? Icons.ChevronDown : Icons.ChevronRight, size: 14, color: Colors.TextMuted);
+        }
+      }
+    }
+    if (!discloses) {
+      // `current:` is what a reader hears as "current page"; the fill above is what a sighted reader sees. Both,
+      // or the row is only half-marked.
+      Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+        Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
+          Icon(item.Icon, size: 18);
+          Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+               textOverflow: TextOverflow.Ellipsis);
+          if (item.Badge != "") { ShellNavBadge(item); }
+        }
+      }
+    }
+  }
+}
+
+/// THE SAME ROW WITH ITS LABEL GONE — the collapsed sidebar's icon strip.
+///
+/// ⛔ SEPARATE FROM `SidebarNavRow` FOR THE REASON `RailNavMarkLink` IS SEPARATE FROM `RailNavLink`: the paint moves
+///    off the row and onto a square mark, and a `variants` block cannot branch on a `bool`. Both shells reach for the
+///    same `ShellNavMark`, so the rule — *just the icon gets the box when there are no words* — is decided once and
+///    not re-authored per shell. It HAD been re-authored, and the two had drifted apart AND away from the glyph:
+///    measured 2026-09-08, the collapsed rail's glyph sat 4.5px LEFT of its highlight and the collapsed sidebar's sat
+///    3.5px RIGHT of it, the sidebar's extra offset coming from the `pl:` this row no longer applies when collapsed.
+///
+/// ⚠ NO `pl: isNested ? 5 : 2` HERE, and that is the second half of the sidebar's own bug. Indenting a nested row is
+///   how a labelled tree shows depth; with no labels there is no tree to show, and the indent only pushed the glyph
+///   off the centre of its own highlight.
+[Composable, Part]
+component SidebarNavMarkRow(
+    NavItem item, NavState state, bool discloses, bool open, Action onPress, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
+           Color = Colors.TextSecondary; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    // ⚠ NO `FontWeight` ARM, unlike its labelled twin. There is no text in this row to embolden — a weight here is
+    //   a declaration that cannot show, which is the kind of dead style that later reads as a missing feature.
+    state {
+      Current { Color = Primary.Strong; }
+      Trail   { Color = Colors.OnSurface; }
+      Idle    { }
+    }
+  }
+  render {
+    if (discloses) {
+      Pressable(onClick: onPress, label: item.Label, expanded: open) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
+          ShellNavMark(item.Icon, state);
+        }
+      }
+    }
+    if (!discloses) {
+      Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
+          ShellNavMark(item.Icon, state);
+        }
+      }
+    }
+  }
+}
+
+// ── the top bar ─────────────────────────────────────────────────────────────────────────────────────────
+
+/// The contextual bar: what page you are on, what you can search, what you can do, and who you are. A `banner`
+/// landmark, sticky, and separated from the page by a hairline rather than a shadow so it does not compete with
+/// the cards below it.
+[Composable, Part]
+component SidebarTopBar(
+    AppChrome chrome, bool isPhone, bool hasUser, bool hasMenu, bool userMenuOpen,
+    Action onOpenDrawer, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll) {
+  live var path = Navigation.CurrentPath ?? "";
+  variants {
+    base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Surface; BorderBW = 1;
+           Border = Colors.Border; Px = 3; Pt = "env(safe-area-inset-top)";
+           Laptop { Px = 5; } }
+  }
+  render {
+    Row(gap: 3, align: Align.Center, minH: Length.AppBarH, py: 2, role: UiRole.Banner, label: "Page header", minW: "0") {
+      if (isPhone) { SidebarMenuButton(onOpenDrawer); }
+      // The page names itself (`[Title("…")]`), the shell reads it. Falls back to the current nav row's label so a
+      // page that declared none is still named rather than blank.
+      Row(gap: 1, align: Align.Center, minW: "0", grow: 1) {
+        Stack(gap: 0, minW: "0") { ShellPageTitle(""); }
+        // The PIN for the page you are on, beside its name — drawn when the app keeps pins (`chrome.TogglePin`).
+        if (chrome.TogglePin != null && path != "") { ShellPinButton(chrome.IsPinned(path), chrome.TogglePin); }
+      }
+      // Search takes the room it can get and gives it up first — on a phone there is none, and the affordance
+      // belongs on the page rather than crammed into a 390px bar.
+      if (!isPhone) { Slot("search"); }
+      Row(gap: 2, align: Align.Center, shrink: 0) { Slot("actions"); }
+      if (hasUser) {
+        Box(position: Position.Relative) {
+          ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: isPhone, open: userMenuOpen);
+          // The dropdown — pointer widths only. On a phone the same items are a bottom sheet (see `SidebarShell`),
+          // because a panel hung off the top-right corner is where a thumb cannot reach.
+          if (userMenuOpen && !isPhone && hasMenu) {
+            Backdrop(onCloseUserMenu);
+            SidebarUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// The hamburger. Phone only — at Tablet the rail is docked and there is nothing to open.
+[Composable, Part]
+component SidebarMenuButton(Action onPress) {
+  variants {
+    base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Md; Shrink = 0;
+           Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; }
+           Tablet { Display = Display.None; } }
+  }
+  render {
+    // ⚠ NO `h: "100%"` on the row. The button has a MIN height and no height, so a percentage height resolves to
+    //   auto — and, not being `auto`, it is not stretched either: the row shrank to the glyph and sat at the top of the
+    //   44px target, the menu mark riding above the title's line (seen in the Inbox and helpdesk phone shots,
+    //   2026-10-01). Left to stretch, the row fills the button and centres the glyph — as `RailMenuButton`'s does.
+    Pressable(onClick: onPress, label: "Open navigation") {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%") { Icon(Icons.Menu, size: 20); }
+    }
+  }
+}
+
+/// The identity dropdown, hung under the chip on the trailing edge.
+[Composable, Part]
+component SidebarUserMenu(ShellUser user) {
+  variants {
+    // A connected menu (D-HELPDESKDESIGN1): it grows out of the chip's corner and keeps a notch pointing at it.
+    base { Position = Position.Absolute; Top = "100%"; Right = "0"; Mt = 2; MinW = "240px"; Z = ZIndex.Popover;
+           Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
+           TransformOrigin = "top right"; Animation = KitMenuGrow; }
+  }
+  render {
+    Stack(gap: 1, role: UiRole.Menu, label: user.Name) {
+      MenuNotch(MenuFrom.BelowEnd);
+      Stack(gap: 0, px: 3, py: 2) {
+        Text(user.Name, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold, whiteSpace: WhiteSpace.Nowrap,
+             overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (user.Secondary != "") { Hint(user.Secondary); }
+        ShellPresenceWord(user);
+      }
+      Divider();
+      Slot;
+    }
+  }
+}

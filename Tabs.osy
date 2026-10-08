@@ -1,0 +1,37 @@
+// Ui — the tab strip (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// The tab strip — a row of `Tab`s over a full-width hairline that the selected tab's underline sits on.
+/// Over a fixed set the strip is a `foreach` over `T.Members`, and "All" is a `T?` filter holding `null`
+/// ([[enum-declaration]] `#all-filter` compiles the whole page).
+/// In a test you drive the TAB, not the strip: `Ui.Click("Active")`.
+/// need: switch between panels on one page, a tab strip, several views in one place
+/// e.g. `Tabs { Tab("All", selected: only == null, onPress: ShowAll); foreach (var c in Cuisine.Members) { Tab(c.Label, selected: only == c, onPress: () => Show(c)); } }`
+// ⛔ A TAB STRIP SCROLLS, because the number of tabs is the APP's business and the width is not. Without
+//    `OverflowX = Overflow.Auto` the row is a plain flex line that simply spills: measured 2026-08-23 on a
+//    generated app, a nine-member filter was 749px of tabs in a 710px box, `overflow-x: visible`, and the last tab
+//    sat 39px past the strip's right edge where the card clipped it — visible to nobody and reachable by nothing.
+//    ⚑ EVERY TEXT ASSERTION PASSED: the word "Other" is in the DOM, so `Assert.Visible` is happy and happy-dom, which
+//    has no compositor, cannot tell. A SCREENSHOT is what showed it.
+[Composable] component Tabs() {
+  variants { base { BorderBW = 1; Border = Colors.Border; Gap = Space.Gutter; OverflowX = Overflow.Auto; } }
+  render { Row(role: UiRole.TabList, align: Align.End, gap: 1) { Slot; } }
+}
+
+/// One tab. `selected` decides the underline and the weight; `onPress` is what makes it current.
+/// In a test it is pressed by its label: `Ui.Click("Active")`, and the current one is `Assert.Selected(...)`.
+/// e.g. `Tab(c.Label, selected: only == c, onPress: () => Show(c))`
+[Composable] component Tab(string label, bool selected = false, Action onPress = null, bool disabled = false) {
+  variants {
+    base {
+      Px = 3; Py = 3; FontSize = FontSize.Body; FontWeight = FontWeight.Medium; Color = Colors.TextMuted;
+      BorderBW = 2; Border = Colors.Transparent; Mb = "-1px";
+      Transition = Motion.Fast; WhiteSpace = WhiteSpace.Nowrap;
+      Hover { Color = Colors.OnSurface; }
+      Disabled { Opacity = "0.5"; }
+    }
+    selected { Color = Colors.Primary; FontWeight = FontWeight.Semibold; Border = Colors.Primary; }
+  }
+  render { Pressable(label, role: UiRole.Tab, selected: selected, onClick: onPress, disabled: disabled); }
+}

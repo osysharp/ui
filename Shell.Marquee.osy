@@ -1,0 +1,182 @@
+// Ui — THE MARQUEE SHELL. A ticker running across the top, the name and the shelves set huge, and the page under them.
+//
+//     [Layout] component Shop() {
+//       render {
+//         MarqueeShell(chrome, ticker: "Free delivery over 1,000 kr — New drop every Friday") {
+//           Outlet(retain: 8);
+//           slot actions { Button("Bag (2)", onPress: OpenBag); }
+//           slot footer  { EditorialFooter(chrome); }
+//         }
+//       }
+//     }
+//
+// FOR A SHOP WITH A VOICE — streetwear, a drop, a record shop, a shop whose name is the brand. The header is the loudest
+// thing on the page on purpose: the wordmark and the shelves in the display face at poster size, and a line of news
+// running across the very top for ever. It is the arrangement of a drop site, not of a catalogue.
+//
+// ⭐ THE TICKER is `ticker:` repeated to fill the band and slid by exactly half its width, so the loop never jumps.
+//    Reduced motion is the platform's: a visitor who asked for less motion gets the band standing still.
+//
+// ⭐ THE BANDS:
+//   compact  < 768   the ticker, then a solid bar (the wordmark, the action, a menu button); the shelves in the
+//                    storefront's drawer.
+//   cozy/wide 768+   the ticker, then a header of two rows: the wordmark at poster size with the action beside it, and
+//                    the shelves in the display face under a rule; sticky is the shelf row alone, so the page keeps
+//                    its height.
+//
+// ⚑ THE SLOTS: the six every shell has, plus `promo` (above the ticker) and `footer`.
+
+namespace Osysharp.Ui;
+
+/// THE MARQUEE SHELL — a ticker across the top, the wordmark and the shelves set at poster size, the page under them.
+/// For a shop with a voice: a drop, streetwear, a record shop. A bar and a drawer on a phone. Takes the same
+/// `AppChrome` and slots as every other shell, plus `ticker:` (the line that runs across the top), `promo` and `footer`.
+///
+/// Slots, all optional:
+///   (default)   the routed page — `Outlet(retain: 8)`
+///   `actions`   the bag, beside the wordmark and in the phone bar
+///   `promo`     a thin announcement bar above the ticker
+///   `footer`    the footer, under the page
+///   `search`, `aside`, `railFoot`, `primary` — rendered in the page column, so switching from another shell drops nothing
+///
+/// In a test the regions carry names: `Ui.Click("Denim", within: "Site navigation")`, and on a phone `Ui.Click("Menu")`.
+/// need: a streetwear or drop shop header, a big loud header with a scrolling ticker, a record shop or brand shop layout
+/// e.g. `MarqueeShell(chrome, ticker: "New drop every Friday") { Outlet(retain: 8); slot actions { Button("Bag", onPress: OpenBag); } }`
+[Composable]
+component MarqueeShell(AppChrome chrome, string ticker = "") {
+  string overlay = "";
+  string overlayAt = "";
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  live var shown = overlayAt == path ? overlay : "";
+  live var menuOpen = shown == "menu";
+
+  action ToggleMenu() { overlay = shown == "menu" ? "" : "menu"; overlayAt = path; }
+  action CloseMenu() { if (menuOpen) { overlay = ""; } }
+  action DismissAll() { overlay = ""; }
+  action Navigated() { overlay = ""; }
+
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    MarqueeFrame(chrome, ticker, !Layout.AtLeast(Tablet), current, hasUser, hasMenu, menuOpen,
+                 ToggleMenu, CloseMenu, DismissAll, Navigated) {
+      slot page { Slot; }
+      slot promo { Slot("promo"); }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot footer { Slot("footer"); }
+      slot aside { Slot("aside"); }
+      slot railFoot { Slot("railFoot"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the marquee shell DRAWS, once the band is decided.
+[Composable, Part]
+component MarqueeFrame(AppChrome chrome, string ticker, bool isPhone, string current, bool hasUser, bool hasMenu,
+                       bool menuOpen, Action onToggleMenu, Action onCloseMenu, Action onDismissAll, Action onNavigated) {
+  live var items = chrome.Primary();
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      Slot("promo");
+      if (ticker != "") { MarqueeTicker(ticker); }
+      if (isPhone) {
+        SplitPhoneBar(chrome, menuOpen, onToggleMenu, onNavigated) { slot actions { Slot("actions"); } }
+      }
+      if (!isPhone) {
+        Row(justify: Justify.Between, align: Align.End, gap: 6, px: 8, pt: 8, pb: 4, role: UiRole.Banner, label: "Site header") {
+          Link(href: chrome.Home, label: chrome.Product, onClick: onNavigated) {
+            Text(chrome.Product, fontFamily: Font.Display, fontSize: FontSize.MarqueeBrand, fontWeight: FontWeight.Bold,
+                 lineHeight: "0.82", letterSpacing: "-0.04em", color: "inherit", textTransform: TextTransform.Uppercase);
+          }
+          Row(gap: 2, align: Align.Center, pb: 2) { Slot("actions"); }
+        }
+        MarqueeNavRow(items, current, onNavigated);
+      }
+      Stack(gap: 0, role: UiRole.Main, label: "Page", minW: "0", grow: 1) {
+        Slot("search");
+        Slot("page");
+        Slot("aside");
+        Slot("railFoot");
+      }
+      Slot("primary");
+      Slot("footer");
+    }
+
+    if (menuOpen && isPhone) {
+      StorefrontScrim(onCloseMenu);
+      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+    }
+  }
+}
+
+/// The line of news that runs across the top — the text repeated to fill the band, twice over, slid by half.
+[Composable, Part]
+component MarqueeTicker(string text) {
+  variants {
+    base { Bg = Colors.Primary; Color = Colors.OnPrimary; Overflow = Overflow.Hidden; Py = 2; WhiteSpace = WhiteSpace.Nowrap; }
+  }
+  render {
+    // The line is announced ONCE, as the region's name; the eight moving copies are decoration, or a screen reader
+    // would read the same sentence eight times over.
+    Box(label: text, role: UiRole.Region) {
+      Row(gap: 10, w: "max-content", animation: MarqueeRun, decorative: true) {
+        foreach (var i in [1, 2, 3, 4, 5, 6, 7, 8]) {
+          Text(text, fontFamily: Font.Display, fontWeight: FontWeight.Bold, textTransform: TextTransform.Uppercase,
+               letterSpacing: "0.04em");
+        }
+      }
+    }
+  }
+}
+
+/// The shelves in the display face, large, in one row under a rule; the current one set on the accent.
+[Composable, Part]
+component MarqueeNavRow(NavItem[] items, string current, Action onNavigated) {
+  variants {
+    base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Bg; Color = Colors.OnBg;
+           BorderTW = 2; BorderBW = 2; Border = Colors.OnBg; Px = 8;
+           // ONE line, always: at poster size eight shelves do not fit, and a second row doubled the sticky band
+           // (measured on thrift-store/loud). The row scrolls sideways instead, without a gutter.
+           OverflowX = Overflow.Auto; ScrollbarWidth = ScrollbarWidth.None; }
+  }
+  render {
+    // The band (this Box, which the variants above style) is the page's width and scrolls; the Row inside it is as wide
+    // as its shelves. With both on one element the band grew to the Row's width, and nine shelves at poster size made
+    // the whole PAGE scroll sideways at 1440 (measured on Andra Varvet in its Loud look: 1697 px wide).
+    Box {
+      Row(role: UiRole.Navigation, label: "Site navigation", align: Align.Center, gap: 6, minH: "64px", wrap: Wrapping.Nowrap,
+          w: "max-content") {
+        foreach (var item in items) {
+          MarqueeNavLink(item.Label, item.FirstRoute(), item.State(current) == NavState.Current, onNavigated);
+        }
+      }
+    }
+  }
+}
+
+/// One shelf — display face, upper-case; the current one on the accent in the accent's text colour.
+[Composable, Part]
+component MarqueeNavLink(string label, string to, bool isCurrent, Action onNavigated) {
+  variants {
+    base { Display = Display.InlineFlex; TextDecoration = TextDecoration.None; Color = Colors.OnBg; Transition = Motion.Fast;
+           Hover { TextDecoration = TextDecoration.Underline; }
+           Focus { OutlineW = 2; OutlineColor = Colors.OnBg; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: to, label: label, current: isCurrent, onClick: onNavigated) {
+      Text(label, fontFamily: Font.Display, fontSize: FontSize.MarqueeNav, fontWeight: FontWeight.Bold,
+           textTransform: TextTransform.Uppercase, letterSpacing: "-0.01em", px: isCurrent ? 2 : 0,
+           bg: isCurrent ? Colors.Primary : "transparent", color: isCurrent ? Colors.OnPrimary : Colors.OnBg);
+    }
+  }
+}
+
+animation MarqueeRun { Duration = "40s"; Easing = Linear; Repeat = Infinite; from { TranslateX = "0"; } to { TranslateX = "-50%"; } }

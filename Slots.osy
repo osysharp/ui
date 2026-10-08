@@ -1,0 +1,78 @@
+// Ui — COMPOSITION (`using Osysharp.Ui;`, D-COMPOSE1 S5): where one kit's pages let another kit — or the app — add to
+// them, the pages a kit puts in the app's navigation, and the frame a kit's working pages stand in.
+//
+// ⭐ A SLOT IS A PLACE OTHERS ADD TO. A kit marks one — `[Slot] public abstract component QuotePanel(Quote quote);` — and
+//   every component that writes `: QuotePanel` (and takes exactly its parameters) is drawn there, in the composition's one
+//   order: `[Order]`, then the package order (a kit before the kits built on it, the app last), then the name. A reader
+//   who may not see a contribution (its `[Authorize]`) is not shown it. The compiler writes the slot out, so drawing it
+//   costs what the same components written by hand cost — nothing is looked up when the page runs.
+//
+// ⭐ THE APP DECIDES, LAST: `use Kit@0 { without Name; }` leaves a contribution out; `[Replaces(Name)]` swaps one for the
+//   app's own; an app component of the same name takes a kit component's place everywhere; the theme paints them all.
+
+namespace Osysharp.Ui;
+
+/// One contribution to a slot, as a host lays them out itself — what `Contributions<QuotePanel>()` answers, in order, for
+/// the reader: each tab's words and icon, and the `Key` a host hands back to draw just that one
+/// (`QuotePanel(quote, only: shown)`).
+/// need: tabs for every contribution to a slot, lay out a slot's contributions as tabs, a tab per kit panel
+/// e.g. `foreach (var p in Contributions<QuotePanel>()) { Tab(p.Label, selected: shown != null && shown.Key == p.Key, onPress: () => Show(p)); }`
+public sealed class SlotContribution {
+  /// Which contribution — its full name. What `only:` matches.
+  public string Key = "";
+  /// Its `[Contribution("…")]` words, else its name in words.
+  public string Label = "";
+  public Icons Icon = Icons.Folder;
+  /// Its place: lower first.
+  public int Order = 100;
+  /// Whether this reader is shown it — its `[Authorize]`, asked of the reader.
+  public bool Shown = true;
+}
+
+
+
+/// One `[Nav]` page, as `Nav.Pages()` is written out — its row's words, address, icon and group, and whether this reader
+/// may open it (the page's own `[Authorize]`).
+public sealed class NavLink {
+  public string Label = "";
+  public string To = "";
+  public string Group = "";
+  public Icons Icon = Icons.Folder;
+  public bool Shown = true;
+}
+
+
+/// A section on ANY record's page — a kit that works on every kind of record (its documents, its activity, its files)
+/// contributes once (`component Files<T>(T record) : RecordPanel<T>`), and every page that draws `RecordPanel(record)`
+/// shows it; a contribution for one kind of record writes `: RecordPanel<Ticket>`.
+/// need: add a panel to every record's page, a section on any record, contribute to a kit's record page
+/// e.g. `RecordPanel(ticket);`
+[Slot] public abstract component RecordPanel<T>(T record) where T : entity;
+
+/// …and a small fact in any record's header — "3 files", "signed".
+/// e.g. `Row(gap: 2) { Heading(ticket.Title); RecordBadge(ticket); }`
+[Slot] public abstract component RecordBadge<T>(T record) where T : entity;
+
+/// The frame around the app's WORKING pages — its shell (the top bar, the navigation, the account) with the page inside it
+/// (`Slot`). On its own it is the page and nothing around it. ⚑ AN APP DESIGNS IT ONCE —
+/// `component MyShell() : WorkspaceShell { render { MyAppShell(…) { Slot; } } }` — and every kit page that stands in
+/// `WorkspaceFrame` (a knowledge base's desk, a report builder), and the settings area (`SettingsFrame`), stands in the
+/// app's own shell, with nothing written per page.
+/// need: put a kit's pages in my app's shell, one frame for every kit page, my app's top bar around a kit's page
+/// e.g. `component DeskShellDesign() : WorkspaceShell { render { AppShell(chrome) { Slot; } } }`
+public abstract component WorkspaceShell();
+
+/// The Ui kit's own design of the frame: the page, the window's height, nothing around it.
+public component BareWorkspaceShell() : WorkspaceShell { render { Box(w: "100%", h: "100dvh", bg: Colors.Bg) { Slot; } } }
+
+/// The LAYOUT a kit's working page names — `[Layout(WorkspaceFrame)]` — the app's shell (its design of `WorkspaceShell`)
+/// with the page inside, scrolling, across the width. A page moving to another keeps the shell on screen.
+/// need: a layout for a kit's desk pages, the app's shell around a kit page
+/// e.g. `[Page("/knowledge")] [Layout(WorkspaceFrame)] [Nav("Knowledge base", Icon = Icons.File)] component KnowledgeDeskPage() { … }`
+/// ⚑ `[Composable]`: the frame is structure — the app's shell around a page — so a PUBLIC kit page may stand in it too;
+///   whatever the app's shell reads is still read as its reader.
+[Layout]
+[Composable]
+public component WorkspaceFrame() {
+  render { WorkspaceShell { Box(w: "100%", h: "100%", overflowY: Overflow.Auto, p: 6) { Outlet; } } }
+}

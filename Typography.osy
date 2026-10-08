@@ -1,0 +1,160 @@
+// Ui — the type roles (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A page's h1 — one per screen. `PageTitle("Belfries")`.
+/// In a test it is read as text: `Assert.Visible("Belfries")`.
+// ⚑ In the DISPLAY face: a page's h1 is a heading, and an app that gives `Font.Display` a face of its own expects
+//   every heading to wear it. It read the text face, so a designed app's stub pages had Inter titles under a
+//   condensed-display hero (salon S0 run 2). The kit's `Display` is `Font.Sans` until an app overrides it, so an
+//   undesigned app looks exactly as before.
+[Composable] component PageTitle(string text) {
+  variants { base { FontFamily = Font.Display; FontSize = FontSize.Title; FontWeight = FontWeight.Semibold; Color = Colors.OnSurface; LineHeight = "1.15"; } }
+  render { Text(text); }
+}
+
+/// A card or section heading — the level below a page title.
+/// In a test it is read as text: `Assert.Visible("Billing")`.
+/// e.g. `CardTitle("Billing")`
+[Composable] component CardTitle(string text) {
+  variants { base { FontSize = FontSize.Subhead; FontWeight = FontWeight.Semibold; Color = Colors.OnSurface; LineHeight = "1.25"; } }
+  render { Text(text); }
+}
+
+/// The tracked-out uppercase micro-label above a group ("BILLING", "DANGER ZONE").
+/// In a test it is read as text: `Assert.Visible("DANGER ZONE")`.
+/// need: a small heading over a group inside a page
+/// e.g. `SectionLabel("DANGER ZONE")`
+[Composable] component SectionLabel(string text) {
+  variants {
+    base {
+      FontSize = FontSize.Caption; FontWeight = FontWeight.Medium; Color = Colors.TextMuted;
+      TextTransform = TextTransform.Uppercase; LetterSpacing = "0.07em"; LineHeight = "1";
+    }
+  }
+  render { Text(text); }
+}
+
+/// The small muted label above a field or a stat.
+/// In a test it is read as text: `Assert.Visible("Email")`.
+/// need: a caption above something that is not a kit field
+/// e.g. `FieldLabel("Email")`
+[Composable] component FieldLabel(string text) {
+  variants { base { FontSize = FontSize.Caption; Color = Colors.TextMuted; LineHeight = "1.3"; } }
+  render { Text(text); }
+}
+
+/// A big number — a stat card's value, and the words that say what it counts.
+/// ⛔ `label` IS REQUIRED, and that is the point of this control. A bare figure is not a statistic: on screen it
+/// needs a caption to mean anything, and to a screen reader "1" alone is unreadable. Until 2026-08-31 this took
+/// only the number — so every caption was a sibling `Text` that nothing tied to the figure, and the figure reached
+/// assistive technology unnamed. Its own `need:` line said "one big number WITH A CAPTION" the whole time.
+/// ⚑ MEASURED, eval 011 run 8. The brief asked to "see how many are lent out right now"; the app rendered
+/// `Metric(outCount.ToString())` and then `Text("lent out right now")` beside it, and a reader announces those as
+/// two unrelated things. One call now renders both and names the number with the caption, so the pair cannot
+/// drift apart and cannot be half-written.
+/// ⚠ REQUIRED, AND FIRST, because `KitCatalogTests` is right on both counts and caught both in turn: an empty
+/// accessible name is not a default but the absence of one, and every captioned control in this kit reads
+/// `(label, …)` — an author who has just written `Field("Invoice number", value: x)` writes the next one the same way. A
+/// caller who genuinely wants a naked figure wants `Text`, which is what `Text` is for.
+/// In a test the CAPTION scopes the figure, which is how you assert the number rather than the words beside
+/// it: `Assert.TextIs("1,204", within: "orders this week")`. A bare `Assert.Visible("1,204")` reads any
+/// matching text on the page, and `Assert.Visible("orders this week")` passes while the figure says 0.
+/// ⭐ AND ITS CHANGE, when there is one to show: `change` is the comparison in the author's own words and
+/// `changeIsGood` says how to read it. A figure with no comparison is a number; "18%" beside "up from 5%" is a
+/// finding, and most analytics questions are really about the second.
+/// ⚠ `changeIsGood` IS SEPARATE BECAUSE DIRECTION IS NOT MEANING — more requests is good, more refusals is not, and
+/// more time waiting on a human is not. Colouring on the sign alone paints a rising failure rate green.
+/// need: show one big number with a caption, a statistic on a dashboard, a headline figure, a figure and how it moved
+/// e.g. `Metric("invoiced this quarter", text: "£12,480")`
+/// e.g. `Metric("done by agents", text: "18%", change: "up from 5%", changeIsGood: true)`
+[Composable] component Metric(string label, string text, string? change = null, bool changeIsGood = true) {
+  variants { base { FontSize = FontSize.Title; FontWeight = FontWeight.Semibold; Color = Colors.OnSurface; LineHeight = "1.1"; } }
+  render {
+    Stack(gap: "2px") {
+      // The caption names the figure, so a reader hears "lent out right now: 7" rather than a bare "7".
+      Text(text, label: label + ": " + text);
+      FieldLabel(label);
+      // ⭐ THE CHANGE BELONGS IN THIS CALL, for the same reason the caption does (owner, 2026-09-20: *"i want to be
+      //   able to see things over time … but also totals over that time"*). A figure with no comparison is a
+      //   number; "18%, up from 5%" is a finding, and almost every analytics question ever asked is really about
+      //   the second one. Rendered as a sibling `Text` it would drift from the figure it describes and reach a
+      //   screen reader as an unrelated fragment — the exact defect this control was rewritten to fix in 2026-08.
+      //
+      // ⚠ `changeIsGood` IS A SEPARATE ARGUMENT BECAUSE DIRECTION IS NOT MEANING. More requests is good; more
+      //   refusals is not, and more time waiting on a human is not. A control that coloured on the sign alone
+      //   would paint a rising failure rate green, confidently, everywhere it was used.
+      if (change != null) {
+        // ⚑ A `Badge`, not new colour logic. Tone.Success/Danger already carry the kit's own palette and its
+        //   contrast in both themes; a second way to say "this is good" would drift from the first.
+        Badge(change, tone: changeIsGood ? Tone.Success : Tone.Danger);
+      }
+    }
+  }
+}
+
+/// Secondary running text — help text, a caption, an explanation under a control.
+/// In a test it is read as text: `Assert.Visible("We never share it")`.
+/// ⛔ NOT FOR A VALIDATION MESSAGE, and reaching here for one is why this line exists. A `Field` carries its own —
+/// `Field("Job", value: draft, error: titleError)` — and that is what marks the input invalid, keeps the message
+/// beside the box a person has to correct, and replaces the hint rather than growing the row. `Hint` is a permanent
+/// explanation, so it has only the secondary colour and nothing ties it to a control.
+/// need: a small line of help under a field, explain what to type
+/// e.g. `Hint("We only use this for receipts.")`
+[Composable] component Hint(string text) {
+  variants { base { FontSize = FontSize.Label; Color = Colors.TextSecondary; LineHeight = "1.4"; } }
+  render { Text(text); }
+}
+
+/// Emphasised body text — a name, a selected value, the one word in a row that matters.
+/// In a test it is read as text: `Assert.Visible("overdue")`.
+/// need: emphasise a word inside a sentence
+/// e.g. `Strong(order.Reference)`
+[Composable] component Strong(string text) {
+  variants { base { FontSize = FontSize.Body; FontWeight = FontWeight.Medium; Color = Colors.OnSurface; LineHeight = "1.3"; } }
+  render { Text(text); }
+}
+
+/// A navigation link — the styled counterpart of the `Link` ATOM, and what a PAGE should reach for. `to` is the
+/// route and `label` is what the reader sees, so the two can never be confused: the atom's first positional is the
+/// HREF, which is the shape an author coming from HTML gets backwards (one run wrote `Link("Create one", href:
+/// "/signup")` in four files and spent its remaining budget unpicking it). Carries the house link colour, hover
+/// underline and a visible focus ring, which a bare `<a>` has none of. `tone: Tone.Default` for a quiet link inside
+/// body text.
+/// In a test it is driven by its label like any control: `Ui.Click("Create one")`.
+/// need: navigate to another page, a hyperlink, go somewhere in text, a link in a sentence
+/// e.g. `TextLink("Create one", to: "/signup")`
+// ⚠ NOT NAMED `Link` — and THE LIMIT THAT FORCED THAT IS GONE (H-57, 2026-08-24). This block used to say a kit
+//    control "cannot render the atom it shadows: inside this namespace the name is THIS component, so `Link(to)`
+//    here resolves to itself and recurses, and there is no escape spelling for the atom." There is one now:
+//    `Osysharp.<atom>` in element position reaches the platform primitive past any component of that name, here as
+//    much as in an app. Measured: a `component Link` whose body renders `Osysharp.Link(href)` resolves to the ATOM.
+//    (It exists because making the kit always in scope gave every app a `Button` that shadows the atom, so the
+//    primitive needed a spelling — the same escape `Layout.osy` states for `Osysharp.Align`.)
+//
+//    ⚑ SO THE NAME IS NOW A DESIGN CHOICE, NOT A CONSTRAINT, AND IT HAS NOT BEEN RE-DECIDED. `TextLink` is the
+//    design-system name for this control (Braid, Polaris) and leaves room for an `IconLink`; renaming it to `Link`
+//    is a kit API change with call sites behind it, so it is somebody's decision rather than a mechanical
+//    consequence of the escape landing. Ledger H-54.
+[Composable]
+[AllowAnonymous]
+component TextLink(string label, string to, Tone tone = Tone.Primary) {
+  variants {
+    base {
+      FontWeight = FontWeight.Medium; Rounded = Radius.Sm; Transition = Motion.Fast;
+      Hover { TextDecoration = TextDecoration.Underline; }
+      Focus { Shadow = Shadow.Ring; }
+    }
+    tone {
+      Default { Color = Colors.OnSurface; }
+      Primary { Color = Colors.Primary; }
+      Danger  { Color = Colors.Danger; }
+      Success { Color = Colors.Success; }
+      Warning { Color = Colors.Warning; }
+      Ghost   { Color = Colors.TextMuted; }
+    }
+  }
+  render {
+    Link(to) { Text(label); }
+  }
+}

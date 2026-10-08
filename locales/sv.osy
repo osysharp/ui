@@ -1,0 +1,570 @@
+// sv (Svenska): the words of Osysharp.Ui, translated.
+// Written and kept in step with the source by `osy translate`: a new text arrives as `=> null`, a text
+// whose source changed keeps its old translation in a `was` clause. The words are yours to edit.
+// Source language: en.
+
+translations sv {
+  // ── CalendarPanel ──
+  /// CalendarPanel · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "{label} calendar" => "{label}, kalender";
+
+  // ── CatalogueColumn ──
+  /// CatalogueColumn · a control's name for screen readers
+  /// beside: "Site header"
+  accessibleName "Departments" => "Avdelningar";
+  /// CatalogueColumn · a control's name for screen readers
+  /// beside: "Departments"
+  /// also in EditorialHeader
+  /// also in MarqueeFrame
+  /// also in SplitWordmark
+  accessibleName "Site header" => "Sidhuvud";
+
+  // ── CatalogueFrame ──
+  /// CatalogueFrame · a control's name for screen readers
+  /// beside: "primary", "footer"
+  /// also in EditorialFrame
+  /// also in MarqueeFrame
+  accessibleName "Page" => "Sida";
+
+  // ── CommandMenu ──
+  /// CommandMenu · a control's name for screen readers
+  accessibleName "Commands" => "Kommandon";
+  /// CommandMenu · placeholder text inside an empty field · at most ~34 characters
+  /// shown through CommandMenu.placeholder
+  placeholder "Type a command or search" => "Skriv ett kommando eller sök";
+  /// CommandMenu · text on the page
+  /// placeholders: {query} = query (string)
+  text "Nothing matches “{query}”" => "Inget matchar ”{query}”";
+
+  // ── DataGrid ──
+  /// DataGrid · a control's name for screen readers
+  accessibleName "Column chooser" => "Välj kolumner";
+  /// DataGrid · a control's name for screen readers
+  accessibleName "Filter row" => "Filterrad";
+  /// DataGrid · a control's name for screen readers
+  /// placeholders: {h.Label} = h.Label (string)
+  accessibleName "Filter {h.Label}" => "Filtrera {h.Label}";
+  /// DataGrid · a button's label · at most ~13 characters
+  /// shown through Button.label
+  button "Columns" => "Kolumner";
+  /// DataGrid · a button's label · at most ~12 characters
+  /// shown through Button.label
+  button "Export" => "Exportera";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through Field.label
+  label "Search" => "Sök";
+  /// DataGrid · placeholder text inside an empty field · at most ~26 characters
+  /// shown through Field.placeholder
+  placeholder "Search all columns" => "Sök i alla kolumner";
+  /// DataGrid · placeholder text inside an empty field · at most ~15 characters
+  placeholder "contains…" => "innehåller…";
+  /// DataGrid · text on the page
+  text "No rows match the filter." => "Inga rader matchar filtret.";
+
+  // ── DatePicker ──
+  /// DatePicker · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "Clear {label}" => "Rensa {label}";
+  /// DatePicker · placeholder text inside an empty field · at most ~17 characters
+  /// shown through DatePicker.placeholder
+  placeholder "Pick a date" => "Välj ett datum";
+  /// DatePicker · text on the page
+  /// also in DataGrid
+  text "Clear" => "Rensa";
+
+  // ── Done ──
+  /// Done · a label (a field, a list item, a menu entry) · at most ~11 characters
+  /// shown through Done.label
+  label "Saved" => "Sparat";
+
+  // ── DurationField ──
+  /// DurationField · a control's name for screen readers
+  /// beside: "How many", "Done"
+  accessibleName "Unit" => "Enhet";
+  /// DurationField · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "{label} duration" => "{label}, tidslängd";
+  /// DurationField · a button's label · at most ~10 characters
+  /// shown through Button.label
+  button "Done" => "Klar";
+  /// DurationField · a label (a field, a list item, a menu entry) · at most ~14 characters
+  /// shown through NumberField.label
+  /// beside: "Unit", "Done"
+  label "How many" => "Hur många";
+
+  // ── DurationWords ──
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "1 day" => "1 dag";
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "1 hour" => "1 timme";
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "1 minute" => "1 minut";
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "No time" => "Ingen tid";
+  /// DurationWords · text on the page
+  /// placeholders: {n} = n (int) — {n} is a count: give one text per plural form
+  /// shown through DurationWords()
+  text "{n} days" => { one: "{n} dag", other: "{n} dagar" };
+  /// DurationWords · text on the page
+  /// placeholders: {n} = n (int) — {n} is a count: give one text per plural form
+  /// shown through DurationWords()
+  text "{n} hours" => { one: "{n} timme", other: "{n} timmar" };
+  /// DurationWords · text on the page
+  /// placeholders: {n} = n (int) — {n} is a count: give one text per plural form
+  /// shown through DurationWords()
+  text "{n} minutes" => { one: "{n} minut", other: "{n} minuter" };
+
+  // ── EditorialFooter ──
+  /// EditorialFooter · a control's name for screen readers
+  /// beside: "420px"
+  accessibleName "Footer navigation" => "Navigering i sidfoten";
+  /// EditorialFooter · a control's name for screen readers
+  /// also in StoreFooter
+  accessibleName "Site footer" => "Sidfot";
+
+  // ── EditorialHeader ──
+  /// EditorialHeader · a control's name for screen readers
+  /// also in MarqueeNavRow
+  /// also in SplitNavRow
+  accessibleName "Site navigation" => "Webbplatsnavigering";
+
+  // ── EditorialMenuButton ──
+  /// EditorialMenuButton · a control's name for screen readers
+  /// also in StorefrontMenuButton
+  /// also in StorefrontMenuDrawer
+  accessibleName "Menu" => "Meny";
+
+  // ── FocusedBar ──
+  /// FocusedBar · a control's name for screen readers
+  /// also in RailTopBar
+  /// also in SidebarTopBar
+  /// also in TabbedTopRow
+  accessibleName "Page header" => "Sidhuvud";
+  /// FocusedBar · text on the page
+  /// placeholders: {ToString} = active.Number.ToString(…) (int), {ToString2} = total.ToString(…) (int) — {ToString} is a count: give one text per plural form
+  text "Step {ToString} of {ToString2}" => "Steg {ToString} av {ToString2}";
+
+  // ── FocusedExit ──
+  /// FocusedExit · a control's name for screen readers
+  accessibleName "Exit" => "Avsluta";
+  /// FocusedExit · text on the page
+  text "Exit" => "Avsluta";
+
+  // ── FocusedFrame ──
+  /// FocusedFrame · a control's name for screen readers
+  accessibleName "Current task" => "Pågående uppgift";
+  /// FocusedFrame · a title
+  /// shown through ShellSheet.title
+  /// also in RailFrame
+  /// also in SidebarFrame
+  /// also in TabbedFrame
+  title "Account" => "Konto";
+
+  // ── FocusedLeavePrompt ──
+  /// FocusedLeavePrompt · a button's label · at most ~23 characters
+  /// shown through Button.label
+  /// beside: "Keep editing"
+  button "Discard and exit" => "Släng och avsluta";
+  /// FocusedLeavePrompt · a button's label · at most ~18 characters
+  /// shown through Button.label
+  /// beside: "Discard and exit"
+  button "Keep editing" => "Fortsätt redigera";
+  /// FocusedLeavePrompt · a button's label · at most ~19 characters
+  /// shown through Button.label
+  button "Save and exit" => "Spara och avsluta";
+  /// FocusedLeavePrompt · a subtitle
+  /// shown through Dialog.subtitle
+  subtitle "This step has changes that have not been saved yet." => "Det här steget har ändringar som inte har sparats ännu.";
+  /// FocusedLeavePrompt · a title
+  /// shown through Dialog.title
+  title "Leave without saving?" => "Lämna utan att spara?";
+  /// FocusedLeavePrompt · a title
+  /// shown through Alert.title
+  title "That could not be saved" => "Det gick inte att spara";
+
+  // ── FocusedStepper ──
+  /// FocusedStepper · a control's name for screen readers
+  accessibleName "Progress" => "Förlopp";
+
+  // ── FocusedSubsteps ──
+  /// FocusedSubsteps · a control's name for screen readers
+  /// placeholders: {step.Label} = step.Label (string)
+  accessibleName "{step.Label} parts" => "{step.Label}, delar";
+
+  // ── GroupBand ──
+  /// GroupBand · text on the page
+  /// shown through Strong.text
+  text "(none)" => "(ingen)";
+
+  // ── HeaderCell ──
+  /// HeaderCell · a control's name for screen readers
+  /// placeholders: {col.Label} = col.Label (string)
+  /// beside: "6px"
+  accessibleName "Move {col.Label} left" => "Flytta {col.Label} åt vänster";
+  /// HeaderCell · a control's name for screen readers
+  /// placeholders: {col.Label} = col.Label (string)
+  /// beside: "6px"
+  accessibleName "Move {col.Label} right" => "Flytta {col.Label} åt höger";
+
+  // ── KeyboardSheet ──
+  /// KeyboardSheet · a subtitle
+  /// shown through Dialog.subtitle
+  subtitle "What each key does on this page." => "Vad varje tangent gör på den här sidan.";
+  /// KeyboardSheet · a title
+  /// shown through KeyboardSheet.title
+  title "Keyboard shortcuts" => "Kortkommandon";
+
+  // ── Menu ──
+  /// Menu · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Menu.label
+  label "Menu" => "Meny";
+
+  // ── MonthHeader ──
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Next year"
+  accessibleName "Next month" => "Nästa månad";
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Next month"
+  accessibleName "Next year" => "Nästa år";
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Previous year"
+  accessibleName "Previous month" => "Föregående månad";
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Previous month"
+  accessibleName "Previous year" => "Föregående år";
+
+  // ── Osysharp.Ui.DurationUnit ──
+  /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Osysharp.Ui.DurationUnit.Days
+  /// beside: "Minutes", "Hours"
+  label "Days" => "Dagar";
+  /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~11 characters
+  /// shown through Osysharp.Ui.DurationUnit.Hours
+  /// beside: "Minutes", "Days"
+  label "Hours" => "Timmar";
+  /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through Osysharp.Ui.DurationUnit.Minutes
+  /// beside: "Hours", "Days"
+  label "Minutes" => "Minuter";
+
+  // ── Osysharp.Ui.ShellPresence ──
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Osysharp.Ui.ShellPresence.Away
+  /// beside: "Online", "Do not disturb"
+  label "Away" => "Borta";
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~20 characters
+  /// shown through Osysharp.Ui.ShellPresence.Busy
+  /// beside: "Online", "Away"
+  label "Do not disturb" => "Stör ej";
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through Osysharp.Ui.ShellPresence.Online
+  /// beside: "Away", "Do not disturb"
+  label "Online" => "Online";
+
+  // ── RailBar ──
+  /// RailBar · a control's name for screen readers
+  /// also in SidebarRail
+  /// also in TabbedStrip
+  /// also in TabbedPhoneBar
+  accessibleName "Main navigation" => "Huvudnavigering";
+
+  // ── RailExpandButton ──
+  /// RailExpandButton · text on the page
+  /// shown through name
+  /// also in SidebarCollapseButton
+  text "Collapse navigation" => "Fäll ihop navigeringen";
+  /// RailExpandButton · text on the page
+  /// shown through name
+  /// also in SidebarCollapseButton
+  text "Expand navigation" => "Fäll ut navigeringen";
+
+  // ── RailMenuButton ──
+  /// RailMenuButton · a control's name for screen readers
+  /// also in SidebarMenuButton
+  accessibleName "Open navigation" => "Öppna navigeringen";
+
+  // ── RailNavChevron ──
+  /// RailNavChevron · text on the page
+  /// placeholders: {item.Label} = item.Label (string)
+  /// shown through name
+  /// also in SidebarSplitChevron
+  text "{item.Label} sub-pages" => "{item.Label}, undersidor";
+
+  // ── RailNavEmpty ──
+  /// RailNavEmpty · a control's name for screen readers
+  /// also in SidebarNavEmpty
+  /// also in TabbedStripEmpty
+  accessibleName "No navigation" => "Ingen navigering";
+  /// RailNavEmpty · text on the page
+  /// beside: "No sections yet"
+  /// also in SidebarNavEmpty
+  text "Add a NavItem to this app's chrome to fill this rail." => "Lägg till ett NavItem i appens ram för att fylla den här listen.";
+  /// RailNavEmpty · text on the page
+  /// beside: "Add a NavItem to this app's chrome to fill this rail."
+  /// also in SidebarNavEmpty
+  text "No sections yet" => "Inga avsnitt ännu";
+
+  // ── SaveBar ──
+  /// SaveBar · a control's name for screen readers
+  accessibleName "Not saved" => "Inte sparat";
+  /// SaveBar · a control's name for screen readers
+  accessibleName "Unsaved changes" => "Osparade ändringar";
+  /// SaveBar · a button's label · at most ~13 characters
+  /// shown through Button.label
+  /// beside: "Unsaved changes", "Save"
+  button "Discard" => "Släng";
+  /// SaveBar · a button's label · at most ~10 characters
+  /// shown through Button.label
+  /// beside: "Unsaved changes", "Discard"
+  button "Save" => "Spara";
+  /// SaveBar · a button's label · at most ~10 characters
+  /// shown through Button.label
+  button "Undo" => "Ångra";
+  /// SaveBar · a button's label · at most ~20 characters
+  /// placeholders: {ToLower} = undoLabel.ToLower(…) (string)
+  /// shown through Button.label
+  button "Undo {ToLower}" => "Ångra {ToLower}";
+  /// SaveBar · text on the page
+  /// placeholders: {problem} = problem (string)
+  text "Not saved — {problem}" => "Inte sparat — {problem}";
+  /// SaveBar · text on the page
+  /// shown through SaveBar.saved
+  text "Saved." => "Sparat.";
+  /// SaveBar · text on the page
+  /// beside: "Discard", "Save"
+  text "Unsaved changes" => "Osparade ändringar";
+
+  // ── SettingsArea ──
+  /// SettingsArea · a control's name for screen readers
+  accessibleName "Nothing to set up" => "Inget att ställa in";
+  /// SettingsArea · a control's name for screen readers
+  /// placeholders: {title} = title (string)
+  accessibleName "{title} sections" => "{title}, avsnitt";
+  /// SettingsArea · a link · at most ~18 characters
+  /// shown through TextLink.label
+  link "All settings" => "Alla inställningar";
+  /// SettingsArea · text on the page
+  /// beside: "Sections appear here as the app and its kits offer settings you may change."
+  text "Nothing to set up" => "Inget att ställa in";
+  /// SettingsArea · text on the page
+  /// beside: "Nothing to set up"
+  text "Sections appear here as the app and its kits offer settings you may change." => "Avsnitt visas här när appen och dess kit erbjuder inställningar som du kan ändra.";
+  /// SettingsArea · a title
+  /// shown through SettingsArea.title
+  /// also in SettingsOverview
+  title "Settings" => "Inställningar";
+
+  // ── SettingsOverview ──
+  /// SettingsOverview · a control's name for screen readers
+  accessibleName "All settings" => "Alla inställningar";
+  /// SettingsOverview · a control's name for screen readers
+  accessibleName "Other settings" => "Andra inställningar";
+  /// SettingsOverview · text on the page
+  text "Everything you can change, by area. Nothing on a settings page is saved until you press Save." => "Allt du kan ändra, ordnat efter område. Inget på en inställningssida sparas förrän du trycker på Spara.";
+  /// SettingsOverview · text on the page
+  text "Nothing here is yours to change yet." => "Det finns inget här som du kan ändra ännu.";
+
+  // ── SettingsPage ──
+  /// SettingsPage · a control's name for screen readers
+  /// placeholders: {title} = title (string)
+  accessibleName "{title} page" => "{title}, sida";
+
+  // ── SettingsSection ──
+  /// SettingsSection · a control's name for screen readers
+  accessibleName "Set by your organization" => "Bestäms av din organisation";
+  /// SettingsSection · text on the page
+  /// also in SettingRow
+  text "Set by your organization" => "Bestäms av din organisation";
+  /// SettingsSection · text on the page
+  text "You can see this, but not change it." => "Du kan se det här, men inte ändra det.";
+
+  // ── ShellAppMenu ──
+  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through MenuItem.label
+  /// beside: "Apps"
+  label "Home" => "Start";
+  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~16 characters
+  /// shown through Menu.label
+  label "Switch app" => "Byt app";
+  /// ShellAppMenu · text on the page
+  /// shown through SectionLabel.text
+  text "Apps" => "Appar";
+  /// ShellAppMenu · text on the page
+  /// shown through SectionLabel.text
+  /// also in ShellShortcuts
+  text "Pinned" => "Fästa";
+  /// ShellAppMenu · text on the page
+  /// shown through SectionLabel.text
+  /// also in ShellShortcuts
+  text "Recent" => "Senaste";
+
+  // ── ShellAside ──
+  /// ShellAside · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through ShellAside.label
+  label "Related" => "Relaterat";
+
+  // ── ShellCountButton ──
+  /// ShellCountButton · text on the page
+  /// placeholders: {label} = label (string), {count} = count (int) — {count} is a count: give one text per plural form
+  /// shown through name
+  text "{label}, {count} new" => { one: "{label}, {count} ny", other: "{label}, {count} nya" };
+
+  // ── ShellPinButton ──
+  /// ShellPinButton · text on the page
+  /// shown through name
+  text "Pin this page" => "Fäst den här sidan";
+  /// ShellPinButton · text on the page
+  /// shown through name
+  text "Unpin this page" => "Lossa den här sidan";
+
+  // ── ShellShortcuts ──
+  /// ShellShortcuts · a control's name for screen readers
+  accessibleName "Pinned" => "Fästa";
+  /// ShellShortcuts · a control's name for screen readers
+  accessibleName "Recent" => "Senaste";
+
+  // ── ShellTaskBar ──
+  /// ShellTaskBar · a label (a field, a list item, a menu entry) · at most ~18 characters
+  /// shown through ShellTaskBar.label
+  label "Task actions" => "Åtgärder";
+
+  // ── Stepper ──
+  /// Stepper · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "Decrease {label}" => "Minska {label}";
+  /// Stepper · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "Increase {label}" => "Öka {label}";
+
+  // ── StoreLinkName ──
+  /// StoreLinkName · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  /// shown through StoreLinkName()
+  accessibleName "{label} (another site)" => "{label} (en annan webbplats)";
+
+  // ── StorePromo ──
+  /// StorePromo · a control's name for screen readers
+  accessibleName "Announcement" => "Meddelande";
+
+  // ── StorefrontBagButton ──
+  /// StorefrontBagButton · a control's name for screen readers
+  /// placeholders: {label} = label (string), {count} = count (int) — {count} is a count: give one text per plural form
+  accessibleName "{label}, {count} item(s)" => "{label}, {count} varor";
+
+  // ── StorefrontBagPanel ──
+  /// StorefrontBagPanel · a button's label · at most ~11 characters
+  /// shown through IconButton.label
+  /// also in StorefrontMenuDrawer
+  button "Close" => "Stäng";
+
+  // ── StorefrontCategoryPanel ──
+  /// StorefrontCategoryPanel · a control's name for screen readers
+  /// placeholders: {category.Label} = category.Label (string)
+  accessibleName "{category.Label} menu" => "Meny för {category.Label}";
+  /// StorefrontCategoryPanel · a link · at most ~14 characters
+  /// shown through StorefrontPanelLink.label
+  /// also in StoreFooter
+  link "Shop all" => "Visa allt";
+
+  // ── StorefrontHeader ──
+  /// StorefrontHeader · a control's name for screen readers
+  /// beside: "search"
+  /// also in StorefrontMenuDrawer
+  accessibleName "Categories" => "Kategorier";
+
+  // ── StorefrontPhoneBar ──
+  /// StorefrontPhoneBar · a control's name for screen readers
+  accessibleName "Shop navigation" => "Butiksnavigering";
+  /// StorefrontPhoneBar · a button's label · at most ~10 characters
+  /// shown through StorefrontPhoneButton.label
+  button "Menu" => "Meny";
+
+  // ── StorefrontShell ──
+  /// StorefrontShell · a button's label · at most ~9 characters
+  /// shown through StorefrontShell.bagLabel
+  button "Bag" => "Kasse";
+
+  // ── TabbedFrame ──
+  /// TabbedFrame · a title
+  /// shown through ShellSheet.title
+  title "All sections" => "Alla avsnitt";
+
+  // ── TabbedMoreSheet ──
+  /// TabbedMoreSheet · a control's name for screen readers
+  accessibleName "All sections" => "Alla avsnitt";
+
+  // ── TabbedPhoneMoreButton ──
+  /// TabbedPhoneMoreButton · a control's name for screen readers
+  accessibleName "More" => "Mer";
+  /// TabbedPhoneMoreButton · text on the page
+  text "More" => "Mer";
+
+  // ── TabbedPhoneTab ──
+  /// TabbedPhoneTab · a control's name for screen readers
+  /// placeholders: {item.Label} = item.Label (string)
+  accessibleName "{item.Label} (another site)" => "{item.Label} (en annan webbplats)";
+
+  // ── TabbedStripEmpty ──
+  /// TabbedStripEmpty · text on the page
+  text "No sections yet — add a NavItem to this app's chrome." => "Inga avsnitt ännu. Lägg till ett NavItem i appens ram.";
+
+  // ── TabbedStripSkeleton ──
+  /// TabbedStripSkeleton · a control's name for screen readers
+  /// also in ShellNavSkeleton
+  accessibleName "Loading navigation" => "Navigeringen laddas";
+
+  // ── TabbedSubStrip ──
+  /// TabbedSubStrip · a control's name for screen readers
+  /// placeholders: {section.Label} = section.Label (string)
+  accessibleName "{section.Label} sections" => "Avsnitt i {section.Label}";
+
+  // ── ThemeToggle ──
+  /// ThemeToggle · a label (a field, a list item, a menu entry) · at most ~18 characters
+  /// shown through ThemeToggle.label
+  label "Toggle theme" => "Byt tema";
+
+  // ── TimePicker ──
+  /// TimePicker · a control's name for screen readers
+  /// beside: "hh"
+  accessibleName "Done" => "Klar";
+  /// TimePicker · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "{label} time" => "{label}, tid";
+  /// TimePicker · a heading
+  /// shown through TimeColumn.heading
+  /// beside: "mm"
+  /// also in TimeStrip
+  heading "hh" => "tt";
+  /// TimePicker · a heading
+  /// shown through TimeColumn.heading
+  /// beside: "hh"
+  /// also in TimeStrip
+  heading "mm" => "mm";
+  /// TimePicker · text on the page
+  text "Done" => "Klar";
+
+  // ── TimeStrip ──
+  /// TimeStrip · a control's name for screen readers
+  accessibleName "Change the time" => "Ändra tiden";
+
+  // ── WeekdayRow ──
+  /// WeekdayRow · text on the page
+  text "F" key "weekday-initial-friday" => "F";
+  /// WeekdayRow · text on the page
+  text "M" key "weekday-initial-monday" => "M";
+  /// WeekdayRow · text on the page
+  text "S" key "weekday-initial-saturday" => "L";
+  /// WeekdayRow · text on the page
+  text "S" key "weekday-initial-sunday" => "S";
+  /// WeekdayRow · text on the page
+  text "T" key "weekday-initial-tuesday" => "T";
+  /// WeekdayRow · text on the page
+  text "T" key "weekday-initial-thursday" => "T";
+  /// WeekdayRow · text on the page
+  text "W" key "weekday-initial-wednesday" => "O";
+}

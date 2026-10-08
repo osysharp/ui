@@ -1,0 +1,80 @@
+// Ui — telling the user what happened, and what is happening (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// An inline message banner — a validation summary, a "saved" confirmation, a warning above a destructive form.
+/// `Alert("Could not reach the payment provider", tone: Tone.Danger)`. Wrap content in it for a longer body.
+/// In a test it is read as text: `Assert.Visible("Saved")`.
+/// need: tell the user something went wrong, a warning or an error banner, an inline message
+[Composable] component Alert(string message, string title = "", Tone tone = Tone.Default) {
+  variants {
+    base { Px = 4; Py = 3; Rounded = Radius.Md; FontSize = FontSize.Body; BorderLW = 3; }
+    tone {
+      Default { Bg = Colors.Muted;          Color = Colors.OnSurface; Border = Colors.Border; }
+      Primary { Bg = Primary.Subtle; Color = Primary.Strong; Border = Colors.Primary; }
+      Danger  { Bg = Danger.Subtle;  Color = Danger.Strong;  Border = Colors.Danger; }
+      Success { Bg = Success.Subtle; Color = Success.Strong; Border = Colors.Success; }
+      Warning { Bg = Warning.Subtle; Color = Warning.Strong; Border = Colors.Warning; }
+      Ghost   { Bg = Colors.Transparent;    Color = Colors.TextMuted;      Border = Colors.Border; }
+    }
+  }
+  render {
+    Stack(gap: 1) {
+      if (title != "") { Text(title, fontWeight: FontWeight.Semibold); }
+      Text(message);
+      Slot;
+    }
+  }
+}
+
+/// An indeterminate spinner — for work whose duration is unknown, such as an action in flight. For a first data
+/// read, prefer a `skeleton { }` block.
+/// In a test it is a loading state — assert what it stands in FOR once it is gone, not the spinner itself.
+/// need: show that something is loading, a busy indicator while waiting
+/// e.g. `Spinner(size: Size.Sm)`
+[Composable] component Spinner(Size size = Size.Md) {
+  variants {
+    base { Rounded = Radius.Circle; BorderW = 2; Border = Colors.Border; BorderTW = 2; Animation = KitSpin; Display = Display.InlineFlex; }
+    size {
+      Sm { W = Length.IconSm; H = Length.IconSm; }
+      Md { W = Length.IconMd; H = Length.IconMd; }
+      Lg { W = Length.IconLg; H = Length.IconLg; }
+    }
+  }
+  render { Box(); }
+}
+
+/// The spinner's rotation — a full turn, linear, forever.
+animation KitSpin {
+  Duration = "0.7s";
+  Easing = Linear;
+  Repeat = Infinite;
+  0%   { Rotate = "0deg"; }
+  100% { Rotate = "360deg"; }
+}
+
+/// A determinate progress bar. `percent` is 0-100 and drives the fill's width.
+/// In a test its progress is its VALUE: `Assert.Value("Uploading", 40)`.
+/// need: show how far through something is, a percentage bar, a determinate progress indicator
+/// e.g. `ProgressBar(percent: 72, tone: Tone.Success)`
+[Composable] component ProgressBar(int percent = 0, Tone tone = Tone.Primary) {
+  render {
+    Box(w: "100%", h: "6px", rounded: Radius.Pill, bg: Colors.Muted, overflow: Overflow.Hidden,
+        role: UiRole.Progress, value: percent) {
+      ProgressFill(percent: percent, tone: tone);
+    }
+  }
+}
+
+/// The bar's coloured portion — `tone` selects the variant, `percent` sets the width.
+/// e.g. `ProgressFill(percent: 50, tone: Tone.Primary)`
+[Composable][Part] component ProgressFill(int percent, Tone tone) {
+  variants {
+    base { H = "100%"; Rounded = Radius.Pill; Transition = Motion.Normal; }
+    tone {
+      Default { Bg = Colors.TextMuted; } Primary { Bg = Colors.Primary; } Danger { Bg = Colors.Danger; }
+      Success { Bg = Colors.Success; }   Warning { Bg = Colors.Warning; } Ghost   { Bg = Colors.Border; }
+    }
+  }
+  render { Box(w: Math.Clamp(percent, 0, 100) + "%"); }
+}

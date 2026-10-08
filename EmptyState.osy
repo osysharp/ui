@@ -1,0 +1,26 @@
+// Ui — EmptyState, what a list looks like before it has anything in it (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// The placeholder for a list, table or panel with nothing in it. `EmptyState("No orders yet", body: "Orders
+/// appear here once a customer checks out.")` — wrap a call to action in it and it renders under the text.
+/// In a test it is read as text: `Assert.Visible("No orders yet")` — and its absence is what proves rows arrived.
+/// need: what to draw when a list has nothing in it, a placeholder for no results
+[Composable]
+component EmptyState(string title, string body = "") {
+  variants {
+    base { Py = 10; Px = 6; Color = Colors.TextMuted; }
+  }
+
+  render {
+    // Named for the same reason `Card` and `PageHead` are: an empty state routinely holds a call-to-action whose
+    // words repeat one elsewhere on the page ("Add a plant" in the head AND in the empty list), and without a name
+    // there is nothing a test can scope to — so the only way out is to reword one of them.
+    Stack(gap: 3, align: Align.Center, label: title) {
+      Slot("icon");
+      Text(title, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, color: Colors.OnSurface);
+      if (body != "") { Text(body, fontSize: FontSize.Body, textAlign: TextAlign.Center, maxW: Length.Measure); }
+      Slot;
+    }
+  }
+}

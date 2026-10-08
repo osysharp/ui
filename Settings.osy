@@ -1,0 +1,476 @@
+// Ui — THE SETTINGS AREA (`using Osysharp.Ui;`). Stage 2, owner 2026-10-01: *"we are building out the admin/configuration
+// surface as well"* — one layout and navigation for an app's admin pages, explicit save and discard on the page's unit of
+// work (with undo through its savepoints), "who changed this and when", and sections a person may see but not change.
+//
+// ⭐ SO EVERY APP'S ADMIN LOOKS AND BEHAVES ALIKE: the nav is a column of the area's sections, grouped, with the current
+//   one lit; a section is a page of `SettingsSection`s — a heading and a line on the left, its controls on the right; and
+//   nothing is saved until the person says so, from a bar that appears only when there is something to save.
+//
+// ⚑ THE AREA SITS INSIDE THE APP'S OWN SHELL — it is a page region, not a shell. `SettingsFrame` puts it inside the
+//   app's design of `WorkspaceShell` (Slots.osy), so the app's top bar, its sidebar and its account menu stay where they
+//   are on every settings page, the kits' included:
+//     component MyShell() : WorkspaceShell { render { AppShell(chrome) { Slot; } } }
+//
+// ⭐ KITS ANNOUNCE THEIR SECTIONS (D-SETTINGSREG1). A kit with something an admin configures implements
+//   `ISettingsProvider` and ships the pages its links open, under `[Layout(SettingsFrame)]`. `SettingsArea()` with no list
+//   gathers every provider in the app — the app's own and every kit's — so adding a kit adds its settings, and the whole
+//   app's configuration reads as one place. Nobody wires a provider: it is DISCOVERED (`App.Implementations<T>()`).
+//   An app passes its own list (`SettingsArea(MyLinks())`) to add, reorder or hide sections — the escape hatch.
+//
+// ⚑ THE APP DESIGNS `WorkspaceShell` ONCE and every kit's settings page sits in the app's shell with no wiring; it may
+//   still take `SettingsFrame` over by name (a component of the same name, the rule an app's own `Card` follows over the
+//   kit's) when its settings want a frame of their own.
+
+namespace Osysharp.Ui;
+
+/// A contract a kit (or the app) implements to ANNOUNCE its settings sections — discovered, never wired: `SettingsArea()`
+/// with no list shows every provider's sections, grouped. Each link opens a page the provider ships (or the app's own,
+/// taking it over by name), and that page carries its own `[Authorize]` — a link's `Shown` only keeps the nav honest.
+/// need: a kit announces its settings pages, every kit's settings in one place, settings registry, plug a settings section into the app's settings
+/// e.g. `class MailSettings : ISettingsProvider { public SettingsLink[] Sections() { return [new SettingsLink { Label = "Mail", To = "/settings/mail", Group = "Mail", Shown = ManagesMail }]; } }`
+public interface ISettingsProvider {
+  /// The sections this provider offers the reader, each with `Shown` set from the provider's own policy.
+  SettingsLink[] Sections();
+}
+
+/// Every section every `ISettingsProvider` in the app announces, the ones this reader is shown, grouped and ordered: a
+/// group sits where its lowest `Order` puts it (ties by the group's name), and within a group by `Order`, then by label.
+/// What `SettingsArea()` shows — and where an app starts when it wants the kits' sections in a list of its own.
+public List<SettingsLink> AnnouncedSettings() {
+  List<SettingsLink> all = [];
+  foreach (var provider in App.Implementations<ISettingsProvider>()) {
+    foreach (var link in provider.Sections()) {
+      if (link.Shown) { all.Add(link); }
+    }
+  }
+  List<SettingsLink> ordered = [];
+  // A section with NO group comes first, before every heading. Placed by its `Order` like a group, it landed after
+  // whichever headed group sorted before it and read as one of that group's — in Harbour, "Time and date", "Feedback"
+  // and "Knowledge base" sat under "You", the heading of a person's own preferences.
+  foreach (var group in all.Select(s => s.Group).Distinct().OrderBy(g => g).ToList()
+                           .OrderBy(g => all.Where(s => s.Group == g).Min(s => s.Order)).ToList()
+                           .OrderBy(g => g == "" ? 0 : 1).ToList()) {
+    foreach (var link in all.Where(s => s.Group == group).OrderBy(s => s.Label).ToList().OrderBy(s => s.Order).ToList()) {
+      ordered.Add(link);
+    }
+  }
+  return ordered;
+}
+
+/// Where an organisation's policy reaches into an app's settings — implemented by the org layer's package, never by an
+/// app or a kit (D-ORGPOLICY1). Discovered like a settings provider: with none in the app, no setting is the
+/// organisation's. `setting` is the key `osy model` lists for an `[OrgPolicy]` field — "Osysharp.Privacy.PrivacySetup.ReviewPlans"
+/// — the one name an organisation's rule uses for the setting across every app, so it is data here, not a reference.
+/// A kit or an app never writes that key: it asks `SetByOrganization<T>(x => x.Field)`, which the compiler turns into it.
+public interface IOrgPolicySource {
+  /// Whether the organisation sets `setting` for this app, so the app may not change it (`OrgPolicyMode.Lock`).
+  bool Sets(string setting);
+}
+
+/// Whether a setting is set by the reader's organisation — named by its MEMBER, `SetByOrganization<PrivacySetup>(p =>
+/// p.ReviewPlans)`, so a renamed field is a compile error rather than a setting that silently stops being governed. The
+/// field must be marked `[OrgPolicy]`. Its section then says "Set by your organization" and its controls are not the
+/// app's to change (`SettingsSection(…, setByOrganization: true)`). ⚑ THE SEAM, NOT THE POLICY: it asks every
+/// `IOrgPolicySource`, and until the org layer supplies one it answers false for every setting. A `[Settings]` section
+/// asks it for each of its `[OrgPolicy(OrgPolicyMode.Lock)]` fields on its own.
+/// need: is this setting locked by the organisation, a setting the organisation controls
+/// e.g. `bool locked = SetByOrganization<ReviewSettings>(s => s.PublishAtOnce);`
+public bool SetByOrganization(string setting) {
+  return App.Implementations<IOrgPolicySource>().Any(s => s.Sets(setting));
+}
+
+/// Where a `[Settings]` section learns who last changed it — implemented by the compiler in an app that keeps a change
+/// trail (`use Osysharp.Observability;`), never by hand. With none, a section shows no "Changed by" line, because nothing
+/// recorded who changed it.
+public interface ISettingsHistory {
+  /// The latest change a PERSON made to any of `fields` of the `settings` row `id` (an entity's full name), or null.
+  SettingsChange? LastChange(string settings, Guid id, string[] fields);
+}
+
+/// One change to a settings row — who made it and when.
+public sealed class SettingsChange {
+  public string By = "";
+  public DateTime At;
+}
+
+/// "Changed by Ada Lindqvist · 3 min ago" for the latest change to `fields` of the settings row `id`, or "" when the app
+/// keeps no change trail or nobody has changed them.
+public string SettingsChangedLine(string settings, Guid id, string[] fields, DateTime now) {
+  foreach (var history in App.Implementations<ISettingsHistory>()) {
+    var change = history.LastChange(settings, id, fields);
+    if (change != null) { return ChangedBy(change.By, change.At, now); }
+  }
+  return "";
+}
+
+/// The route of the section `path` is in — the LONGEST section route that is `path` or a prefix of it, so a page under
+/// `/settings/privacy/holds` lights "Legal holds" and not "Data retention" at `/settings/privacy` as well. "" when none.
+public string CurrentSettingsSection(List<SettingsLink> sections, string path) {
+  var best = "";
+  foreach (var s in sections) {
+    if (s.To == "" || s.To.Length <= best.Length) { continue; }
+    if (path == s.To || path.StartsWith(s.To + "/")) { best = s.To; }
+  }
+  return best;
+}
+
+/// One entry in a settings area's navigation — a section of the app's settings.
+public sealed class SettingsLink {
+  /// What the reader sees, and the accessible name of the row.
+  public string Label;
+  /// The section's route — `/settings/people`.
+  public string To = "";
+  /// The group it is listed under ("Your team", "The desk") — entries of one group sit together, under its name.
+  public string Group = "";
+  public Icons Icon = Icons.Gear;
+  /// A line under the label, for the area's own index on a phone — "Who works here, and what each may do".
+  public string Hint = "";
+  /// Whether this reader is shown it at all — the app's own policy, as a value: `Shown = IsAdmin`. A section a person
+  /// may not open is left out of the nav (the page is still gated by its own `[Authorize]`; this only keeps the nav honest).
+  public bool Shown = true;
+  /// Where it sits in a gathered area (`SettingsArea()`): lower first, within its group — and a group sits where its
+  /// lowest entry puts it. Kits leave gaps (10, 20, …) so an app's own sections can go between them.
+  public int Order = 100;
+}
+
+/// The settings area: the sections on the left (grouped, the current one lit), the section's page on the right. On a
+/// phone the nav is the area's first screen — the area's own route (`home`) — and each section is a screen of its own,
+/// with a way back. Fill the default slot with the section's page (`Outlet` in a layout).
+/// With NO list it gathers every `ISettingsProvider` in the app (`AnnouncedSettings()`) — each kit's sections and the
+/// app's own; pass a list to choose them yourself.
+/// In a test the nav is a named region, "<title> sections": `Ui.Click("People", within: "Settings sections")`.
+/// need: an admin area, a settings page with sections in a sidebar, configuration pages that share one navigation
+/// e.g. `SettingsArea() { Outlet; }` · `SettingsArea([new SettingsLink { Label = "People", To = "/settings/people", Group = "Team", Shown = IsAdmin }]) { Outlet; }`
+[Composable]
+component SettingsArea(SettingsLink[]? sections = null, string title = "Settings", string home = "/settings") {
+  // The announced sections, read once the area mounts — a layout's area mounts once and stays while its pages change.
+  List<SettingsLink> announced = [];
+  bool gathered = false;
+  on mount {
+    if (sections == null) { announced = AnnouncedSettings(); }
+    gathered = true;
+  }
+  live var shown = sections != null ? sections.Where(s => s.Shown).ToList() : announced;
+  live var path = Navigation.CurrentPath ?? "";
+  live var atHome = path == home || path == home + "/";
+  live var currentTo = CurrentSettingsSection(shown, path);
+
+  /// Is `link` the section being looked at — see `CurrentSettingsSection`.
+  bool Current(SettingsLink link) { return link.To != "" && link.To == currentTo; }
+
+  render {
+    Row(align: Align.Stretch, gap: 0, h: "100%", minH: "0", w: "100%") {
+      if (atHome || Layout.AtLeast(Tablet)) {
+        Stack(gap: 1, w: Layout.AtLeast(Tablet) ? "232px" : "100%", shrink: 0, p: 3, borderRW: 1, border: Colors.Border,
+              overflowY: Overflow.Auto, bg: Colors.Surface, role: UiRole.Navigation, label: title + " sections") {
+          Text(title, fontWeight: FontWeight.Semibold, fontSize: FontSize.Subhead, px: 2, py: 2);
+          // Nothing to set up — no provider in the app announces a section this reader is shown: said, never a blank column.
+          if (gathered && shown.Count == 0) {
+            Stack(gap: 2, px: 2, py: 4, label: "Nothing to set up") {
+              Icon(Icons.Gear, size: 20, color: Colors.TextMuted);
+              Text("Nothing to set up", fontWeight: FontWeight.Medium);
+              Text("Sections appear here as the app and its kits offer settings you may change.", fontSize: FontSize.Caption,
+                   color: Colors.TextMuted);
+            }
+          }
+          foreach (var group in shown.Select(s => s.Group).Distinct().ToList()) {
+            if (group != "") {
+              Text(group, fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium, px: 2, pt: 3, pb: 1);
+            }
+            foreach (var s in shown.Where(x => x.Group == group).ToList()) {
+              SettingsNavRow(s, Current(s), atHome && !Layout.AtLeast(Tablet));
+            }
+          }
+        }
+      }
+      if (!atHome || Layout.AtLeast(Tablet)) {
+        Stack(gap: 0, grow: 1, minW: "0", minH: "0", h: "100%", overflowY: Overflow.Auto, bg: Colors.Bg) {
+          if (!Layout.AtLeast(Tablet)) {
+            Row(px: 4, pt: 3) { TextLink("All settings", to: home, tone: Tone.Default); }
+          }
+          // THE AREA'S HOME IS AN OVERVIEW, not a title over an empty page (D-SETTINGSREG1 shots, 2026-10-02): every
+          // section the reader may open, by group, each with what it is for. The app's own page at `home` follows it —
+          // a page with nothing to add renders nothing.
+          if (atHome && gathered) { SettingsOverview(shown, title); }
+          Slot;
+        }
+      }
+    }
+  }
+}
+
+/// The frame every settings page sits in — a kit's settings pages name it (`[Layout(SettingsFrame)]`), and so do the
+/// app's. It is the settings area inside the app's working shell — `WorkspaceShell` (Slots.osy), which an app designs once
+/// for every kit page — so an app with a shell of its own has its settings in it with nothing more to write. ⚑ AN APP
+/// MAY STILL TAKE IT OVER, by declaring a `[Layout] component SettingsFrame()` of its own, when its settings stand in a
+/// different frame from its other pages.
+/// need: a layout for settings pages, put the app's shell around every kit's settings page
+/// e.g. `component MyShell() : WorkspaceShell { render { AppShell(chrome) { Slot; } } }` (every settings page then stands in it)
+/// ⚑ ON ITS OWN IT IS THE WINDOW'S HEIGHT. The area fills its parent (`h: "100%"`), and an app's shell gives it one; the
+///   bare shell gives it the window — otherwise the sections column ended where the page's content ended, a short page
+///   leaving the nav hanging halfway down. The page scrolls inside the area, beside the nav.
+[Layout]
+component SettingsFrame() {
+  render { WorkspaceShell { SettingsArea() { Outlet; } } }
+}
+
+/// The settings area's home on a wide screen: every section the reader may open, grouped, each a row with its icon,
+/// its name and what it is for — the map of what can be changed, where a title over an empty page used to be. Drawn
+/// by `SettingsArea` at its `home`; on a phone the nav itself is the home and carries the same hints.
+/// In a test it is a named region: `Assert.Visible("Queues", within: "All settings")`.
+/// need: an overview of every settings section, a settings home page, the index of an admin area
+/// e.g. `SettingsOverview(AnnouncedSettings())`
+[Composable]
+component SettingsOverview(List<SettingsLink> sections, string title = "Settings") {
+  render {
+    Stack(gap: 6, p: 5, w: "100%", maxW: "880px", label: "All settings") {
+      Stack(gap: 1) {
+        PageTitle(title);
+        Text(sections.Count == 0 ? "Nothing here is yours to change yet."
+               : "Everything you can change, by area. Nothing on a settings page is saved until you press Save.",
+             color: Colors.TextMuted, maxW: "680px");
+      }
+      foreach (var group in sections.Select(s => s.Group).Distinct().ToList()) {
+        Stack(gap: 2, label: group == "" ? "Other settings" : group) {
+          if (group != "") { SectionLabel(group); }
+          Stack(gap: 0, rounded: Radius.Lg, borderW: 1, border: Colors.Border, bg: Colors.Surface, overflow: Overflow.Hidden) {
+            foreach (var s in sections.Where(x => x.Group == group).ToList()) {
+              SettingsOverviewRow(s);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// One section on the settings home — the whole row is the link.
+[Composable, Part]
+component SettingsOverviewRow(SettingsLink link) {
+  variants {
+    base { Display = Display.Flex; Px = 4; Py = 3; Gap = 3; Color = Colors.OnSurface; TextDecoration = TextDecoration.None;
+           BorderBW = 1; Border = Colors.Border; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; } }
+  }
+  render {
+    Link(link.To, label: link.Label) {
+      Row(gap: 3, align: Align.Center, w: "100%") {
+        Box(w: "32px", h: "32px", rounded: Radius.Md, bg: Colors.Sunken, shrink: 0, display: Display.Flex,
+            align: Align.Center, justify: Justify.Center) { Icon(link.Icon, size: 16, color: Colors.TextSecondary); }
+        Stack(gap: 0, minW: "0", grow: 1) {
+          Text(link.Label, fontWeight: FontWeight.Medium);
+          if (link.Hint != "") { Text(link.Hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+        }
+        Icon(Icons.ChevronRight, size: 14, color: Colors.TextMuted);
+      }
+    }
+  }
+}
+
+/// One row of the settings nav — a link, lit when it is the section being looked at; with its hint on a phone's index.
+[Composable, Part]
+component SettingsNavRow(SettingsLink link, bool current, bool withHint) {
+  variants {
+    base { Display = Display.Flex; Rounded = Radius.Md; Px = 2; Py = 2; Color = Colors.OnSurface; Gap = 2;
+           TextDecoration = TextDecoration.None;
+           Hover { Bg = Colors.Muted; } }
+    current { Bg = Colors.Muted; FontWeight = FontWeight.Semibold; }
+  }
+  render {
+    Link(link.To, label: link.Label, current: current) {
+      Row(gap: 2, align: withHint ? Align.Start : Align.Center, w: "100%") {
+        if (current) { Icon(link.Icon, color: Colors.Primary); } else { Icon(link.Icon, color: Colors.TextMuted); }
+        Stack(gap: 0, minW: "0") {
+          Text(link.Label);
+          if (withHint && link.Hint != "") { Text(link.Hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+        }
+      }
+    }
+  }
+}
+
+/// A settings page — its title and a line saying what it is for, then its sections, in a readable column. Put a
+/// `SaveBar` at the end of a page whose sections edit rows.
+/// In a test its title is ordinary text: `Assert.Visible("Business hours")`.
+/// need: a page of the settings area, a configuration page with a heading and sections
+/// e.g. `SettingsPage("Business hours", description: "When the SLA clocks run.") { SettingsSection(…) { … } }`
+[Composable]
+component SettingsPage(string title, string description = "") {
+  render {
+    // Named "<title> page" — the page's own body, as tall as what is on it (a test measures the area against it).
+    Stack(gap: 6, p: 5, w: "100%", maxW: "880px", pb: 8, label: title + " page") {
+      // The title and its line — no rule under them: each section below draws its own, so a rule here would double it.
+      Stack(gap: 1, label: title) {
+        PageTitle(title);
+        if (description != "") { Text(description, color: Colors.TextMuted, maxW: "680px"); }
+      }
+      Stack(gap: 6) { Slot; }
+    }
+  }
+}
+
+/// One section of a settings page: what it is (its title and a line) on the left, its controls on the right — stacked on
+/// a phone. `locked` shows the controls but says they are not this reader's to change (`lockedBecause`) — give each
+/// control `disabled:` or `canEdit:` from the same policy; the rows themselves are refused by their own rules either way.
+/// `changed` is the "who changed this and when" line (`ChangedBy`). `setByOrganization` says the reader's organisation
+/// sets it (`SetByOrganization(key)`, for a setting marked `[OrgPolicy(OrgPolicyMode.Lock)]`) — the section reads "Set by
+/// your organization", and its controls take `disabled:` from the same value.
+/// In a test it is a named region: `Ui.Click("Add a status", within: "Statuses")`.
+/// need: a group of settings with a title and a description, a settings card, a locked section an admin may change, a setting the organization controls
+/// e.g. `SettingsSection("Statuses", description: "What a ticket can be waiting on.", locked: !IsAdmin, lockedBecause: "Only admins change statuses.") { … }`
+[Composable]
+component SettingsSection(string title, string description = "", bool locked = false, string lockedBecause = "",
+                          string changed = "", bool setByOrganization = false) {
+  render {
+    Row(gap: 6, align: Align.Start, wrap: Wrapping.Wrap, label: title, role: UiRole.Region, pt: 5, borderTW: 1, border: Colors.Border) {
+      Stack(gap: 1, w: Layout.AtLeast(Tablet) ? "240px" : "100%", shrink: 0) {
+        Text(title, fontWeight: FontWeight.Semibold);
+        if (description != "") { Text(description, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+        // The organisation's word outranks the app's own lock, so it is the one line said.
+        if (setByOrganization) {
+          Row(gap: 1, align: Align.Center, pt: 1, label: "Set by your organization") {
+            Icon(Icons.Building, color: Colors.TextMuted);
+            Text("Set by your organization", fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium);
+          }
+        } else if (locked) {
+          Row(gap: 1, align: Align.Center, pt: 1) {
+            Icon(Icons.Lock, color: Colors.TextMuted);
+            Text(lockedBecause != "" ? lockedBecause : "You can see this, but not change it.", fontSize: FontSize.Caption,
+                 color: Colors.TextMuted);
+          }
+        }
+        if (changed != "") { Text(changed, fontSize: FontSize.Caption, color: Colors.TextMuted, pt: 1); }
+      }
+      // `basis:` — the content STARTS at a sensible width and grows into the rest, so a wide control inside it (a full-
+      // width input) never pushes the whole column under the title on a screen that has room for both.
+      Stack(gap: 3, grow: 1, minW: "0", basis: "360px", w: Layout.AtLeast(Tablet) ? "auto" : "100%") { Slot; }
+    }
+  }
+}
+
+/// One setting in a `SettingsSection` — its control (the slot), the line saying what it does, and, when the reader's
+/// organisation sets it while the rest of the section is the app's, "Set by your organization" under it. What a
+/// `[Settings]` section draws for each field; reach for it on a page of your own so a hand-made row reads the same.
+/// e.g. `SettingRow(hint: "Staff can still hide one.") { Switch("Publish new reviews at once", value: rules.PublishAtOnce); }`
+[Composable]
+component SettingRow(string hint = "", bool setByOrganization = false) {
+  render {
+    Stack(gap: 1, minW: "0") {
+      Slot;
+      if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+      if (setByOrganization) {
+        Row(gap: 1, align: Align.Center) {
+          Icon(Icons.Building, color: Colors.TextMuted);
+          Text("Set by your organization", fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium);
+        }
+      }
+    }
+  }
+}
+
+/// Short settings side by side — account numbers, counts, durations — in as many columns as the section has room for,
+/// one on a phone. What a `[Settings]` section puts two or more short fields in.
+/// e.g. `SettingsGrid { Field("Bank", value: a.Bank); Field("Receivables", value: a.Receivables); }`
+[Composable]
+component SettingsGrid() {
+  render {
+    Box(display: Display.Grid, cols: "repeat(auto-fill, minmax(180px, 1fr))", gap: 4, w: "100%") { Slot; }
+  }
+}
+
+/// Save and discard for a settings page — a bar that appears only while the page holds unsaved changes
+/// (`Navigation.IsDirty`), saying so, with Undo (back to the last savepoint — `UnitOfWork.Mark("Rename a status")`
+/// before an edit makes one; its label is the button's), Discard (every unsaved change), and Save. Mod+S saves,
+/// Mod+Z undoes. `saved` is said once a save lands.
+/// `blockedBy` HOLDS A SAVE BACK: the sentence saying why the page cannot be saved as it stands ("Say why it is kept that
+/// long.") — while it is not empty the bar says it and Save does nothing. Compute it from the page's own values, so it
+/// changes as the person types. `onSave` runs as Save is pressed, before the commit — a derived value to set. ⚠ It is
+/// FIRED, NOT AWAITED (a component's callback never is), so it cannot stop the save: a sentence it throws is lost and
+/// the save goes ahead. A check belongs in `blockedBy`. `onSaved` runs once a save has landed — to re-read what the page
+/// shows about it ("Changed by …").
+/// ⚑ A REFUSED SAVE SAYS WHY even when nothing is left to save: a commit the server refuses gives the page's edits back,
+///   so the bar would close with its reason inside it — it says "Not saved — <the reason>" instead.
+/// In a test: `Ui.Click("Save")`, `Ui.Click("Discard")`, and `Assert.Visible("Unsaved changes")` while there are some.
+/// need: an explicit save and discard bar, save changes to settings, unsaved changes warning, undo an edit before saving, refuse to save until a field is filled, why a save was refused
+/// e.g. `SaveBar(saved: "Statuses saved.")` · `SaveBar(saved: "Saved.", blockedBy: reason == "" ? "Say why." : "")`
+[Composable]
+component SaveBar(Action onSave = null, string saved = "Saved.", string blockedBy = "", Action onSaved = null) {
+  string problem = "";
+  bool justSaved = false;
+  live var dirty = Navigation.IsDirty;
+  live var canUndo = UnitOfWork.CanUndo();
+  live var undoLabel = UnitOfWork.UndoLabel();
+
+  action Save() {
+    problem = "";
+    justSaved = false;
+    // Mod+S reaches here even while the button is disabled — the shortcut is the bar's, not the button's.
+    if (blockedBy != "") { return; }
+    try {
+      if (onSave != null) { onSave(); }
+      UnitOfWork.Commit();
+      justSaved = true;
+      if (onSaved != null) { onSaved(); }
+    }
+    catch (Exception ex) { problem = ex.Message; }
+  }
+  action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }
+  action Undo() { problem = ""; UnitOfWork.Undo(); }
+
+  render {
+    Stack(gap: 0, position: Position.Sticky, bottom: "0", z: ZIndex.Sticky) {
+      if (dirty) {
+        Row(gap: 3, align: Align.Center, wrap: Wrapping.Wrap, px: 4, py: 3, bg: Colors.Elevated, rounded: Radius.Lg,
+            shadow: Shadow.Floating, borderW: 1, border: Colors.Border, role: UiRole.Region, label: "Unsaved changes",
+            animation: SaveBarRise) {
+          Lamp(lit: true, tone: Tone.Primary);
+          Text("Unsaved changes", fontWeight: FontWeight.Medium);
+          if (blockedBy != "") { Text(blockedBy, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
+          else if (problem != "") { Text(problem, color: Colors.Danger, fontSize: FontSize.Caption); }
+          Spacer();
+          if (canUndo) {
+            Button(undoLabel != "" ? "Undo " + undoLabel.ToLower() : "Undo", onPress: Undo, tone: Tone.Ghost, size: Size.Sm,
+                   shortcut: "Mod+Z");
+          }
+          Button("Discard", onPress: Discard, tone: Tone.Ghost, size: Size.Sm);
+          Button("Save", onPress: Save, tone: Tone.Primary, size: Size.Sm, shortcut: "Mod+S", showShortcut: true,
+                 disabled: blockedBy != "");
+        }
+      } else if (problem != "") {
+        // The refused commit gave the edits back, so there is nothing left to save — but the reason is still owed.
+        // The page's own ground behind it: the bar stays at the foot of the window, over whatever has scrolled under it.
+        Row(gap: 2, align: Align.Center, px: 4, py: 3, bg: Colors.Bg, label: "Not saved") {
+          Icon(Icons.Warning, color: Colors.Danger);
+          Text("Not saved — " + problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
+        }
+      } else if (justSaved && saved != "") {
+        Row(gap: 2, align: Align.Center, px: 4, py: 3, bg: Colors.Bg) {
+          Icon(Icons.Check, color: Colors.Success);
+          Text(saved, color: Colors.TextMuted, fontSize: FontSize.Caption, role: UiRole.Status);
+        }
+      }
+    }
+  }
+}
+
+animation SaveBarRise { Duration = "200ms"; from { Opacity = 0; TranslateY = "8px"; } to { Opacity = 1; TranslateY = "0"; } }
+
+/// "Changed by Ada Lindqvist · 3 min ago" — who last changed something and when, for a `SettingsSection`'s `changed:`
+/// line or anywhere a page says who last touched a row. Fed from the row's own history — `<Entity>.Changes(id)` (which
+/// needs `using Osysharp.Observability;`) answers newest first, so its first entry is the one: `ChangedBy(c.By, c.At, now)`.
+/// `by` empty reads "the system"; no `at` answers "". `now` is the page's clock.
+/// e.g. `var last = TicketStatus.Changes(s.Id).FirstOrDefault();  SettingsSection("Statuses", changed: last == null ? "" : ChangedBy(last.By, last.At, now))`
+public string ChangedBy(string by, DateTime? at, DateTime now) {
+  if (at == null) { return ""; }
+  return $"Changed by {(by != "" ? by : "the system")} · {TimeAgo(at.Value, now)}";
+}
+
+/// A moment in words, from `now` — "just now", "4 min ago", "3 h ago", "yesterday", "12 Mar".
+public string TimeAgo(DateTime at, DateTime now) {
+  var gone = now - at;
+  if (gone.TotalSeconds < 60) { return "just now"; }
+  if (gone.TotalMinutes < 60) { return Convert.ToInt(Math.Truncate(gone.TotalMinutes)) + " min ago"; }
+  if (gone.TotalHours < 24) { return Convert.ToInt(Math.Truncate(gone.TotalHours)) + " h ago"; }
+  if (gone.TotalHours < 48) { return "yesterday"; }
+  return at.ToString("d MMM");
+}

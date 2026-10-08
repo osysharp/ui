@@ -1,0 +1,54 @@
+// Ui — Badge, the kit's status pill (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A small status pill. `Badge("Shipped", tone: Tone.Success)`.
+/// In a test it is read as text: `Assert.Visible("Shipped")`.
+///
+/// ⚠ AN ENUM GOES IN AS `value.Label`, never bare and never `.ToString()`. `label` is a `string`, so `Badge(m.Cuisine)`
+/// is a compile error and `Badge(m.Cuisine.ToString())` compiles and shows the member NAME — `StreetFood`, run
+/// together. ⭐ `.Label` is the words `[Label("Street food")]` declares, and is legal in every position.
+/// ⚑ THIS SENTENCE IS HERE BECAUSE THE LINT CANNOT REACH THE AUTHOR WHO AVOIDS THE MISTAKE. Measured 2026-08-29 on
+/// an eval run: it reasoned that a two-word member "doesn't read cleanly as a badge label" and RENAMED ITS OWN
+/// DOMAIN to a one-word noun to dodge the display problem. Every teaching
+/// mechanism for this (`ui-enum-rendered-without-its-label`, `[Label]`, `osy docs enum-labels`) fires only AFTER a
+/// multi-word member is written, and it declined to write one. A diagnostic paid when hit cannot teach someone who
+/// avoids the hit, so the fact belongs where it is read BEFORE the line is written.
+/// need: a small coloured label for a status, a pill beside a name, mark a row as new or urgent
+[Composable]
+/// ⚠ THE LABEL MAY BE EMPTY, AND ONLY BECAUSE THE SLOT CAN CARRY IT. This renders `Slot { Text(label); }`, so
+/// `Badge { … }` names itself with its content and the parameter is the fallback rather than the only name. On a
+/// control whose slot carries something ELSE — `IconButton`'s glyph, `Toolbar`'s controls — an empty label really
+/// is the absence of a name, and those two are required as of 2026-08-29.
+component Badge(string label = "", Tone tone = Tone.Default) {
+  variants {
+    base {
+      // ⚠ `W = "fit-content"` IS WHAT MAKES IT HUG ITS TEXT. `Display = Display.InlineFlex` does NOT: a flex item is
+      //    blockified, so display says nothing about how it is sized on the cross axis, and a `Stack` is a flex
+      //    column whose default is `align-items: stretch`. Measured in a browser: without this a badge inside a
+      //    `Stack` rendered as a pill spanning the whole card. A badge as wide as its container is not a badge, and
+      //    no text assertion can see it.
+      //
+      // ⛔ AND IT MUST BE A WIDTH, NOT `AlignSelf.Start`, WHICH IS WHAT THIS LINE USED TO SAY. `align-self` fixes the
+      //    stretch by pinning the badge to the cross-axis START — correct-looking in a column, and in a ROW that
+      //    start is the TOP. So `Row(align: Align.Center) { Badge(…); Button(…); }` could never line up: the badge
+      //    overrode the row's own alignment and floated above every control beside it. An explicit width overrides
+      //    `align-items: stretch` just as well and says nothing about POSITION, so the parent's alignment applies
+      //    in both directions. Measured on `demo/todo`, where the overdue pill sat ~6px above its buttons.
+      Display = Display.InlineFlex; W = "fit-content"; H = "22px"; Px = 2; Rounded = Radius.Pill;
+      FontSize = FontSize.Caption; FontWeight = FontWeight.Medium; WhiteSpace = WhiteSpace.Nowrap;
+    }
+    tone {
+      Default { Bg = Colors.Muted;           Color = Colors.TextMuted; }
+      Primary { Bg = Primary.Subtle;  Color = Primary.Strong; }
+      Danger  { Bg = Danger.Subtle;   Color = Danger.Strong; }
+      Success { Bg = Success.Subtle;  Color = Success.Strong; }
+      Warning { Bg = Warning.Subtle;  Color = Warning.Strong; }
+      Ghost   { Bg = Colors.Transparent;     Color = Colors.TextMuted; BorderW = 1; Border = Colors.Border; }
+    }
+  }
+
+  render {
+    Row(align: Align.Center, justify: Justify.Center) { Slot { Text(label); } }
+  }
+}

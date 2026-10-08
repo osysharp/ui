@@ -1,0 +1,25 @@
+// Ui — ThemeToggle, the kit's light/dark switch (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A one-tap light/dark switch. `glyph` is the button FACE (an emoji by default so the kit needs no app icon; pass
+/// your own text, or fork this file to render an `Icon`); `label` is what a screen reader announces. Clicking flips
+/// `data-theme` between light and dark and persists the choice, so it survives navigation and return visits.
+/// In a test it is pressed by its accessible name: `Ui.Click("Switch to dark mode")`.
+/// need: let the user switch between light and dark
+/// e.g. `ThemeToggle()` · `ThemeToggle(glyph: "☾", label: "Appearance")`
+[Composable]
+[AllowAnonymous]
+component ThemeToggle(string glyph = "🌓", string label = "Toggle theme") {
+  action Flip() { Theme.Toggle(); }
+
+  variants {
+    base {
+      Px = 3; Py = 2; Rounded = Radius.Md; Border = Colors.Border; Bg = Colors.Surface; Color = Colors.OnSurface;
+    }
+  }
+
+  render {
+    Pressable(glyph, onClick: Flip, label: label);
+  }
+}

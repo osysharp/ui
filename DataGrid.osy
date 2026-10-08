@@ -1,0 +1,897 @@
+// M127 — the DataGrid as ORDINARY OSY#, replacing the foreign `control DataGrid<T>` and its 56KB bundled shim.
+
+// The `Osysharp.Ui` kit namespace — its public types enter scope only via `using Osysharp.Ui;`.
+namespace Osysharp.Ui;
+
+/// What KIND of value a column holds. It decides which operators the column's filter offers — a `Number`
+/// column has no use for "contains", and a `Text` column has none for "greater than".
+public enum GridColumnKind { Text, Number, Date }
+
+/// How a filter compares a cell against what was typed. Which of these a column offers follows from its
+/// `Kind`, so a filter row never presents an operator that cannot mean anything for that column.
+public enum GridOp { Contains, Equals, StartsWith, GreaterThan, LessThan, IsEmpty, IsNotEmpty }
+
+/// ONE COLUMN'S FILTER — which column, how to compare, and what to compare against. A `GridFilter[]` is the
+/// grid's whole filter model, and it is the same shape whether a person typed it into the filter row or the
+/// page computed it: pass one in `filters:` to constrain the grid from outside, and read the user's own back
+/// Both are ANDed, so a page can pin a constraint the grid cannot widen.
+public sealed class GridFilter {
+  /// The `Name` of the column this applies to. A filter naming no column is ignored rather than refused —
+  /// a saved view outliving a renamed column must not take the page down.
+  public string Column;
+  /// How to compare. `Contains` by default, which is what a filter box does when someone just types.
+  public GridOp Op = GridOp.Contains;
+  /// What to compare against, as typed. Empty means the filter is dormant — which is what an empty filter
+  /// box has to mean, or typing and then clearing it would hide every row.
+  public string Value = "";
+}
+
+/// One column — what to call it, and how to read it off a row. `Value` is a selector over T, checked against the
+/// row type; it may compute (`f => Text.ByteSize(f.Size)`) as well as name a field.
+public sealed class GridColumn<T> {
+  /// This column's IDENTITY, and its slot name: `slot <Name> { row => … }` overrides its cell with a template —
+  /// use it to render a badge or a control in place of a string.
+  public string Name;
+  /// The header text. May be empty — see `Name`.
+  public string Label;
+  /// How to read this column's text off a row. It may also read the PAGE's own state (C-41): a selector captures
+  /// its enclosing scope by value, so `u => wardens.Any(g => g.User == u) ? "Warden" : "Ringer"` is an ordinary column
+  /// even though the answer lives in another of the page's queries.
+  public Func<T, string> Value;
+  /// "left" (default) | "right" | "center".
+  public string? Align;
+  /// This column's width in px, and what a resize DRAG writes.
+  public int Width = 200;
+  /// This column ABSORBS the leftover width. Set it on the column people scan. Only one column should claim it;
+  /// if several do, they split it evenly.
+  public bool Fill;
+  /// Card view: this column is the card's HEADING. Defaults to the first column when no column claims it.
+  public bool Title;
+  /// Card view: this column is the card's muted SUBTITLE under the heading.
+  public bool Secondary;
+  /// Can this column be sorted by? Default yes.
+  public bool Sortable = true;
+  /// What kind of value this column holds — it chooses the operators its filter offers.
+  public GridColumnKind Kind = GridColumnKind.Text;
+  /// The NUMBER this column really holds, when `Value` formats it for a reader (`"120 000 kr"`).
+  /// ⭐ IT DRIVES BOTH SORTING AND FILTERING: without it the column is ordered and compared as TEXT, which
+  /// puts 100 before 9. Give it and `> 100000` means what it says and the column sorts as a quantity.
+  /// It is also what a group band can SUM.
+  public Func<T, decimal>? Number;
+  /// The DATE this column really holds, for the same reasons — ordering and `> 2027-01-01` both need the
+  /// date, not its spelling.
+  public Func<T, DateTime>? Date;
+  /// Can this column be filtered? Default yes. Set it false for a column whose cell is a control or a
+  /// badge rendered through a `slot`, where filtering the underlying text would puzzle rather than help.
+  public bool Filterable = true;
+  /// GROUP the rows by this column: one collapsible band per distinct value, carrying its row count and
+  /// the total of every `Number` column. The FIRST column claiming it wins — two groupings at once is a
+  /// pivot table, which is a different control.
+  public bool Group;
+}
+
+/// One GROUP BAND of a grouped grid: the value the rows share, and the rows themselves.
+///
+/// ⚑ IT HOLDS ITS ROWS, and that is the whole point. The bands were a `List<string>` of keys while a generic
+/// component's member could not return `T[]` (P-27) — so every row loop re-tested `KeyOf(r) == band` and the
+/// count and totals each re-walked the view. It also made a grouped grid untestable at the text tier: a `foreach`
+/// over STRINGS stamps each string as a rendered item, so `Assert.Items` counted BANDS and `Assert.Before` could
+/// not reach a row. A class instance stamps nothing, so what gets counted is the rows.
+public sealed class GridBand<T> {
+  /// The grouping column's value for every row in this band. May be empty — an empty grouping value is a real
+  /// group, and the band renders it as "(none)" rather than as a blank nobody can tell from a fault.
+  public string Key;
+  /// This band's rows, in the order the view already sorts them — grouping reorders nothing WITHIN a band.
+  public T[] Rows;
+}
+
+/// A sortable, resizable, templatable table that becomes a card list on a narrow screen.
+/// ⭐ COLUMNS WIDER THAN THE SPACE SCROLL SIDEWAYS rather than being cut off, and the header row and the filter row
+/// scroll WITH the data, so a column never labels the wrong values. Your `Width` numbers decide when that starts;
+/// nothing is dropped, the search box and `Columns` stay put above the scrolling table, and the page itself never
+/// scrolls sideways.
+/// In a test read a cell by its row and column: `Assert.Cell(order, "Total", "120.00")`, and count rows with `Assert.Items(...)`.
+/// need: show many rows in columns, a sortable table of records, a list with headers
+/// e.g. `DataGrid(rows: orders, columns: [ new GridColumn<Order> { Name = "Ref", Label = "Clapper", Value = o => o.Reference } ], rowSelected: Open)`
+// ⛔ `label` IS REQUIRED, and it is the one parameter here that cannot have a sensible default. This control
+//    renders `role="grid"`, and a grid with no accessible name is INVALID ARIA — a screen reader announces
+//    nothing, and `Ui.Within("…")` cannot reach it, so no UI test can drive what it holds either. `= ""` was not a
+//    default, it was the absence of a name, and ten of the eleven call sites in this repo took it.
+//
+// ⚑ Caught by `KitCatalogTests`, which had been red for exactly this and which nothing in a normal loop runs.
+//    Moved ahead of the defaulted parameters because a required one must come first; every call site names its
+//    arguments, so nothing reorders.
+// ⚠ AND `label` COMES FIRST, like every other captioned control in this kit. An author who has just written
+//    `Field("Serial number", value: x)` writes the next one the same way; a control that disagrees answers a
+//    rather than a control. (Also gated.)
+[Composable] component DataGrid<T>(string label, T[] rows, GridColumn<T>[] columns,
+                                   Action<T>? rowSelected = null,
+                                   bool filterable = false, GridFilter[] filters = [],
+                                   Action<string>? onExport = null,
+                                   string view = "", Action<string>? onViewChange = null) {
+  // `label:` NAMES THE GRID — for a screen reader, and for a test.
+  //
+  // ⚠ ADDED BECAUSE THE CONTROL'S OWN DOCUMENTATION WAS FALSE. Its summary says "in a test … count rows with
+  //   `Assert.Items(...)`", and `Assert.Items` locates a list the way everything else is located: by what a person
+  //   would call it. This grid gave its row region a ROLE and no NAME, so there was nothing to locate and the
+  //   assertion failed with "there is no list 'rows' on this screen" — for the recipe the control itself prints.
+  //   Measured writing the grid's own behavioural test, which is the only reason it was ever noticed.
+  //
+  //   Empty by default, so nothing about an existing call changes; a grid with two of it on one page is exactly
+  //   when you need the name anyway.
+  GridColumn<T> sortBy = columns[0];
+  bool descending = false;
+
+  // ── THE READER'S VIEW ───────────────────────────────────────────────────────────────────────
+  //
+  // ⚑ NAMES, NOT COLUMNS — and this is now a CHOICE rather than a constraint. It was written when a generic
+  //   component's member could not return `GridColumn<T>[]` (P-27, fixed): an ordered/filtered column LIST was
+  //   simply not expressible, so names were the only shape available. It stays because it is independently the
+  //   right one for P-09 — a saved view is these three lists and a sort, which is exactly what survives a
+  //   recompile, where a list of column OBJECTS would not.
+  //
+  // ⚠ AND IT NEVER MUTATES `columns`. That array belongs to the CALLER: reordering it would reorder every
+  //   other grid sharing it, and a reader's choice would leak into the page's own model.
+  List<string> order = NamesOf();
+  List<string> hidden = [];
+  string groupBy = InitialGroup();
+
+  List<string> NamesOf() {
+    var names = new List<string>();
+    foreach (var c in columns) { names.Add(c.Name); }
+    return names;
+  }
+
+  /// The column a `Group = true` DECLARED, which the reader may then change or clear.
+  string InitialGroup() {
+    foreach (var c in columns) { if (c.Group) { return c.Name; } }
+    return "";
+  }
+
+  bool Shown(string name) { return !hidden.Contains(name); }
+
+  /// THE TABLE'S OWN WIDTH — every shown column's declared width plus the horizontal padding each row carries
+  /// (`px: 3`, so 12px a side). It is the `minW` of the region the header row, the filter row and the data rows
+  /// all live in, and it is what makes those three ONE horizontal scroll context: they cannot slide apart,
+  /// because they are the same box.
+  ///
+  /// ⛔ WITHOUT IT A ROW'S BOX STOPS AT THE CONTAINER'S EDGE while its cells carry on past it — `FixedCell` sets
+  ///    `Shrink = 0`, which is right (a column keeps the width its author asked for) and is exactly why the excess
+  ///    has to go somewhere. Measured 2026-09-08 on `demo/shell-arrangements` at `/r/incidents`: seven columns
+  ///    summing to 1,090px in a 958px column, so the seventh header read `Sta…`, the last filter input was cut
+  ///    through its middle, and the Started column rendered as `2 (`, `Ye`, `08`, `09`. Nothing scrolled — the
+  ///    content was simply painted past its container and occluded by whatever was next to it. The same grid
+  ///    clipped identically in `SidebarShell` and `TabbedShell` (scrollWidth 1923 in all three), so it was never
+  ///    the shell: it was this control never bounding its own rows.
+  ///
+  /// ⚑ A `Fill` column contributes its DECLARED `Width` here, not its content. `Fill` means "absorb whatever is
+  ///   left over" and `Width` is then its floor — so a grid that fits its container today is untouched (the
+  ///   minimum is not binding and the fill column still absorbs), and a grid too wide for its container scrolls
+  ///   to exactly the width its author asked for rather than to the length of its longest string.
+  int TableW() {
+    var total = 24;
+    foreach (var c in columns) { if (Shown(c.Name)) { total = total + c.Width; } }
+    return total;
+  }
+
+  /// Move a column one place left or right in the reader's order. A whole new list — writing an element in
+  /// place leaves the signal on the same reference and nothing re-renders.
+  action MoveColumn(string name, int delta) {
+    var from = order.IndexOf(name);
+    var to = from + delta;
+    if (from < 0 || to < 0 || to >= order.Count) { return; }
+    var next = new List<string>();
+    for (int i = 0; i < order.Count; i = i + 1) {
+      if (i == from) { next.Add(order[to]); }
+      else if (i == to) { next.Add(order[from]); }
+      else { next.Add(order[i]); }
+    }
+    order = next;
+    Changed();
+  }
+
+  action ToggleColumn(string name) {
+    var next = new List<string>();
+    bool wasShown = Shown(name);
+    foreach (var n in hidden) { if (n != name) { next.Add(n); } }
+    if (wasShown) { next.Add(name); }
+    hidden = next;
+    Changed();
+  }
+
+  /// Group by this column, or clear the grouping when it is already the one grouping.
+  action GroupByColumn(string name) { groupBy = groupBy == name ? "" : name; Changed(); }
+
+  action SortByColumn(GridColumn<T> c) {
+    if (sortBy == c) { descending = !descending; } else { sortBy = c; descending = false; }
+    Changed();
+  }
+
+  // ⭐ SORT BY WHAT THE COLUMN HOLDS, not by how it is spelled. This read `rows.OrderBy(sortBy.Value)`,
+  //    and `Value` is a `Func<T,string>` — so a money column ordered "100" before "9" and a date column
+  //    ordered by its formatting. Nothing reported it: the grid sorted, visibly, into the wrong order.
+  //
+  //    A ternary rather than one selector chosen up front, because only the taken branch is evaluated —
+  //    which is what makes a NULL selector safe to name here. A helper returning the ordered rows reads
+  //    better and is now legal (P-27); it is left as a `live var` because that is what keeps it CURRENT,
+  //    which a plain helper would not be.
+  live var sorted =
+      sortBy.Number != null
+        ? (descending ? rows.OrderByDescending(sortBy.Number) : rows.OrderBy(sortBy.Number))
+        : (sortBy.Date != null
+            ? (descending ? rows.OrderByDescending(sortBy.Date) : rows.OrderBy(sortBy.Date))
+            : (descending ? rows.OrderByDescending(sortBy.Value) : rows.OrderBy(sortBy.Value)));
+
+  // ── P-06 · FILTERING ────────────────────────────────────────────────────────────────────────
+  //
+  // ── the per-column filter row (krav 2.1.24) ─────────────────────────────────────────────────
+  //
+  // ⚑ THIS COULD NOT BE WRITTEN UNTIL P-24, and the note that used to sit here explained why: a bound box per
+  //   column is a FIELD per column, and `columns` is a prop. Two shapes were tried and both failed — a binding
+  //   into a `List<GridFilter>` element compiled and was INERT, and a child pushing its own text up on
+  //   `on change` killed the client in a remount loop. `Input(value: typed[i])` binds an ELEMENT of this
+  //   component's own list, which is a write path that exists.
+  //
+  // ⚠ REPLACE, NEVER MUTATE. `SetFilter` builds a whole new list: writing an element in place leaves the signal
+  //   on the same reference, so nothing re-renders and the box goes inert again.
+  List<string> typed = Blanks();
+
+  List<string> Blanks() {
+    var seeded = new List<string>();
+    foreach (var c in columns) { seeded.Add(""); }
+    return seeded;
+  }
+
+  /// The QUICK FILTER — one box, every column. It is what the narrow arm shows (a filter row of boxes does
+  /// not fit a phone, and one box per column on a card list would be six boxes above two cards), and it is
+  /// offered on the table too because "find the row that says Ada" is the commonest thing anybody wants.
+  string search = "";
+
+  bool MatchesSearch(T r) {
+    if (search.Trim() == "") { return true; }
+    var needle = search.Trim().ToLower();
+    foreach (var c in columns) { if (c.Value(r).ToLower().Contains(needle)) { return true; } }
+    return false;
+  }
+
+  /// THE OPERATOR, from a leading `>`, `<`, `=` or `^` in the value — the spreadsheet idiom, so a page's
+  /// own filter box needs no operator dropdown beside it. No prefix means the filter's own `Op`.
+  GridOp OpOf(string raw, GridOp fallback) {
+    if (raw.StartsWith(">")) { return GridOp.GreaterThan; }
+    if (raw.StartsWith("<")) { return GridOp.LessThan; }
+    if (raw.StartsWith("=")) { return GridOp.Equals; }
+    if (raw.StartsWith("^")) { return GridOp.StartsWith; }
+    return fallback;
+  }
+
+  /// What to compare against, with any operator prefix taken off.
+  string WantOf(string raw) {
+    if (raw.StartsWith(">") || raw.StartsWith("<") || raw.StartsWith("=") || raw.StartsWith("^")) {
+      return raw.Substring(1).Trim();
+    }
+    return raw.Trim();
+  }
+
+  /// ⭐ THE OPERATOR SET THE TYPE IMPLIES (krav 2.1.24). A `Number` column has no use for "contains" and a
+  /// `Text` column none for "greater than" — so an operator the kind cannot mean is IGNORED rather than
+  /// applied nonsensically. Typing `>` into a text filter therefore shows everything, which is the honest
+  /// answer: the alternative is comparing words alphabetically and calling it a range.
+  bool Allows(GridColumnKind kind, GridOp op) {
+    if (kind == GridColumnKind.Text) { return op == GridOp.Contains || op == GridOp.Equals || op == GridOp.StartsWith; }
+    return op == GridOp.Equals || op == GridOp.GreaterThan || op == GridOp.LessThan;
+  }
+
+  bool Compare(T r, GridColumn<T> c, GridOp op, string want) {
+    if (c.Kind == GridColumnKind.Number && c.Number != null) {
+      decimal got = c.Number(r);
+      // A HALF-TYPED NUMBER SHOWS EVERYTHING rather than nothing. Somebody typing ">1" on the way to
+      // ">1000" must not watch the grid empty itself and conclude the filter is broken.
+      if (!decimal.TryParse(want, out var w)) { return true; }
+      if (op == GridOp.GreaterThan) { return got > w; }
+      if (op == GridOp.LessThan) { return got < w; }
+      return got == w;
+    }
+    if (c.Kind == GridColumnKind.Date && c.Date != null) {
+      DateTime gotDate = c.Date(r);
+      if (!DateTime.TryParse(want, out var wd)) { return true; }
+      if (op == GridOp.GreaterThan) { return gotDate > wd; }
+      if (op == GridOp.LessThan) { return gotDate < wd; }
+      return gotDate.Date == wd.Value.Date;
+    }
+    // Everything else compares the TEXT the reader can actually see, case-insensitively — including a
+    // Number/Date column that declared no typed selector, where the text is all there is.
+    string text = c.Value(r).ToLower();
+    string wl = want.ToLower();
+    if (op == GridOp.Equals) { return text == wl; }
+    if (op == GridOp.StartsWith) { return text.StartsWith(wl); }
+    return text.Contains(wl);
+  }
+
+  /// The operator a value carries when it names none. ⚠ NOT ALWAYS `Contains`: `Allows` rejects Contains
+  /// on a Number or Date column, so a plain `GridFilter { Column = "Total", Value = "100" }` was matching
+  /// EVERYTHING — the commonest filter anybody writes, silently doing nothing. On those columns the
+  /// unprefixed reading is equality, which is what "100" means about a quantity.
+  GridOp DefaultOp(GridColumnKind kind) {
+    return kind == GridColumnKind.Text ? GridOp.Contains : GridOp.Equals;
+  }
+
+  bool MatchColumn(T r, GridColumn<T> c, string raw, GridOp fallback) {
+    var want = WantOf(raw);
+    if (want == "") { return true; }
+    var op = OpOf(raw, fallback == GridOp.Contains ? DefaultOp(c.Kind) : fallback);
+    // An operator this kind cannot mean is dropped, not applied — see `Allows`.
+    if (!Allows(c.Kind, op)) { return true; }
+    return Compare(r, c, op, want);
+  }
+
+  bool Match(T r, GridFilter f) {
+    bool matched = true;
+    foreach (var c in columns) { if (c.Name == f.Column) { matched = MatchColumn(r, c, f.Value, f.Op); } }
+    return matched;   // a filter naming no column is IGNORED: a saved view outliving a rename must not blank the grid
+  }
+
+  /// Both filter models, ANDed: the `filters:` a page imposes, and the quick search a person typed here.
+  /// So a page can pin a constraint the search cannot widen.
+  bool Passes(T r) {
+    if (!MatchesSearch(r)) { return false; }
+    foreach (var f in filters) { if (!Match(r, f)) { return false; } }
+    foreach (var c in columns) {
+      if (!MatchColumn(r, c, typed[columns.IndexOf(c)], GridOp.Contains)) { return false; }
+    }
+    return true;
+  }
+
+  /// ⭐ THE VIEW, COMPUTED ONCE — sorted, then filtered. Everything downstream reads THIS: the bands, the per-band
+  /// count and sums, the export, both render arms and the empty state.
+  ///
+  /// ⚑ IT COULD NOT BE WRITTEN UNTIL P-27. `T[]` was not a legal return for a generic component's member and a
+  ///   collection of an open element was not a query SOURCE, so `sorted.Where(r => Passes(r))` had nothing to be.
+  ///   The grid therefore carried `foreach (var r in sorted) { if (Passes(r)) … }` in EIGHT places, and `Passes`
+  ///   walks every column and every filter — so a 500-row grid with 8 columns re-ran that per row per site, and
+  ///   `SumsIn` re-ran it per row per NUMBER COLUMN per band on top. The cost was never the point though: eight
+  ///   copies of "what the reader is looking at" is eight chances for them to disagree, and the export drifting
+  ///   from the screen is precisely what krav 2.1.24 forbids.
+  ///
+  /// ⚠ A `live var`, not a helper. That is what keeps it CURRENT when the search text, a column filter or the sort
+  ///   changes — a plain method would recompute on call and re-render nothing.
+  live var visible = sorted.Where(r => Passes(r));
+
+  bool AnyFilter() {
+    if (search.Trim() != "") { return true; }
+    if (AnyColumnFilter()) { return true; }
+    foreach (var f in filters) { if (WantOf(f.Value) != "") { return true; } }
+    return false;
+  }
+
+  bool AnyColumnFilter() {
+    foreach (var t in typed) { if (WantOf(t) != "") { return true; } }
+    return false;
+  }
+
+  /// Clears what THIS grid owns — the quick search and the filter row. A `filters:` entry belongs to the page and
+  /// is deliberately untouched; the empty state only offers this button when there is something here to clear.
+  action ClearFilters() { search = ""; typed = Blanks(); }
+
+  // ── P-07 · GROUPING ─────────────────────────────────────────────────────────────────────────
+  // One BAND per distinct value of the grouping column, and a band HOLDS ITS ROWS.
+  //
+  // ⚑ IT USED TO HOLD ONLY A KEY, and that was forced: a generic component's member could not return `T[]`
+  //   (P-27), so a list of row GROUPS had nothing to be. Every row loop therefore re-tested `KeyOf(r) == band`,
+  //   and `CountIn`/`SumsIn` each walked the whole view again per band.
+  //
+  // ⛔ AND THE KEY-ONLY SHAPE BROKE TESTING, which is the half nobody would predict. `Bands()` returned a
+  //   `List<string>`, and a `foreach` over STRINGS stamps each string as a rendered ITEM — a bare string is its
+  //   own identity. So a grouped grid reported the BAND count to `Assert.Items` (measured: 2, over 4 rows) and
+  //   `Assert.Before` could not reach a data row at all, reporting `Rendered rows: [1] ▼ Ada [2] ▼ Grace`. A
+  //   grouped grid silently stopped being testable at the text tier — the exact trap this file already documents
+  //   for `order`, one loop away. A CLASS instance carries no identity and stamps nothing, so the rows inside are
+  //   what get counted, which is what a reader means by "how many rows is it showing".
+  bool Grouped() { return groupBy != ""; }
+
+  string KeyOf(T r) {
+    foreach (var c in columns) { if (c.Name == groupBy) { return c.Value(r); } }
+    return "";
+  }
+
+  /// The bands, in the order the rows already sort in — so grouping REORDERS NOTHING WITHIN a band, and
+  /// the bands themselves appear in the order their first row does. A band list built by sorting the keys
+  /// would silently override the column the reader chose to sort by.
+  List<GridBand<T>> Bands() {
+    var bands = new List<GridBand<T>>();
+    foreach (var r in visible) {
+      var k = KeyOf(r);
+      bool seen = false;
+      foreach (var b in bands) { if (b.Key == k) { seen = true; } }
+      // The band takes its rows in ONE go — `visible` is already sorted and filtered, so the slice is the band.
+      if (!seen) { bands.Add(new GridBand<T> { Key = k, Rows = visible.Where(x => KeyOf(x) == k) }); }
+    }
+    return bands;
+  }
+
+  /// The band's aggregates: every `Number` column that declared its selector, totalled. A column with no
+  /// selector is skipped rather than guessed at — its text cannot be added up.
+  string SumsIn(GridBand<T> band) {
+    var parts = "";
+    foreach (var c in columns) {
+      if (c.Kind == GridColumnKind.Number && c.Number != null) {
+        decimal total = 0;
+        foreach (var r in band.Rows) { total = total + c.Number(r); }
+        parts = parts + (parts == "" ? "" : "  ·  ") + c.Label + " " + total.ToString("N0");
+      }
+    }
+    return parts;
+  }
+
+  List<string> collapsed = [];
+  action ToggleBand(string band) {
+    var next = new List<string>();
+    bool wasOpen = !collapsed.Contains(band);
+    foreach (var k in collapsed) { if (k != band) { next.Add(k); } }
+    if (wasOpen) { next.Add(band); }
+    collapsed = next;
+  }
+  bool IsCollapsed(string band) { return collapsed.Contains(band); }
+
+  // ── P-08 · EXPORT ───────────────────────────────────────────────────────────────────────────
+  //
+  // ⚑ THE GRID PRODUCES TEXT; THE APP DECIDES WHAT TO DO WITH IT. A control cannot write a file, and the
+  //   platform's CSV writer (P-05) is not built — but neither is in the way of the part that is actually the
+  //   grid's: what the CURRENT VIEW contains, in the order it is on screen. `onExport` is the seam, and when
+  //   P-05 lands it replaces the quoting below and nothing else.
+  //
+  // ⚠ IT EXPORTS THE VIEW, NOT THE ROWS. Filter, sort, grouping and the column set all apply — a button labelled
+  //   Export that hands back everything would be lying about what the person is looking at, which is the whole
+  //   requirement (krav 2.1.24).
+
+  /// RFC 4180: a field containing a comma, a quote or a newline is wrapped in quotes, and an inner quote is
+  /// doubled. Without this a single "Lovelace, Ada" silently becomes two columns for every reader downstream.
+  string Csv(string field) {
+    if (!field.Contains(",") && !field.Contains("\"") && !field.Contains("\n")) { return field; }
+    return "\"" + field.Replace("\"", "\"\"") + "\"";
+  }
+
+  // ⚠ THE READER'S ORDER AND THE READER'S COLUMNS. Exporting the caller's array would hand back a file whose
+  //   columns are in a different order from the screen, with the hidden ones back — which is the same lie as
+  //   exporting the unfiltered rows, one dimension over.
+  string CsvRow(T r) {
+    var line = "";
+    foreach (var name in order) {
+      if (Shown(name)) {
+        foreach (var c in columns) { if (c.Name == name) { line = line + (line == "" ? "" : ",") + Csv(c.Value(r)); } }
+      }
+    }
+    return line;
+  }
+
+  string ExportText() {
+    var head = "";
+    foreach (var name in order) {
+      if (Shown(name)) {
+        foreach (var c in columns) { if (c.Name == name) { head = head + (head == "" ? "" : ",") + Csv(c.Label); } }
+      }
+    }
+    var body = "";
+    if (Grouped()) {
+      // Band by band, so the file reads in the order the screen does.
+      foreach (var band in Bands()) {
+        foreach (var r in band.Rows) { body = body + "\n" + CsvRow(r); }
+      }
+    } else {
+      foreach (var r in visible) { body = body + "\n" + CsvRow(r); }
+    }
+    return head + body;
+  }
+
+  action Export() { onExport(ExportText()); }
+
+  bool showColumnMenu = false;
+  action ToggleColumnMenu() { showColumnMenu = !showColumnMenu; }
+
+  // ── P-09 · THE READER'S VIEW, AS A STRING ───────────────────────────────────────────────────
+  //
+  // ⚑ THE GRID OWNS THE STATE; THE APP OWNS THE STORAGE — the same seam as `onExport`, and for the same
+  //   reason. Naming views, listing them and deciding who may see whose is an application's job with an
+  //   application's security block; what only the grid can do is say what the current view IS and take one
+  //   back. So it serializes to a string, and an app persists that string against a name and a user.
+  //
+  // ⚠ APPLIED AT MOUNT, AND ONLY AT MOUNT. A grid that re-applied `view` whenever the prop changed would be
+  //   one assignment away from the loop that killed the client in P-26: report a change, the app stores it,
+  //   the prop comes back, the grid re-applies, which reports a change. Restoring a DIFFERENT saved view is
+  //   therefore a remount — which a route change already gives an app for free — and that is a limit worth
+  //   stating rather than a hazard worth risking.
+
+  /// `;` separates fields and `|` list items, so a filter someone typed with either in it would corrupt the
+  /// rest of the view. Escaped rather than stripped: a saved view must round-trip what was actually typed.
+  string Esc(string v) { return v.Replace("~", "~0").Replace(";", "~1").Replace("|", "~2"); }
+  string Unesc(string v) { return v.Replace("~2", "|").Replace("~1", ";").Replace("~0", "~"); }
+
+  string EscList(List<string> xs) {
+    var out = "";
+    foreach (var x in xs) { out = out + (out == "" ? "" : "|") + Esc(x); }
+    return out;
+  }
+
+  /// Every choice the READER made — and nothing the author did, which is why it survives a recompile that
+  /// adds or renames a column: an unknown name is simply ignored on the way back in.
+  string ViewState() {
+    var widths = "";
+    foreach (var c in columns) { widths = widths + (widths == "" ? "" : "|") + c.Width.ToString(); }
+    return "o=" + EscList(order)
+         + ";h=" + EscList(hidden)
+         + ";g=" + Esc(groupBy)
+         + ";s=" + Esc(sortBy.Name)
+         + ";d=" + (descending ? "1" : "0")
+         + ";q=" + Esc(search)
+         + ";f=" + EscList(typed)
+         + ";w=" + widths;
+  }
+
+  List<string> SplitList(string v) {
+    var out = new List<string>();
+    if (v == "") { return out; }
+    foreach (var part in v.Split('|')) { out.Add(Unesc(part)); }
+    return out;
+  }
+
+  /// ⚠ TOLERANT BY DESIGN. A view saved before a column was renamed names something that no longer exists,
+  /// and the answer to that is to ignore it — not to refuse, and not to blank the grid. A stored string is
+  /// older than the code reading it by construction.
+  action ApplyView(string state) {
+    foreach (var field in state.Split(';')) {
+      if (field.StartsWith("o=")) {
+        var wanted = SplitList(field.Substring(2));
+        var next = new List<string>();
+        foreach (var n in wanted) { if (order.Contains(n)) { next.Add(n); } }
+        foreach (var n in order) { if (!next.Contains(n)) { next.Add(n); } }   // columns added since
+        order = next;
+      }
+      if (field.StartsWith("h=")) {
+        var next = new List<string>();
+        foreach (var n in SplitList(field.Substring(2))) { if (order.Contains(n)) { next.Add(n); } }
+        hidden = next;
+      }
+      if (field.StartsWith("g=")) { var g = Unesc(field.Substring(2)); groupBy = order.Contains(g) ? g : ""; }
+      if (field.StartsWith("s=")) {
+        var want = Unesc(field.Substring(2));
+        foreach (var c in columns) { if (c.Name == want) { sortBy = c; } }
+      }
+      if (field.StartsWith("d=")) { descending = field.Substring(2) == "1"; }
+      if (field.StartsWith("q=")) { search = Unesc(field.Substring(2)); }
+      if (field.StartsWith("f=")) {
+        var vals = SplitList(field.Substring(2));
+        var next = new List<string>();
+        for (int i = 0; i < columns.Length; i = i + 1) { next.Add(i < vals.Count ? vals[i] : ""); }
+        typed = next;
+      }
+      if (field.StartsWith("w=")) {
+        var ws = SplitList(field.Substring(2));
+        for (int i = 0; i < columns.Length; i = i + 1) {
+          if (i < ws.Count) { if (int.TryParse(ws[i], out var px)) { columns[i].Width = px; } }
+        }
+      }
+    }
+  }
+
+  on mount { if (view != "") { ApplyView(view); } }
+
+  /// Report the view after a change the READER made. From an ACTION, never from `on change` — see P-26.
+  action Changed() { if (onViewChange != null) { onViewChange(ViewState()); } }
+
+  slots from columns.Name
+
+  render {
+    if (Layout.AtLeast(Tablet)) {
+      // ⚑ THREE BOXES, AND EACH ONE IS DOING A JOB THE OTHER TWO CANNOT.
+      //
+      //  1. THE OUTER STACK holds the toolbar and the column chooser — the controls that operate ON the table.
+      //     They are deliberately OUTSIDE the scroll region below: a search box that slid off to the left as you
+      //     scrolled to the seventh column would be a control you have to scroll back to find, and the reader who
+      //     needs it most is the one who has just scrolled. It is also why they are no longer inside `role=grid`,
+      //     where a screen reader counted a text field among the table's rows.
+      //  2. THE SCROLL CONTAINER (`overflowX: Auto`) is the only thing that makes a table wider than its column
+      //     REACHABLE. `Hidden` would tidy the ragged edge and lose the columns; `Auto` gives them back.
+      //     ⚠ `overflowX` alone would not be enough — a scroll container whose child is capped at its own width
+      //       has nothing to scroll TO, which is why (3) exists.
+      //  3. THE TABLE, at `TableW()`. One box holding the header row, the filter row and every data row, so they
+      //     share ONE horizontal offset by construction. A design that scrolled the body under a fixed header
+      //     would be worse than the clip: the columns would then LIE about which data they label.
+      Stack(gap: 0) {
+        if (filterable || onExport != null) {
+          Row(px: 3, py: 1, gap: 3, align: Align.Center) {
+            if (filterable) { Field(label: "Search", value: search, placeholder: "Search all columns"); }
+            Button(label: "Columns", onPress: ToggleColumnMenu, tone: Tone.Ghost);
+            if (onExport != null) { Button(label: "Export", onPress: Export, tone: Tone.Ghost); }
+          }
+        }
+        // Which columns are on screen. A Pressable per column rather than a Checkbox, because a checkbox binds
+        // a `Binding<bool>` and "is this name absent from a list" is not an assignable lvalue.
+        if (showColumnMenu) {
+          Row(gap: 3, px: 3, py: 2, bg: Colors.Surface, borderW: 1, border: Colors.Border, wrap: Wrapping.Wrap,
+              label: "Column chooser") {
+            foreach (var slot in columns) {
+              foreach (var h in columns) {
+                if (order.IndexOf(h.Name) == columns.IndexOf(slot)) {
+                  Pressable(onClick: () => ToggleColumn(h.Name), label: (Shown(h.Name) ? "Hide " : "Show ") + h.Label) {
+                    Text((Shown(h.Name) ? "☑ " : "☐ ") + h.Label, fontSize: FontSize.Caption,
+                         color: Shown(h.Name) ? Colors.OnSurface : Colors.TextMuted);
+                  }
+                }
+              }
+            }
+          }
+        }
+        Stack(gap: 0, overflowX: Overflow.Auto) {
+          Stack(gap: 0, role: UiRole.Grid, label: label, minW: TableW()) {
+            Row(gap: 0, px: 3, py: 2, bg: Colors.Surface, role: UiRole.GridRow) {
+              // ⚑ THE READER'S ORDER, not the prop's — and iterated over COLUMNS, never over `order`.
+              //
+              //   `order` is a `List<string>`, and a `foreach` over STRINGS stamps each one as a rendered ITEM (a bare
+              //   string is its own identity), so `Assert.Items` starts counting column names as rows. Measured: a
+              //   4-row grid reported 7. A class instance carries no identity and stamps nothing — so the loop runs
+              //   over `columns` once per POSITION, and renders whichever column the reader put at that position.
+              foreach (var slot in columns) {
+                foreach (var h in columns) {
+                  if (order.IndexOf(h.Name) == columns.IndexOf(slot) && Shown(h.Name)) {
+                    if (h.Fill) { FillCell(justify: h.Align) { HeaderCell(col: h, sorted: sortBy.Name == h.Name && h.Sortable, desc: descending, onSort: SortByColumn, onMove: MoveColumn, onGroup: GroupByColumn, grouping: groupBy == h.Name); } }
+                    else { FixedCell(px: h.Width, justify: h.Align) { HeaderCell(col: h, sorted: sortBy.Name == h.Name && h.Sortable, desc: descending, onSort: SortByColumn, onMove: MoveColumn, onGroup: GroupByColumn, grouping: groupBy == h.Name); } }
+                  }
+                }
+              }
+            }
+            // P-24 — ONE BOUND BOX PER COLUMN. Wide arm only: a row of boxes does not fit a phone, and the quick
+            // search above is what the narrow arm offers instead.
+            if (filterable) {
+              Row(gap: 0, px: 3, py: 1, bg: Colors.Surface, borderW: 1, border: Colors.Border, label: "Filter row") {
+                // The `Input` is INLINE rather than in a `FilterCell` child, because the binding targets THIS
+                // component's own list — handing it down would need the indexed form to cross a component boundary
+                // as a `Binding<string>`, which is a separate arm and a separate slice.
+                foreach (var slot in columns) {
+                  foreach (var h in columns) {
+                    if (order.IndexOf(h.Name) == columns.IndexOf(slot) && Shown(h.Name)) {
+                      if (h.Fill) {
+                        FillCell(justify: null) {
+                          if (h.Filterable) {
+                            Input(value: typed[columns.IndexOf(h)], label: "Filter " + h.Label, name: "filter-" + h.Name, w: "100%",
+                                  placeholder: h.Kind == GridColumnKind.Text ? "contains…" : "= > <");
+                          }
+                        }
+                      } else {
+                        FixedCell(px: h.Width, justify: null) {
+                          if (h.Filterable) {
+                            Input(value: typed[columns.IndexOf(h)], label: "Filter " + h.Label, name: "filter-" + h.Name, w: "100%",
+                                  placeholder: h.Kind == GridColumnKind.Text ? "contains…" : "= > <");
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            // ⚑ TWO SHAPES, AND THE SPLIT IS LOAD-BEARING.
+            //
+            //  · UNGROUPED keeps the flat row loop it always had, so the ROW is the outermost repeated
+            //    region and `Assert.Items` still counts rows. Every existing grid's tests are unaffected.
+            //  · GROUPED puts the BAND loop outside, which is the only way a band's rows are CONTIGUOUS
+            //    and the header is its OWN item. Emitting the header inside the row loop instead — which
+            //    this did — fuses it with the first row of the band: measured, a grouped grid reported
+            //    `[1] ▼ Blue (1) [2] ▼ Red (2) [3] R-3`, so the first row of every band was not
+            //    addressable at all, and the two Reds were not even adjacent.
+            //
+            // The cells are one `[Part]`, so the markup is written ONCE despite the two shapes.
+            //
+            // ⚠ THIS COMMENT USED TO CREDIT `[Part]` FOR THE SLOT RESOLUTION AND THAT WAS NEVER TRUE. `[Part]` is a
+            // PACKAGING marker — not listed by `osy kit`, never vendored alone — with no rendering semantics at all.
+            // What makes `Slot(c.Name, row)` find the app's `slot Status { r => … }` is that named slot TEMPLATES flow
+            // into a child component that supplies none of its own, and that rule did not exist until 2026-09-04. Until
+            // then every cell here rendered its fallback text and no grid in any app had ever shown a cell template.
+            if (Grouped()) {
+              foreach (var band in Bands()) {
+                GroupBand(label: band.Key, count: band.Rows.Count, sums: SumsIn(band),
+                          collapsed: IsCollapsed(band.Key), onToggle: () => ToggleBand(band.Key));
+                if (!IsCollapsed(band.Key)) {
+                  foreach (var r in band.Rows) {
+                    if (rowSelected != null) {
+                      Pressable(onClick: () => rowSelected(r)) { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
+                    } else { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
+                  }
+                }
+              }
+            } else {
+              foreach (var r in visible) {
+                if (rowSelected != null) {
+                  Pressable(onClick: () => rowSelected(r)) { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
+                } else { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
+              }
+            }
+            // EVERY ROW FILTERED OUT is not the same as an empty table, and saying so is the difference between
+            // "there is nothing" and "you cannot see it from here". The clear is beside the sentence, because
+            // that is where somebody who has just lost their rows is looking.
+            if (visible.Count == 0 && AnyFilter()) {
+              Row(gap: 2, px: 3, py: 3, align: Align.Center) {
+                Text("No rows match the filter.", color: Colors.TextMuted);
+                // ⚠ ONLY when there is something HERE to clear. A `filters:` entry belongs to the page, and
+                //   this button cannot touch it — offering it anyway is a control that takes the click and
+                //   leaves the screen exactly as it was.
+                if (search.Trim() != "" || AnyColumnFilter()) {
+                  Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary); }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else {
+      Stack(gap: 2, role: UiRole.List, label: label) {
+        // ⚠ THE SAME FILTER, on the arm a phone actually renders. A filter that applied only to the table
+        //   would be a grid that shows different rows at two window widths, which is the one thing a
+        //   responsive control must never do.
+        if (filterable) { Field(label: "Search", value: search, placeholder: "Search all columns"); }
+        if (onExport != null) { Button(label: "Export", onPress: Export, tone: Tone.Ghost); }
+        if (Grouped()) {
+          foreach (var band in Bands()) {
+            GroupBand(label: band.Key, count: band.Rows.Count, sums: SumsIn(band),
+                      collapsed: IsCollapsed(band.Key), onToggle: () => ToggleBand(band.Key));
+            if (!IsCollapsed(band.Key)) {
+              foreach (var r in band.Rows) {
+                if (rowSelected != null) {
+                  Pressable(onClick: () => rowSelected(r)) { GridCard(cols: columns, order: order, hidden: hidden, row: r); }
+                } else { GridCard(cols: columns, order: order, hidden: hidden, row: r); }
+              }
+            }
+          }
+        } else {
+          foreach (var r in visible) {
+            if (rowSelected != null) {
+              Pressable(onClick: () => rowSelected(r)) { GridCard(cols: columns, order: order, hidden: hidden, row: r); }
+            } else { GridCard(cols: columns, order: order, hidden: hidden, row: r); }
+          }
+        }
+        if (visible.Count == 0 && AnyFilter()) {
+          Row(gap: 2, py: 3, align: Align.Center) {
+            Text("No rows match the filter.", color: Colors.TextMuted);
+            if (search.Trim() != "") { Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary); } }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// ONE cell — header or body — carrying this column's SIZING, so the header and the rows cannot disagree about it.
+[Composable][Part] component HeaderCell<T>(GridColumn<T> col, bool sorted, bool desc, Action<GridColumn<T>> onSort,
+                                     Action<string, int> onMove, Action<string> onGroup, bool grouping) {
+  render {
+    Row(role: UiRole.ColumnHeader, sort: col.Sortable ? (sorted ? (desc ? UiSort.Descending : UiSort.Ascending) : UiSort.None) : UiSort.None,
+        gap: 1, align: Align.Center, w: "100%") {
+      if (col.Sortable) {
+        Pressable(onClick: () => onSort(col)) {
+          Text(col.Label, fontWeight: FontWeight.Medium, fontSize: FontSize.Caption, color: Colors.TextSecondary);
+        }
+      } else {
+        Text(col.Label, fontWeight: FontWeight.Medium, fontSize: FontSize.Caption, color: Colors.TextMuted);
+      }
+      if (sorted) { Text(desc ? "▼" : "▲", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true); }
+      Spacer();
+      // ⚑ MOVE AND GROUP ARE BUTTONS, NOT A DRAG — and that is the accessibility answer as well as the simple
+      //   one. A drag-to-reorder is unreachable from a keyboard and invisible to a screen reader, so a control
+      //   whose ONLY reordering affordance was a drag would fail krav 6.3 outright. Each carries its column's
+      //   name in its label, which is also what makes it addressable in a test.
+      // ⛔ EACH GETS A BOX, because a glyph does not have one. `‹` at caption size measures FIVE PIXELS WIDE, so
+      //    these three shipped as 5×24 targets in every DataGrid in every app — a control a reader can see and can
+      //    barely hit, and one a pointer user with any tremor cannot. Measured in real Chromium 2026-09-18 by
+      //    `admin-costs.mjs`'s clickable-target floor, which is the only tier that could have seen it: happy-dom
+      //    has no layout, so every existing DataGrid test passes on a 5-pixel button.
+      //    ⚑ The INTERIOR grows, not the row: 22×22 is inside the 24px header line, so no grid changes height.
+      Pressable(onClick: () => onMove(col.Name, -1), label: "Move " + col.Label + " left",
+                w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
+        Text("‹", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true);
+      }
+      Pressable(onClick: () => onMove(col.Name, 1), label: "Move " + col.Label + " right",
+                w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
+        Text("›", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true);
+      }
+      Pressable(onClick: () => onGroup(col.Name), label: (grouping ? "Ungroup " : "Group by ") + col.Label,
+                w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
+        Text(grouping ? "⊟" : "⊞", fontSize: FontSize.Caption,
+             color: grouping ? Colors.Primary : Colors.TextMuted, decorative: true);
+      }
+      Box(drag: col.Width, dragAxis: DragAxis.Horizontal, dragStep: 8, dragMin: 72, dragMax: 640, w: "6px", cursor: "col-resize");
+    }
+  }
+}
+
+/// ONE DATA CELL, DECLARED — the body's answer to `HeaderCell`, and structurally its twin: the sizing wrapper
+/// outside, the semantic element inside.
+[Composable][Part] component BodyCell() {
+  render { Row(role: UiRole.GridCell, align: Align.Center, w: "100%") { Slot; } }
+}
+
+/// One cell at this column's width — it neither shrinks under a long neighbour nor grows past its container.
+[Composable][Part] component FixedCell(int px, string? justify) {
+  variants { base { Display = Display.Flex; Shrink = 0; Overflow = Overflow.Hidden; } }
+  render { Row(w: px, align: Align.Center, justify: justify) { Slot; } }
+}
+
+/// The column that ABSORBS the leftover width — a long value ellipses inside it.
+[Composable][Part] component FillCell(string? justify) {
+  variants { base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; Overflow = Overflow.Hidden; } }
+  render { Row(align: Align.Center, justify: justify) { Slot; } }
+}
+
+/// One card — the narrow arm's row.
+[Composable][Part] component GridCard<T>(GridColumn<T>[] cols, List<string> order, List<string> hidden, T row) {
+  render {
+    Stack(gap: 1, p: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md, bg: Colors.Surface) {
+      foreach (var slot in cols) {
+       foreach (var c in cols) {
+        if (order.IndexOf(c.Name) == cols.IndexOf(slot) && !hidden.Contains(c.Name)) {
+      if (c.Title) { CardTitleLine { Slot(c.Name, row) { Text(c.Value(row)); } } }
+      else if (c.Secondary) { CardSubLine { Slot(c.Name, row) { Text(c.Value(row)); } } }
+      else {
+        Row(gap: 2, align: Align.Center) {
+          Text(c.Label, fontSize: FontSize.Caption, color: Colors.TextMuted);
+          Slot(c.Name, row) { Text(c.Value(row)); }
+        }
+      }
+        }
+       }
+      }
+    }
+  }
+}
+
+/// The card's heading line — the weight lives here so the SLOT's own content is styled the same as the fallback.
+[Composable][Part] component CardTitleLine() {
+  variants { base { Display = Display.Flex; FontWeight = FontWeight.Medium; } }
+  render { Row { Slot; } }
+}
+
+/// The card's muted subtitle line.
+[Composable][Part] component CardSubLine() {
+  variants { base { Display = Display.Flex; FontSize = FontSize.Caption; Color = Colors.TextMuted; } }
+  render { Row { Slot; } }
+}
+
+
+
+
+/// ONE GROUP BAND — its value, how many rows it holds, its totals, and a press to fold it away.
+/// Non-generic on purpose: a band knows nothing about the row type, so nothing here has to be.
+[Composable][Part] component GroupBand(string label, int count, string sums, bool collapsed, Action onToggle) {
+  render {
+    Pressable(onClick: onToggle, label: (collapsed ? "Expand " : "Collapse ") + label) {
+      Row(gap: 2, px: 3, py: 2, align: Align.Center, bg: Colors.Surface,
+          borderW: 1, border: Colors.Border, expanded: !collapsed) {
+        Text(collapsed ? "▶" : "▼", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true);
+        // An empty grouping value is a real group — say so, rather than rendering a blank band nobody
+        // can tell from a rendering fault.
+        Strong(label == "" ? "(none)" : label);
+        Text("(" + count.ToString() + ")", fontSize: FontSize.Caption, color: Colors.TextMuted);
+        Spacer();
+        if (sums != "") { Text(sums, fontSize: FontSize.Caption, color: Colors.TextSecondary); }
+      }
+    }
+  }
+}
+
+
+/// ONE TABLE ROW's cells — the wide arm's answer to `GridCard`, and extracted for the same reason:
+/// the grid renders rows from two places (flat, and inside a band) and a second copy of this markup
+/// would drift. A `Slot` resolves from in here exactly as it does from `GridCard`.
+[Composable][Part] component GridRowCells<T>(GridColumn<T>[] cols, List<string> order, List<string> hidden, T row) {
+  render {
+    Row(gap: 0, px: 3, py: 2, borderW: 1, border: Colors.Border, role: UiRole.GridRow) {
+      // See DataGrid's header loop: iterate the COLUMNS, never `order` — a foreach over strings stamps items.
+      foreach (var slot in cols) {
+        foreach (var c in cols) {
+          if (order.IndexOf(c.Name) == cols.IndexOf(slot) && !hidden.Contains(c.Name)) {
+            if (c.Fill) { FillCell(justify: c.Align) { BodyCell { Slot(c.Name, row) { Text(c.Value(row)); } } } }
+            else { FixedCell(px: c.Width, justify: c.Align) { BodyCell { Slot(c.Name, row) { Text(c.Value(row)); } } } }
+          }
+        }
+      }
+    }
+  }
+}

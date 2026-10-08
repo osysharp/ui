@@ -1,0 +1,20 @@
+// Osysharp.Ui AS A PACKAGE — §9 step 3, the acceptance test: no bundled path left to be second-class against.
+//
+// ⚠ THE BYTES ARE STILL EMBEDDED IN Platform.Core AND THIS MANIFEST DOES NOT CHANGE THAT. It is what makes this
+//    directory PACKABLE — `osy package pack` over it produces the archive `github.com/osysharp/ui` will publish,
+//    and packing it here is how the archive is proven to carry exactly what the binary ships before either moves.
+//    The move itself is the last mile and needs the repository to exist.
+//
+// Flat by declaration, not by convention: the kit has no `model/` folder, so it says so (design §5b ①, nothing
+// hardcodes a layout). `package.osy` is never matched by its own globs.
+package Osysharp.Ui {
+  version     "2.17.1";
+  minPlatform "0.9.0";
+  summary     "the general application vocabulary: buttons, fields, dialogs, the data grid, and the app shell.";
+
+  model "*.osy";
+  // The kit's test app — a framing workshop using the controls the way an app does. Not part of the package, and not
+  // embedded in the binary either (Platform.Core.csproj excludes `Capabilities\*\tests\**`), so the pre-warmed archive
+  // stays byte-identical to the one `osy package pack` builds from this directory.
+  tests "tests";
+}

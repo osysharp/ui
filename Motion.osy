@@ -1,0 +1,163 @@
+// Ui — THE MOTION VOCABULARY (`using Osysharp.Ui;`). D-HELPDESKDESIGN1, Docs/OsySharp/design/ui-kit/floor.md §5.
+//
+// Each animation here answers ONE question a reader has, and the kit's own controls use them for exactly that and
+// nothing else. An app uses them the same way (`animation: KitArrive`). Reduced motion is the platform's: movement
+// is stripped from every one of these and the fade kept, with nothing written here or at a use site.
+
+namespace Osysharp.Ui;
+
+/// "Which thing opened this?" — a menu or popover GROWS OUT OF ITS TRIGGER: a slight scale and a few pixels of travel
+/// from the trigger's side, 160ms. Pair it with `transformOrigin` naming the corner the trigger is at, which is what
+/// makes it read as coming FROM there rather than simply appearing.
+animation KitMenuGrow {
+  Duration = "160ms";
+  Easing = EaseOut;
+  from { Opacity = 0; Scale = "0.96"; TranslateY = "-4px"; }
+  to   { Opacity = 1; Scale = "1"; TranslateY = "0"; }
+}
+
+/// The same, for a menu that opens BESIDE its trigger (a rail's foot, a flyout).
+animation KitMenuGrowSide {
+  Duration = "160ms";
+  Easing = EaseOut;
+  from { Opacity = 0; Scale = "0.96"; TranslateX = "-4px"; }
+  to   { Opacity = 1; Scale = "1"; TranslateX = "0"; }
+}
+
+/// "What just arrived?" — a new row or message drops a few pixels into place, 420ms. Stagger a list of them with
+/// `animationDelay`.
+animation KitArrive {
+  Duration = "420ms";
+  Easing = EaseOut;
+  from { Opacity = 0; TranslateY = "-6px"; }
+  to   { Opacity = 1; TranslateY = "0"; }
+}
+
+/// "Where did that go?" — something removed slides and fades, 240ms, accelerating as it leaves. An `exitAnimation`.
+animation KitLeave {
+  Duration = "240ms";
+  Easing = EaseIn;
+  from { Opacity = 1; TranslateX = "0"; }
+  to   { Opacity = 0; TranslateX = "16px"; }
+}
+
+/// "Someone arrived" — an avatar or a presence mark appears from a little smaller, 240ms.
+animation KitPopIn {
+  Duration = "240ms";
+  Easing = EaseOut;
+  from { Opacity = 0; Scale = "0.8"; }
+  to   { Opacity = 1; Scale = "1"; }
+}
+
+/// "Did it land?" — a CHECK DRAWS ITSELF, once, 320ms: the line is hidden behind a dash as long as itself and the dash
+/// slides along it. Put it on the box around a stroked glyph — `Box(animation: KitDraw) { Icon(Icons.Check); }` — the
+/// icon's own lines take the dash (stroke props inherit). Sized for the 24-unit icon grid: any one line up to 24 units
+/// long draws whole, which is every tick and circle-tick in the set. Reduced motion: the check is simply there.
+/// To draw it each time something is saved rather than when it first appears, key it: `animationKey: savedAt`.
+animation KitDraw {
+  Duration = "320ms";
+  Easing = EaseOut;
+  from { StrokeDasharray = "24"; StrokeDashoffset = "24"; }
+  to   { StrokeDasharray = "24"; StrokeDashoffset = "0"; }
+}
+
+/// A mark that is not a line — a dot, a badge, a filled tile — settles into place with a small overshoot, once.
+/// (A line that should DRAW is `KitDraw`.)
+animation KitSettle {
+  Duration = "320ms";
+  Easing = EaseOut;
+  0%   { Opacity = 0; Scale = "0.6"; }
+  60%  { Opacity = 1; Scale = "1.12"; }
+  100% { Opacity = 1; Scale = "1"; }
+}
+
+/// "Is this live?" — a LAMP breathes: a ring of the accent expanding to nothing, every 2.4s. On the ring, never on the
+/// lamp itself, so the mark stays readable while it moves.
+animation KitBreathe {
+  Duration = "2.4s";
+  Easing = EaseOut;
+  Repeat = Infinite;
+  0%   { Opacity = 0.55; Scale = "1"; }
+  70%  { Opacity = 0; Scale = "2.2"; }
+  100% { Opacity = 0; Scale = "2.2"; }
+}
+
+/// "Something changed here" — a count that just moved nudges once, so a reader's eye goes to it without a flash.
+/// Key it to the count so it plays when the count MOVES and not when the page appears:
+/// `Box(animation: KitNudge, animationKey: unread) { Badge(unread.ToString()); }`.
+animation KitNudge {
+  Duration = "360ms";
+  Easing = EaseOut;
+  0%   { Scale = "1"; }
+  35%  { Scale = "1.18"; }
+  100% { Scale = "1"; }
+}
+
+/// A LIVE LAMP — the Switchboard floor's mark for "live, and yours": a dot in the accent with a breathing ring when
+/// `live`, or a hollow ring when it is not. Beside a queue with work in it, a ticket someone is typing on, a channel
+/// that is connected. `tone` picks the colour for a lamp that means something else (`Tone.Warning` for time running
+/// out, `Tone.Danger` for breached). `waiting` draws it in the floor's slate-violet — paused on somebody else (a
+/// ticket on hold, a request with a third party); hollow when unlit, like every lamp. Under reduced motion the ring
+/// holds still and the lamp stays lit.
+/// In a test it carries no text; assert the thing it sits beside.
+/// need: a status dot, a live indicator, a presence dot, an unread marker, an online dot, a waiting or on-hold dot
+/// e.g. `Lamp(live: true)` · `Lamp(lit: false)` · `Lamp(tone: Tone.Warning)` · `Lamp(lit: false, waiting: true)`
+[Composable]
+component Lamp(bool lit = true, bool live = false, Tone tone = Tone.Primary, bool waiting = false) {
+  variants {
+    base { Position = Position.Relative; W = "8px"; H = "8px"; Shrink = 0; Rounded = Radius.Circle; }
+    tone {
+      Default { Bg = Colors.TextMuted; }
+      Primary { Bg = Colors.Primary; }
+      Danger  { Bg = Colors.Danger; }
+      Success { Bg = Colors.Success; }
+      Warning { Bg = Colors.Warning; }
+      Ghost   { Bg = Colors.TextMuted; }
+    }
+    waiting { Bg = Colors.Waiting; }
+  }
+  render {
+    Box(decorative: true) {
+      if (lit && live) {
+        Box(position: Position.Absolute, inset: "0", rounded: Radius.Circle, bg: "inherit", animation: KitBreathe,
+            decorative: true);
+      }
+      // Unlit: a hollow ring — the same size, so a column of lamps stays aligned whatever each one says.
+      if (!lit && !waiting) {
+        Box(position: Position.Absolute, inset: "0", rounded: Radius.Circle, bg: Colors.Surface,
+            borderW: 1, border: Colors.TextMuted, decorative: true);
+      }
+      if (!lit && waiting) {
+        Box(position: Position.Absolute, inset: "0", rounded: Radius.Circle, bg: Colors.Surface,
+            borderW: "1.5px", border: Colors.Waiting, decorative: true);
+      }
+    }
+  }
+}
+
+/// "DID IT LAND?" — a tick that draws itself beside a word: "Saved", "Sent", "Copied". Show it when the thing has
+/// landed (`if (saved) { Done(); }`) and it draws once as it appears; announced politely (`role: Status`), so a screen
+/// reader hears the word without being interrupted. Reduced motion: the tick is simply there.
+/// In a test it is read as text: `Assert.Visible("Saved")`.
+/// need: a saved confirmation, a sent tick, a done mark, show that something succeeded, a check that draws itself
+/// e.g. `if (saved) { Done(); }` · `Done("Copied")` · `Done("Sent", tone: Tone.Default)`
+[Composable]
+component Done(string label = "Saved", Tone tone = Tone.Success) {
+  variants {
+    base { Display = Display.InlineFlex; FontSize = FontSize.Label; FontWeight = FontWeight.Medium; }
+    tone {
+      Default { Color = Colors.TextMuted; }
+      Primary { Color = Colors.Primary; }
+      Danger  { Color = Colors.Danger; }
+      Success { Color = Colors.Success; }
+      Warning { Color = Colors.Warning; }
+      Ghost   { Color = Colors.TextMuted; }
+    }
+  }
+  render {
+    Row(role: UiRole.Status, align: Align.Center, gap: 1) {
+      Box(animation: KitDraw, display: Display.InlineFlex, decorative: true) { Icon(Icons.Check, size: 14); }
+      Text(label);
+    }
+  }
+}

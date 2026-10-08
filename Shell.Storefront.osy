@@ -1,0 +1,683 @@
+// Ui — THE STOREFRONT SHELL. The first CONSUMER arrangement of the one `AppChrome` contract (`Shell.osy`).
+//
+//     [Layout] component Shell() {
+//       live var inBag = BagLine.Where(l => l.Visitor == Visitor.Id).Count();
+//       render {
+//         StorefrontShell(chrome, bagCount: inBag) {
+//           Outlet(retain: 8);
+//           slot promo  { StorePromo("Free delivery on orders over €80"); }
+//           slot bag    { BagContents(); }
+//           slot footer { StoreFooter(chrome, "Restored by hand in Gothenburg since 1998."); }
+//         }
+//       }
+//     }
+//
+// FOR DISCOVERY AND SELECTION: a shop, a restaurant's ordering site, a salon's booking site, ticketing — anything a
+// visitor BROWSES and then commits to (`Docs/OsySharp/shell_taxonomy.md`, the Storefront row). It should feel like a
+// destination, not like a business application, and that decides every choice below.
+//
+// ⛔ IT IS NOT THE SIDEBAR WITH THE RAIL MOVED TO THE TOP. A business shell organises an app around its FUNCTIONS and
+//    keeps them all one click away; a storefront organises a site around what it SELLS and keeps the chrome out of
+//    the way of it. So: the page runs FULL BLEED under a header (a hero, a product grid and a banner all reach the
+//    edges — `ShellBody`'s padded work column would frame every page like a form); the navigation is the catalogue's
+//    categories, not the app's areas; and the two persistent affordances are the ones a visitor keeps coming back to —
+//    search and the bag.
+//
+// ⭐ THE BAG IS AN OVERLAY, NOT A PAGE, and that is what makes it a storefront rather than a catalogue. Adding
+//    something and looking at what you have added must not cost a navigation away from what you were looking at. The
+//    bag slides in over the page from the edge it lives at (`StorefrontBagPanel`) and slides back out — the motion arc's
+//    `animation` and `exitAnimation` — over a scrim that closes it. A site with no bag (a salon's booking site) passes
+//    no `bagCount` and the whole affordance disappears; its call to action goes in `actions`.
+//
+// ⭐ CATEGORIES WITH CHILDREN OPEN A PANEL, and the panel has a TAP path. On a pointer a category with sub-categories
+//    is a button that opens a full-width panel under the header (`StorefrontCategoryPanel`) — every child as a link,
+//    plus "Shop all" to the category's own page — which is how the best shops present a catalogue deeper than one
+//    level. Nothing opens on hover alone: a hover-only menu does not exist on a touch screen (the shell standard,
+//    `Docs/reference/ui/shell.md#standard`).
+//
+// ⭐ THE BANDS:
+//   compact  < 768   a slim bar — menu, the brand centred, the bag — with the search slot under it and a BOTTOM BAR
+//                    (the first three categories, the bag, and "Menu"), which the taxonomy asks of a storefront: it is
+//                    strongly mobile-first. The menu is a drawer from the left holding the WHOLE category tree and the
+//                    account.
+//   cozy/wide 768+   one header: categories on the left, the brand CENTRED, search · actions · account · bag on the
+//                    right. The brand is centred because on a storefront it is the destination's name, not an app's
+//                    corner logo.
+//
+// ⚑ THE SLOTS: the same six every shell has (so switching arrangement drops nothing), plus three only a storefront
+//   needs — `promo` (the thin announcement bar above the header), `bag` (the bag panel's contents) and `footer`. Each is
+//   a POSITION: `StorePromo`, `StoreFooter` and whatever the app renders into `bag` bring their own chrome, so an
+//   unfilled slot costs nothing.
+
+namespace Osysharp.Ui;
+
+/// THE STOREFRONT SHELL — a header with the catalogue's categories, a centred brand, search and a bag that slides in over the page; a bottom bar and a category drawer on a phone; a full-bleed page and a footer. For a SHOP, a restaurant's ordering site, a salon's booking site, ticketing — anything a visitor browses and then commits to.
+/// Takes the same `AppChrome` and the same six slots as every other shell, plus `promo`, `bag` and `footer`.
+///
+/// `bagCount` is how many things are in the bag; leave it at `-1` (the default) for a site that has no bag, and the bag
+/// button, the bag panel and the phone bar's bag entry all disappear.
+///
+/// Slots, all optional:
+///   (default)   the routed page — `Outlet(retain: 8)`. It runs FULL BLEED: a page brings its own width.
+///   `promo`     the thin announcement bar above the header — `StorePromo("…")` is shaped for it
+///   `search`    the search affordance — in the header on a pointer, under the bar on a phone
+///   `actions`   controls beside search — a "Book now" button on a site with no bag
+///   `bag`       what the bag panel shows when it is open — the app's own lines, total and checkout button
+///   `footer`    the site footer — `StoreFooter(chrome, …)` is shaped for it
+///   `aside`, `railFoot`, `primary` — rendered under the page, so switching from another shell drops nothing
+///
+/// In a test the regions carry names: `Ui.Click("Road", within: "Categories")`, `Ui.Click("Bag")` while it is
+/// empty and `Ui.Click("Bag, 2 item(s)")` once it is not (a click matches a control's name EXACTLY, and the bag's
+/// name carries its count), `Ui.Click("Check out", within: "Bag")`.
+/// need: an online shop, a storefront, a booking site for a local business, a restaurant ordering site, a consumer website with a header nav, a cart that slides in
+/// e.g. `StorefrontShell(chrome, bagCount: inBag) { Outlet(retain: 8); slot bag { BagContents(); } slot footer { StoreFooter(chrome); } }`
+[Composable]
+component StorefrontShell(AppChrome chrome, int bagCount = -1, string bagLabel = "Bag") {
+  // ⭐ ONE OVERLAY, AND THE PAGE IT WAS OPENED ON. Every shell keeps the rule "opening one overlay closes every other";
+  //    holding a single `overlay` makes that a property of the data rather than something each action must remember.
+  //    ("bag" · "menu" (phone drawer) · "user" · "category:<key>" · "" = none.)
+  //
+  //    ⚑ AND IT IS OPEN ONLY ON THAT PAGE. The bag and the drawer hold the APP's content, and that content navigates:
+  //      a "Check out" button calling `Navigation.Go("/checkout")` inside the bag moved the page and left the bag
+  //      open OVER it, the checkout form inert behind a modal (measured 2026-09-26 by `demo/rust-and-chrome`'s own UI
+  //      test). The shell's own links closed it; nobody else's could. Deriving "open" from the route closes it on any
+  //      navigation, whoever made it — and needs no reaction, which could not write this state anyway.
+  string overlay = "";
+  string overlayAt = "";
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+  live var hasBag = bagCount >= 0;
+
+  live var shown = overlayAt == path ? overlay : "";
+  live var bagOpen = shown == "bag";
+  live var menuOpen = shown == "menu";
+  live var userMenuOpen = shown == "user";
+  // The category whose panel is open under the header ("" = none), by key.
+  live var openCategory = shown.StartsWith("category:") ? shown.Substring(9) : "";
+
+  action Toggle(string what) { overlay = shown == what ? "" : what; overlayAt = path; }
+  action ToggleBag() { Toggle("bag"); }
+  action ToggleMenu() { Toggle("menu"); }
+  action ToggleUserMenu() { Toggle("user"); }
+  action ToggleCategory(string key) { Toggle("category:" + key); }
+  // Each close shuts only its own overlay, so a late close from one that is already gone cannot shut another.
+  action CloseBag() { if (bagOpen) { overlay = ""; } }
+  action CloseMenu() { if (menuOpen) { overlay = ""; } }
+  action CloseUserMenu() { if (userMenuOpen) { overlay = ""; } }
+  action CloseCategory() { if (openCategory != "") { overlay = ""; } }
+  // Everything the shell owns, shut — before an app's own menu action runs.
+  action DismissAll() { overlay = ""; }
+  // A link was followed. The route change closes everything anyway; this also covers a link to the page already open.
+  action Navigated() { overlay = ""; }
+
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    // THE BAND IS READ HERE AND NOWHERE ELSE — `Layout.AtLeast` measures a rendered container, so it is legal in
+    // `render` only, and the frame receives it as a parameter.
+    StorefrontFrame(chrome, !Layout.AtLeast(Tablet), current, hasUser, hasMenu, hasBag, bagCount, bagLabel,
+                    bagOpen, menuOpen, userMenuOpen, openCategory,
+                    ToggleBag, CloseBag, ToggleMenu, CloseMenu, ToggleUserMenu, CloseUserMenu,
+                    ToggleCategory, CloseCategory, DismissAll, Navigated) {
+      slot page { Slot; }
+      slot promo { Slot("promo"); }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot bag { Slot("bag"); }
+      slot footer { Slot("footer"); }
+      slot aside { Slot("aside"); }
+      slot railFoot { Slot("railFoot"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the shell DRAWS, once the band has been decided.
+[Composable, Part]
+component StorefrontFrame(
+    AppChrome chrome, bool isPhone, string current, bool hasUser, bool hasMenu, bool hasBag, int bagCount,
+    string bagLabel, bool bagOpen, bool menuOpen, bool userMenuOpen, string openCategory,
+    Action onToggleBag, Action onCloseBag, Action onToggleMenu, Action onCloseMenu,
+    Action onToggleUserMenu, Action onCloseUserMenu, Action<string> onToggleCategory, Action onCloseCategory,
+    Action onDismissAll, Action onNavigated) {
+  live var categories = chrome.Primary();
+  live var barItems = chrome.BarItems(3);
+  live var open = categories.FirstOrDefault(c => c.Key() == openCategory);
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      Slot("promo");
+
+      // The header pins as ONE box with its category panel, so the panel can never be left behind a scrolled header.
+      Stack(gap: 0, position: Position.Sticky, top: "0", z: ZIndex.Sticky) {
+        if (!isPhone) {
+          StorefrontHeader(chrome, categories, current, openCategory, hasUser, hasMenu, hasBag, bagCount, bagLabel,
+                           bagOpen, userMenuOpen, onToggleBag, onToggleUserMenu, onCloseUserMenu, onToggleCategory,
+                           onDismissAll, onNavigated) {
+            slot search { Slot("search"); }
+            slot actions { Slot("actions"); }
+          }
+          if (open != null) { StorefrontCategoryPanel(open, current, onNavigated); }
+        }
+        if (isPhone) {
+          StorefrontPhoneHeader(chrome, hasBag, bagCount, bagLabel, bagOpen, menuOpen, onToggleBag, onToggleMenu) {
+            slot actions { Slot("actions"); }
+          }
+        }
+      }
+      if (isPhone) { StorefrontPhoneSearch { Slot("search"); } }
+
+      // ⭐ FULL BLEED. The page brings its own width, so a hero and a banner can reach the edges.
+      Stack(gap: 0, grow: 1, minW: "0", role: UiRole.Main, label: "Page") {
+        Slot("page");
+        Slot("aside");
+        Slot("railFoot");
+      }
+      Slot("primary");
+      Slot("footer");
+
+      // A phone's page must not end UNDER the fixed bar.
+      if (isPhone) { Box(h: "calc(3.75rem + env(safe-area-inset-bottom))", decorative: true); }
+    }
+
+    if (isPhone) {
+      StorefrontPhoneBar(barItems, current, hasBag, bagCount, bagLabel, bagOpen, menuOpen, onToggleBag, onToggleMenu,
+                         onNavigated);
+    }
+
+    // Overlays live at the FRAME's root, outside the header, so no sticky box or overflow can clip them.
+    if (open != null && !isPhone) { Backdrop(onCloseCategory); }
+    if (bagOpen && hasBag) {
+      StorefrontScrim(onCloseBag);
+      StorefrontBagPanel(bagLabel, bagCount, onCloseBag) { Slot("bag"); }
+    }
+    if (menuOpen && isPhone) {
+      StorefrontScrim(onCloseMenu);
+      StorefrontMenuDrawer(chrome, categories, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+    }
+    if (userMenuOpen && hasMenu && !isPhone) { Backdrop(onCloseUserMenu); }
+  }
+}
+
+// ── the pointer header ─────────────────────────────────────────────────────────────────────────────────────
+
+/// THE HEADER — categories left, the brand centred, search · actions · account · bag right. A `banner` landmark.
+/// Three columns with the outer two sharing the remaining width equally, so the brand sits at the true centre of the
+/// page whatever the categories and the right-hand controls measure.
+[Composable, Part]
+component StorefrontHeader(
+    AppChrome chrome, NavItem[] categories, string current, string openCategory, bool hasUser, bool hasMenu,
+    bool hasBag, int bagCount, string bagLabel, bool bagOpen, bool userMenuOpen,
+    Action onToggleBag, Action onToggleUserMenu, Action onCloseUserMenu, Action<string> onToggleCategory,
+    Action onDismissAll, Action onNavigated) {
+  variants {
+    base { Bg = Colors.Surface; Color = Colors.OnSurface; BorderBW = 1; Border = Colors.Border; }
+  }
+  render {
+    Row(role: UiRole.Banner, label: "Site header", align: Align.Center, gap: 4, px: 6, minH: Length.StoreHeaderH,
+        cols: "1fr auto 1fr", display: Display.Grid) {
+      Row(role: UiRole.Navigation, label: "Categories", align: Align.Center, gap: 1, minW: "0", overflowX: Overflow.Auto,
+          scrollbarWidth: ScrollbarWidth.None) {
+        foreach (var c in categories) {
+          StorefrontCategory(c, c.State(current), openCategory == c.Key(), onToggleCategory, onNavigated);
+        }
+      }
+      StorefrontBrand(chrome, onNavigated);
+      Row(align: Align.Center, justify: Justify.End, gap: 2, minW: "0") {
+        Slot("search");
+        Slot("actions");
+        if (hasUser) {
+          Box(position: Position.Relative) {
+            ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
+            if (userMenuOpen && hasMenu) {
+              Box(position: Position.Absolute, top: "calc(100% + 8px)", right: "0", z: ZIndex.Popover) {
+                Menu { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+              }
+            }
+          }
+        }
+        if (hasBag) { StorefrontBagButton(bagCount, bagLabel, bagOpen, onToggleBag); }
+      }
+    }
+  }
+}
+
+/// The brand as a WORDMARK — the destination's name, set in the display face, centred. A mark image replaces the word
+/// when the app gives one (`MarkSrc`), because a real shop's logo is a drawn thing, not a font.
+[Composable, Part]
+component StorefrontBrand(AppChrome chrome, Action onNavigated) {
+  variants {
+    base { Color = Colors.OnSurface; TextDecoration = TextDecoration.None;
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: chrome.Home, label: chrome.Product, onClick: onNavigated) {
+      if (chrome.MarkSrc != "") {
+        Image(chrome.MarkSrc, alt: chrome.Product, h: "28px");
+      } else {
+        Text(chrome.Product, fontFamily: Font.Display, fontSize: FontSize.StoreBrand, fontWeight: FontWeight.Semibold,
+             letterSpacing: "-0.01em", whiteSpace: WhiteSpace.Nowrap);
+      }
+    }
+  }
+}
+
+/// ONE CATEGORY in the header. A category with sub-categories is a BUTTON that opens its panel; one without is a
+/// link. Both carry the same quiet underline that marks the category you are in.
+[Composable, Part]
+component StorefrontCategory(NavItem item, NavState state, bool open, Action<string> onToggle, Action onNavigated) {
+  render {
+    if (item.Children.Length > 0) {
+      StorefrontCategoryButton(item.Label, state, open, () => onToggle(item.Key()));
+    } else {
+      StorefrontCategoryLink(item.Label, item.To, state, onNavigated);
+    }
+  }
+}
+
+[Composable, Part]
+component StorefrontCategoryLink(string label, string to, NavState state, Action onNavigated) {
+  variants {
+    base { Display = Display.InlineFlex; MinH = Length.Touch; Px = 3;
+           FontSize = FontSize.Body; LetterSpacing = "0.01em"; Color = Colors.TextSecondary; WhiteSpace = WhiteSpace.Nowrap;
+           TextDecoration = TextDecoration.None; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
+      Trail   { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
+      Idle    { }
+    }
+  }
+  render {
+    Link(href: to, label: StoreLinkName(label, to), current: state == NavState.Current, onClick: onNavigated) {
+      // ⚑ The row carries its own touch height rather than `h: 100%`: the link's height is a MIN-height, which a
+      //   percentage cannot resolve against, so the label sat at the top while the category button beside it centred.
+      Row(align: Align.Center, minH: Length.Touch, gap: 1) { Text(label); StoreOutsideMark(to); }
+    }
+  }
+}
+
+[Composable, Part]
+component StorefrontCategoryButton(string label, NavState state, bool open, Action onPress) {
+  variants {
+    base { Display = Display.InlineFlex; Gap = 1; MinH = Length.Touch; Px = 3;
+           FontSize = FontSize.Body; LetterSpacing = "0.01em"; Color = Colors.TextSecondary; WhiteSpace = WhiteSpace.Nowrap;
+           Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
+      Trail   { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
+      Idle    { }
+    }
+  }
+  render {
+    Pressable(onClick: onPress, label: label, expanded: open) {
+      Row(gap: 1, align: Align.Center, minH: Length.Touch) {
+        Text(label);
+        Icon(open ? Icons.ChevronUp : Icons.ChevronDown, size: 14);
+      }
+    }
+  }
+}
+
+/// THE CATEGORY PANEL — every sub-category of the open category as a link, under the header, full width, with "Shop
+/// all" to the category's own page first. It arrives with a short drop and leaves with a fade.
+[Composable, Part]
+component StorefrontCategoryPanel(NavItem category, string current, Action onNavigated) {
+  variants {
+    base { Bg = Colors.Surface; BorderBW = 1; Border = Colors.Border; Shadow = Shadow.Floating;
+           Animation = StorefrontDrop; ExitAnimation = StorefrontFadeOut; }
+  }
+  render {
+    // Named "<category> menu", never the category's bare label: the button that opens it carries that name, and two
+    // regions with one name are one ambiguous target to a screen reader (and to a test's `within:`).
+    Stack(role: UiRole.Navigation, label: $"{category.Label} menu", gap: 3, px: 6, py: 6) {
+      Text(category.Label, fontFamily: Font.Display, fontSize: FontSize.Title, color: Colors.OnSurface);
+      Row(gap: 6, wrap: Wrapping.Wrap, align: Align.Start) {
+        StorefrontPanelLink("Shop all", category.FirstRoute(), category.State(current) == NavState.Current, onNavigated);
+        foreach (var child in category.Children) {
+          StorefrontPanelLink(child.Label, child.FirstRoute(), child.State(current) == NavState.Current, onNavigated);
+        }
+      }
+    }
+  }
+}
+
+[Composable, Part]
+component StorefrontPanelLink(string label, string to, bool isCurrent, Action onNavigated) {
+  variants {
+    base { Display = Display.InlineFlex; MinH = Length.Touch; FontSize = FontSize.Body;
+           Color = Colors.TextSecondary; TextDecoration = TextDecoration.None; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: to, label: StoreLinkName(label, to), current: isCurrent, onClick: onNavigated) {
+      Row(align: Align.Center, minH: Length.Touch, gap: 1) {
+        Text(label, color: isCurrent ? Colors.OnSurface : Colors.TextSecondary);
+        StoreOutsideMark(to);
+      }
+    }
+  }
+}
+
+/// THE BAG BUTTON — the bag glyph, and a count that appears only when there is something in it.
+[Composable, Part]
+component StorefrontBagButton(int count, string label, bool open, Action onPress) {
+  variants {
+    base { Display = Display.InlineFlex;
+           MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Pill; Color = Colors.OnSurface;
+           Transition = Motion.Fast; Position = Position.Relative;
+           Hover { Bg = Colors.Muted; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: count > 0 ? $"{label}, {count} item(s)" : label, expanded: open) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", minH: Length.Touch) {
+        Icon(Icons.Bag, size: 22);
+        if (count > 0) { StorefrontCount(count); }
+      }
+    }
+  }
+}
+
+/// The small count on the bag. It pops in when it first appears, so adding the first thing is felt as well as seen.
+[Composable, Part]
+component StorefrontCount(int count) {
+  variants {
+    base { Position = Position.Absolute; Top = "4px"; Right = "2px"; MinW = "18px"; H = "18px"; Px = 1;
+           Rounded = Radius.Pill; Bg = Colors.Primary; Color = Colors.OnPrimary; FontSize = "11px";
+           FontWeight = FontWeight.Semibold; Display = Display.InlineFlex;
+           Animation = StorefrontPop; }
+  }
+  // ⛔ NO `w`/`h` HERE. `variants` merge onto this Row, and an argument written on it wins over the variant — so
+  //    `w: "100%", h: "100%"` replaced the badge's 18px with the size of the BAG BUTTON it is positioned against, and
+  //    the count covered the whole icon as a 44px block (measured 2026-09-26, the first shot with anything in the bag).
+  render { Row(align: Align.Center, justify: Justify.Center) { Text($"{count}", decorative: true); } }
+}
+
+// ── the bag panel ──────────────────────────────────────────────────────────────────────────────────────────
+
+/// THE BAG — a panel over the page from the right edge, over a scrim that closes it. It slides in, and slides back out
+/// when it closes; while it leaves it takes no click.
+[Composable, Part]
+component StorefrontBagPanel(string label, int count, Action onClose) {
+  variants {
+    base { Position = Position.Fixed; Top = "0"; Right = "0"; Bottom = "0"; W = "min(440px, 100vw)"; Z = ZIndex.Drawer;
+           Bg = Colors.Surface; Color = Colors.OnSurface; Shadow = Shadow.Deep;
+           Animation = StorefrontSlideFromRight; ExitAnimation = StorefrontSlideToRight; }
+  }
+  render {
+    Stack(role: UiRole.Dialog, label: label, gap: 0, h: "100%") {
+      Row(align: Align.Center, justify: Justify.Between, px: 6, minH: Length.StoreHeaderH, borderBW: 1, border: Colors.Border) {
+        Row(gap: 2, align: Align.Baseline) {
+          Text(label, fontFamily: Font.Display, fontSize: FontSize.Title);
+          if (count > 0) { Text($"{count}", color: Colors.TextMuted); }
+        }
+        IconButton("Close", onClose) { Icon(Icons.Close); }
+      }
+      Stack(gap: 0, grow: 1, minH: "0", overflowY: Overflow.Auto, px: 6, py: 5) { Slot; }
+    }
+  }
+}
+
+/// The dim behind the bag and the phone menu — fades in, fades out.
+[Composable, Part]
+component StorefrontScrim(Action onDismiss) {
+  variants { base { Animation = StorefrontFadeIn; ExitAnimation = StorefrontFadeOut; } }
+  render { Scrim(onDismiss); }
+}
+
+// ── the phone band ─────────────────────────────────────────────────────────────────────────────────────────
+
+/// THE PHONE HEADER — menu, the brand centred, the page's actions and the bag.
+[Composable, Part]
+component StorefrontPhoneHeader(AppChrome chrome, bool hasBag, int bagCount, string bagLabel, bool bagOpen, bool menuOpen,
+                                Action onToggleBag, Action onToggleMenu) {
+  variants { base { Bg = Colors.Surface; Color = Colors.OnSurface; BorderBW = 1; Border = Colors.Border; } }
+  render {
+    Row(role: UiRole.Banner, label: "Site header", align: Align.Center, gap: 2, px: 2, minH: Length.AppBarH,
+        display: Display.Grid, cols: "1fr auto 1fr") {
+      Row(align: Align.Center) {
+        StorefrontMenuButton(menuOpen, onToggleMenu);
+      }
+      StorefrontBrand(chrome, onToggleMenu);
+      Row(align: Align.Center, justify: Justify.End, gap: 1) {
+        Slot("actions");
+        if (hasBag) { StorefrontBagButton(bagCount, bagLabel, bagOpen, onToggleBag); }
+      }
+    }
+  }
+}
+
+/// The phone header's menu button — a full touch target around the glyph.
+[Composable, Part]
+component StorefrontMenuButton(bool open, Action onPress) {
+  variants {
+    base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Pill;
+           Color = Colors.OnSurface; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: "Menu", expanded: open) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", minH: Length.Touch) { Icon(Icons.Menu, size: 22); }
+    }
+  }
+}
+
+/// The search slot on a phone — a full-width row under the bar, where a thumb reaches it.
+[Composable, Part]
+component StorefrontPhoneSearch() {
+  variants { base { Px = 3; Py = 2; Bg = Colors.Surface; BorderBW = 1; Border = Colors.Border; } }
+  render { Box { Slot; } }
+}
+
+/// THE PHONE BOTTOM BAR — the first three categories, the bag and "Menu". Fixed to the foot, above the home indicator.
+[Composable, Part]
+component StorefrontPhoneBar(NavItem[] items, string current, bool hasBag, int bagCount, string bagLabel, bool bagOpen,
+                             bool menuOpen, Action onToggleBag, Action onToggleMenu, Action onNavigated) {
+  variants {
+    base { Position = Position.Fixed; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Drawer;
+           Bg = Colors.Surface; BorderTW = 1; Border = Colors.Border;
+           Pb = "env(safe-area-inset-bottom)"; Tablet { Display = Display.None; } }
+  }
+  render {
+    Row(role: UiRole.Navigation, label: "Shop navigation", align: Align.Stretch, justify: Justify.Around, minH: "3.75rem") {
+      foreach (var item in items) { TabbedPhoneTab(item, item.State(current), onNavigated); }
+      if (hasBag) {
+        StorefrontPhoneButton(bagCount > 0 ? $"{bagLabel} ({bagCount})" : bagLabel, Icons.Bag, bagOpen, onToggleBag);
+      }
+      StorefrontPhoneButton("Menu", Icons.Menu, menuOpen, onToggleMenu);
+    }
+  }
+}
+
+[Composable, Part]
+component StorefrontPhoneButton(string label, Icons icon, bool open, Action onPress) {
+  variants {
+    base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; MinH = Length.Touch;
+           Color = Colors.TextMuted; Transition = Motion.Fast;
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: label, expanded: open) {
+      Stack(gap: 0, align: Align.Center, justify: Justify.Center, w: "100%", minH: Length.Touch, px: 1, py: 1) {
+        Icon(icon, size: 20);
+        Text(label, fontSize: "11px", whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis, maxW: "100%");
+      }
+    }
+  }
+}
+
+/// THE PHONE MENU — the WHOLE category tree and the account, in a drawer from the left.
+[Composable, Part]
+component StorefrontMenuDrawer(AppChrome chrome, NavItem[] categories, string current, bool hasUser, bool hasMenu,
+                               Action onClose, Action onDismissAll, Action onNavigated) {
+  variants {
+    base { Position = Position.Fixed; Top = "0"; Left = "0"; Bottom = "0"; W = "min(360px, 88vw)"; Z = ZIndex.Drawer;
+           Bg = Colors.Surface; Color = Colors.OnSurface; Shadow = Shadow.Deep; OverflowY = Overflow.Auto;
+           Animation = StorefrontSlideFromLeft; ExitAnimation = StorefrontSlideToLeft; }
+  }
+  render {
+    Stack(role: UiRole.Dialog, label: "Menu", gap: 0) {
+      Row(align: Align.Center, justify: Justify.Between, px: 4, minH: Length.AppBarH, borderBW: 1, border: Colors.Border) {
+        StorefrontBrand(chrome, onNavigated);
+        IconButton("Close", onClose) { Icon(Icons.Close); }
+      }
+      Stack(role: UiRole.Navigation, label: "Categories", gap: 0, px: 2, py: 3) {
+        foreach (var c in categories) {
+          StorefrontDrawerLink(c.Label, c.FirstRoute(), c.State(current) == NavState.Current, false, onNavigated);
+          foreach (var child in c.Children) {
+            StorefrontDrawerLink(child.Label, child.FirstRoute(), child.State(current) == NavState.Current, true, onNavigated);
+          }
+        }
+      }
+      if (hasUser && hasMenu) {
+        Stack(gap: 0, px: 2, py: 3, borderTW: 1, border: Colors.Border) {
+          ShellSheetIdentity(chrome.User);
+          ShellMenuItems(chrome.User.Menu, onDismissAll);
+        }
+      }
+    }
+  }
+}
+
+[Composable, Part]
+component StorefrontDrawerLink(string label, string to, bool isCurrent, bool nested, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.Touch; Px = 3; Rounded = Radius.Md;
+           TextDecoration = TextDecoration.None; Color = Colors.OnSurface; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: to, label: StoreLinkName(label, to), current: isCurrent, onClick: onNavigated) {
+      Row(align: Align.Center, w: "100%", minH: Length.Touch, pl: nested ? 4 : 0, gap: 1) {
+        Text(label, fontSize: nested ? FontSize.Body : FontSize.Subhead,
+             color: nested ? Colors.TextSecondary : Colors.OnSurface,
+             fontWeight: isCurrent ? FontWeight.Semibold : FontWeight.Regular);
+        StoreOutsideMark(to);
+      }
+    }
+  }
+}
+
+// ── the controls a storefront's slots are shaped for ───────────────────────────────────────────────────────
+
+/// THE ANNOUNCEMENT BAR — one line above the header: free delivery, opening hours, a new collection. Quiet, centred,
+/// and optionally a link.
+/// need: a thin announcement bar above a site header, a promo strip, a banner with an offer
+/// e.g. `slot promo { StorePromo("Free delivery on orders over €80"); }`
+/// e.g. `slot promo { StorePromo("Now booking December", linkLabel: "Book a time", to: "/book"); }`
+[Composable]
+component StorePromo(string text, string linkLabel = "", string to = "") {
+  variants {
+    base { Bg = Colors.OnBg; Color = Colors.Bg; Px = 4; Py = 2; }
+  }
+  render {
+    Row(role: UiRole.Region, label: "Announcement", gap: 3, justify: Justify.Center, align: Align.Center, wrap: Wrapping.Wrap) {
+      Text(text, fontSize: FontSize.Caption, letterSpacing: "0.06em", textAlign: TextAlign.Center);
+      if (linkLabel != "" && to != "") {
+        Link(href: to, label: linkLabel) {
+          Text(linkLabel, fontSize: FontSize.Caption, letterSpacing: "0.06em", textDecoration: TextDecoration.Underline);
+        }
+      }
+    }
+  }
+}
+
+/// THE SITE FOOTER — the brand and a line about it, the catalogue's categories as columns of links, and a closing line.
+/// Generous and quiet, the way the best shops end a page. A `contentinfo` landmark.
+/// need: a website footer, a site footer with links, a shop footer
+/// e.g. `slot footer { StoreFooter(chrome, "Restored by hand in Gothenburg since 1998.", note: "© 2026 Rust & Chrome"); }`
+/// Its `about` slot sits under the name — where a region of footer blocks goes, so staff arrange what it says:
+/// e.g. `StoreFooter(chrome, note: "…") { slot about { Region("footer", allow: [FooterWords, …]) { FooterWords(words: "…"); } } }`
+[Composable]
+component StoreFooter(AppChrome chrome, string blurb = "", string note = "") {
+  variants {
+    base { Bg = Colors.Surface; Color = Colors.OnSurface; BorderTW = 1; Border = Colors.Border; Px = 6; Pt = 16; Pb = 8; }
+  }
+  render {
+    Stack(role: UiRole.ContentInfo, label: "Site footer", gap: 12) {
+      Row(gap: 12, wrap: Wrapping.Wrap, align: Align.Start) {
+        Stack(gap: 3, maxW: "320px", minW: "220px") {
+          Text(chrome.Product, fontFamily: Font.Display, fontSize: FontSize.Title);
+          if (blurb != "") { Text(blurb, color: Colors.TextMuted, lineHeight: "1.6"); }
+          // Under the name: what the site says about itself — a region of footer blocks staff arrange (D-SITEFRAME1),
+          // or anything else the app puts here.
+          Slot("about");
+        }
+        // A CATEGORY (it has children) is a column under its own heading. A FLAT item is not — its heading and its one
+        // link read the same word ("ARCHIVE / Archive"), the eyebrow tell written by the kit itself (salon S0 run 2,
+        // 2026-09-26). So the flat items share one plain column of links, with no heading at all.
+        foreach (var c in chrome.Primary()) {
+          if (c.Children.Length > 0) {
+            Stack(gap: 2, minW: "140px") {
+              Text(c.Label, fontSize: FontSize.Caption, letterSpacing: "0.08em", textTransform: TextTransform.Uppercase,
+                   color: Colors.TextMuted);
+              StoreFooterLink("Shop all", c.FirstRoute());
+              foreach (var child in c.Children) { StoreFooterLink(child.Label, child.FirstRoute()); }
+            }
+          }
+        }
+        if (chrome.Primary().Any(c => c.Children.Length == 0)) {
+          Stack(gap: 2, minW: "140px") {
+            foreach (var c in chrome.Primary()) {
+              if (c.Children.Length == 0) { StoreFooterLink(c.Label, c.FirstRoute()); }
+            }
+          }
+        }
+      }
+      Row(gap: 3, justify: Justify.Between, wrap: Wrapping.Wrap, borderTW: 1, border: Colors.Border, pt: 5) {
+        Text(note != "" ? note : chrome.Product, fontSize: FontSize.Caption, color: Colors.TextMuted);
+        if (chrome.Tagline != "") { Text(chrome.Tagline, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+      }
+    }
+  }
+}
+
+[Composable, Part]
+component StoreFooterLink(string label, string to) {
+  variants {
+    base { Color = Colors.TextSecondary; TextDecoration = TextDecoration.None; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; } }
+  }
+  render {
+    Link(href: to, label: StoreLinkName(label, to)) {
+      Text(label, fontSize: FontSize.Body);
+      StoreOutsideMark(to);
+    }
+  }
+}
+
+/// A link's accessible name — its words, and, for an address outside the site, that it leads there.
+string StoreLinkName(string label, string to) {
+  return to.StartsWith("https://") || to.StartsWith("http://") ? $"{label} (another site)" : label;
+}
+
+/// The outside glyph after a link to an address outside the site; nothing for a page of the site. A menu staff edit may
+/// hold an outside address (D-SITEFRAME1), and a customer should know before pressing that it leaves the shop.
+[Composable, Part]
+component StoreOutsideMark(string to) {
+  render {
+    if (to.StartsWith("https://") || to.StartsWith("http://")) { Icon(Icons.ExternalLink, size: 14); }
+  }
+}
+
+// ── the storefront's motion ────────────────────────────────────────────────────────────────────────────────
+
+animation StorefrontSlideFromRight { Duration = "320ms"; Easing = EaseOut; from { TranslateX = "100%"; } to { TranslateX = "0"; } }
+animation StorefrontSlideToRight   { Duration = "240ms"; Easing = EaseIn;  from { TranslateX = "0"; } to { TranslateX = "100%"; } }
+animation StorefrontSlideFromLeft  { Duration = "300ms"; Easing = EaseOut; from { TranslateX = "-100%"; } to { TranslateX = "0"; } }
+animation StorefrontSlideToLeft    { Duration = "220ms"; Easing = EaseIn;  from { TranslateX = "0"; } to { TranslateX = "-100%"; } }
+animation StorefrontDrop           { Duration = "220ms"; Easing = EaseOut; from { Opacity = 0; TranslateY = "-8px"; } to { Opacity = 1; TranslateY = "0"; } }
+animation StorefrontFadeIn         { Duration = "240ms"; Easing = EaseOut; from { Opacity = 0; } to { Opacity = 1; } }
+animation StorefrontFadeOut        { Duration = "180ms"; Easing = EaseIn;  from { Opacity = 1; } to { Opacity = 0; } }
+animation StorefrontPop            { Duration = "260ms"; Easing = EaseOut; from { Scale = "0.4"; Opacity = 0; } to { Scale = "1"; Opacity = 1; } }

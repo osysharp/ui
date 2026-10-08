@@ -1,0 +1,68 @@
+// The settings area: the workshop's sections gathered from everything that announces one (`ISettingsProvider`), shown
+// to whoever may open each; who last changed a section (the change trail `Osysharp.Observability` keeps); and a rule
+// the head office sets, which the workshop sees and cannot change (`IOrgPolicySource`).
+
+/// What the pretend head office sets — one row per setting, written by a test.
+entity HeadOfficeRule {
+  [Required, MaxLength(200)] string Setting;
+  security { allow read, create when IsAuthenticated; }
+}
+
+/// A stand-in for the org layer's package, which is what supplies an organisation's rules to an app: the head office
+/// sets whatever a test wrote down. Discovered like any implementation — nothing wires it.
+public class PretendHeadOffice : IOrgPolicySource {
+  public bool Sets(string setting) { return HeadOfficeRule.Any(r => r.Setting == setting); }
+}
+
+/// The owner sees every section the workshop has — the one declared on its row and the one its price list announces —
+/// under the group they share; a framer, whom neither lets in, is shown neither.
+[Test(Workshop)]
+void the_settings_area_gathers_each_section_for_whoever_may_open_it() {
+  runas (Ines) {
+    var sections = AnnouncedSettings().Where(s => s.Group == "The workshop").Select(s => s.Label).ToList();
+    Assert.Equal(["Workshop", "Price list"], sections);
+  }
+  runas (Tom) { Assert.False(AnnouncedSettings().Any(s => s.Group == "The workshop")); }
+
+  Ui.SignInAs(Ines);
+  Ui.Visit("/settings");
+  Ui.Click("Price list", within: "Settings sections");
+  Assert.Visible("Walnut — 64 a metre");
+}
+
+/// Saving a section records who changed it, and the section says so — on its own page, and wherever the workshop asks.
+[Test(Workshop)]
+void a_saved_section_says_who_changed_it() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/settings/workshop");
+  Assert.Checked("Take rush orders");
+  Assert.Hidden("Changed by");
+  Ui.Click("Take rush orders");
+  Ui.Click("Save");
+  Assert.Visible("Workshop settings saved.");
+  Assert.Visible("Changed by ines@frames.test", within: "Orders");
+  Assert.Hidden("Changed by", within: "Glass");
+  runas (Ines) {
+    var row = WorkshopSettings.Single();
+    Assert.False(row.TakesRushOrders);
+    Assert.StartsWith("Changed by ines@frames.test", RushRuleChangedBy(row));
+  }
+}
+
+/// A rule the head office sets is the organisation's: the workshop is told so, and cannot change it — while the rules it
+/// does not set stay the workshop's own.
+[TestFixture]
+void HeadOfficeSetsTheGlass() {
+  Workshop();
+  new HeadOfficeRule { Setting = "WorkshopSettings.MuseumGlass" };
+}
+
+[Test(HeadOfficeSetsTheGlass)]
+void a_rule_the_head_office_sets_cannot_be_changed_here() {
+  runas (Ines) { Assert.True(SetByOrganization<WorkshopSettings>(w => w.MuseumGlass)); }
+  Ui.SignInAs(Ines);
+  Ui.Visit("/settings/workshop");
+  Assert.Visible("Set by your organization", within: "Glass");
+  Assert.Disabled("Museum glass");
+  Assert.Enabled("Take rush orders");
+}

@@ -1,0 +1,109 @@
+// Ui — Field, the kit's labelled text input (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A labelled text input. `Field("Name", value: draft.Name)` — `value` is a two-way binding, so typing updates
+/// the bound field directly. Pass `error` to mark it invalid and show the message; pass `hint` for help text
+/// (the error replaces the hint while it is present, so the row never grows). Pass `type` for the kinds of text a
+/// browser knows about — `"password"` masks what is typed, `"email"`/`"tel"` change the keyboard a phone shows.
+/// In a test it is filled by its label: `Ui.Fill("Email", "ada@example.com")`.
+/// ⚠ FOR A NUMBER, REACH FOR `NumberField` (whole) or `DecimalField` (money, a measurement, a rate) — they bind a
+/// number DIRECTLY, and their range reaches the input itself. `type:` is the browser's input type, not a value
+/// type, so `type: "number"`
+/// here still binds a `string` and leaves you parsing it by hand on submit.
+/// `value` takes an assignable field of your component, a field of an ENTITY row, or a `Binding<T>` you were
+/// handed — a field of a `class` value is refused, because there is no row to write the edit through.
+/// need: a labelled text input, type a short string, a single-line text box, capture a name or a title
+[Composable]
+component Field(
+    string label,
+    Binding<string> value,
+    string placeholder = "",
+    string hint = "",
+    string error = "",
+    string type = "text",
+    // ⭐ ENTER SUBMITS. A labelled text field is where a person types one thing and presses Return — a search box,
+    //   an "add card" row, a login. The ATOM has always had `onEnter:`, so an author who wanted it had to abandon
+    //   the control and drop to `Input(...)`, losing the label, the hint and the error row with it. Measured on
+    //   `demo/kanban`, the sample `osy docs sample kanban` serves: it writes a bare `Input(value:, label:,
+    //   placeholder:, onEnter:)` for exactly this reason, and every reader of that sample learns the atom.
+    Action onEnter = null,
+    bool disabled = false)
+{
+  variants {
+    // ⭐ `W`/`MinW`, SO A FIELD TAKES ITS SHARE OF A ROW. Without them a `Field` in a `Row` is sized by the browser's
+    //   user-agent default for `<input>` — 20 characters, ~201px — which is a 1995 default, not a design-system one,
+    //   and it is the ONLY control in this kit that got its width from outside the theme.
+    // ⚠ THE FAILURE IS SILENT AND NO TEXT ASSERTION CAN SEE IT. Measured 2026-09-04 on a generated app:
+    //   `Row(gap: 3) { Field("Station", …); Field("Operator", placeholder: "who runs it — can be blank"); }` in a 670px
+    //   row gave each field 201px and left 256px of the row EMPTY, and the second placeholder — 203px of text in a
+    //   175px content box — rendered as "who runs it — can be bl" and stopped. An `<input>` reports
+    //   `scrollWidth === clientWidth` whatever its placeholder does, so `Assert.FitsOn` said it fitted; the DOM
+    //   `placeholder` attribute still reads the whole sentence, so every text assertion passed too.
+    // ⛔ `W`, NOT `Grow`, and the difference is a regression rather than a preference. `Grow = 1` produces the
+    //   IDENTICAL width in every row (measured: 329px either way, and a neighbouring Button unsquashed at 185px in
+    //   both) — and in a COLUMN with spare height it also absorbs that height, which pushed the next control in a
+    //   `Stack(h: "300px")` to the floor of the card. `W` is a purely inline-axis statement, so it cannot.
+    // ⚑ Four of the five `Field`-in-a-`Row` sites in this repo had already hand-written this wrapper —
+    //   `Box(grow: 1, minW: "0") { Field(…) }` in `demo/ember`, `Box(grow: 1)` in `demo/wf-order-saga`,
+    //   `Box(w: "60%")` in `admin` — which is the demand signal for putting it on the control instead.
+    base { Gap = Space.FieldGap; W = "100%"; MinW = 0; }
+  }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      // ⭐ THE HONEST FLOOR when the box genuinely cannot hold the text — a phone, or a placeholder that is a
+      //   sentence. `Ellipsis` renders "who wrote it — can be…", which SAYS there is more; the default `clip` cuts
+      //   mid-word and leaves nothing on screen to say so. Degrading gracefully means the reader gets less, not that
+      //   they get something that looks complete and is not.
+      Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, type: type,
+            label: label, invalid: error != "", onEnter: onEnter, textOverflow: TextOverflow.Ellipsis);
+      if (error != "" || hint != "") {
+        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
+             color: error != "" ? Colors.Danger : Colors.TextMuted);
+      }
+    }
+  }
+}
+
+
+/// A labelled MULTI-LINE text input — the one to reach for when the answer is a paragraph rather than a line: a
+/// reason, a note, a description. `TextAreaField("Why do you need it?", value: draft.Reason, rows: 4)`. Everything
+/// `Field` does it does — `value` is a two-way binding, `error` marks it invalid and shows the message, `hint` is
+/// help text and the error replaces it while present — and `rows` sets how tall it starts; it grows no further on
+/// its own, so pick the height the answer usually needs.
+/// In a test it is filled by its label, exactly like a `Field`: `Ui.Fill("Why do you need it?", "Proofing.")`.
+[Composable]
+/// ⚠ NAMED FOR THE KIT'S CONVENTION, NOT FOR THE TAG. Its siblings are `NumberField` and `DecimalField`, and a
+/// control called `TextArea` would SHADOW the atom of that name — measured while adding this: the wrapper then
+/// resolved its own inner `TextArea(…)` to ITSELF and failed with "'TextArea' has no parameter 'id'". `osy kit
+/// Textarea` finds the atom, and the atom's entry names this control.
+/// need: a multi-line text box, type a long note or a description, a paragraph of free text
+component TextAreaField(
+    string label,
+    Binding<string> value,
+    string placeholder = "",
+    string hint = "",
+    string error = "",
+    int rows = 3,
+    bool disabled = false)
+{
+  variants {
+    // The same inline-axis statement `Field` makes, for the same reason: a `<textarea>` also carries a user-agent
+    // intrinsic width (`cols`), so this control in a `Row` was sized by the browser rather than by the layout.
+    base { Gap = Space.FieldGap; W = "100%"; MinW = 0; }
+  }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      TextArea(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled,
+               rows: rows, label: label, invalid: error != "");
+      if (error != "" || hint != "") {
+        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
+             color: error != "" ? Colors.Danger : Colors.TextMuted);
+      }
+    }
+  }
+}

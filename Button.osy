@@ -1,0 +1,77 @@
+// Ui — Button, the kit's pressable action control (`using Osysharp.Ui;`).
+
+// The `Osysharp.Ui` kit namespace — its public types enter scope only via `using Osysharp.Ui;`.
+namespace Osysharp.Ui;
+
+/// A pressable action control. `label` is the button text; `onPress` fires on click. Bind it to one of your
+/// component's actions — `onPress: save` for a no-argument action, or `onPress: () => remove(item.Id)` to pass one.
+/// `tone`/`size` select the styled variant; `disabled` greys it out and stops the press.
+/// ⚠ Dropped straight into a `Stack` a button is a flex item and STRETCHES to the full width of the card —
+/// measured 1010px against 97px in the same page. Full width is a deliberate look for a login or a phone, not the
+/// default a form wants: put a form's submit in a trailing row, `Row(gap: 2, justify: Justify.End) { Button("Save",
+/// onPress: Save); }`, which is the commonest shape in this repo and what `Dialog` does for you in its footer.
+/// In a test it is pressed by its label: `Ui.Click("Save")`.
+/// need: press to do something, submit a form, trigger an action, a primary or secondary action
+/// e.g. `Button("Save", onPress: Save, tone: Tone.Primary)`
+[Composable]
+[AllowAnonymous]
+component Button(
+    string label,
+    Action onPress,
+    Tone tone = Tone.Default,
+    Size size = Size.Md,
+    bool disabled = false,
+    bool canPress = true,
+    string whenDenied = "",
+    // ⭐ THE NAME A SCREEN READER ANNOUNCES, when the visible text is not enough on its own. A board with one
+    //   `Button("Advance")` per card announces "Advance, Advance, Advance" — the words are right and the button
+    //   list is useless. `announceAs: "Advance " + card.Title` keeps the label short on screen and distinct in the
+    //   list, which is exactly what `aria-label` is for.
+    //
+    // ⚠ IT IS NOT `label:`. That is this control's VISIBLE text (its first positional), and passing both is the
+    //   refusal `'Button' already has a value for 'label' from a positional argument`. Naming the two separately is
+    //   what lets them differ — an atom `Button` has always been able to (its positional is content and `label:` is
+    //   the ARIA name), and the kit control could not, which is why `demo/kanban` reached past the kit to the atom.
+    string announceAs = "",
+    // D-HELPDESKDESIGN1 — a key combo that presses this button from anywhere on the page (`"Mod+Enter"`, `"R"`):
+    // the atom's `shortcut:`, through this button's own `onPress`. See `osy docs ui-menus#hints`. Hovering or focusing the
+    // button shows its name and key; `showShortcut: true` shows the key ON the button instead ("Send ⌘↵") — for
+    // the one primary action a reader should learn the key of.
+    string shortcut = "",
+    bool showShortcut = false)
+{
+  variants {
+    base {
+      Px = 4; Py = 2; Rounded = Radius.Md; FontWeight = FontWeight.Semibold; FontSize = FontSize.Body; H = Length.ControlMd;
+      Display = Display.InlineFlex; WhiteSpace = WhiteSpace.Nowrap; Transition = Motion.Fast;
+      Position = Position.Relative;   // the key tip hangs from it
+      Disabled { Opacity = "0.5"; }
+      Focus { Shadow = Shadow.Ring; }
+    }
+    tone {
+      Default { Bg = Colors.Surface;     Color = Colors.OnSurface; Border = Colors.Border; BorderW = 1; Hover { Bg = Colors.Muted; } }
+      Primary { Bg = Colors.Primary;     Color = Colors.OnPrimary; Hover { Bg = Primary.Hover; } }
+      Danger  { Bg = Colors.Danger;      Color = Colors.OnPrimary; Hover { Bg = Danger.Hover; } }
+      Success { Bg = Colors.Success;     Color = Colors.OnPrimary; Hover { Bg = Success.Hover; } }
+      Warning { Bg = Colors.Warning;     Color = Colors.OnPrimary; Hover { Bg = Warning.Hover; } }
+      Ghost   { Bg = Colors.Transparent; Color = Colors.Primary;   Hover { Bg = Colors.Muted; } }
+    }
+    size {
+      Sm { Px = 3; Py = 1; Rounded = Radius.Sm; FontSize = FontSize.Label;   H = Length.ControlSm; }
+      Md { Px = 4; Py = 2; Rounded = Radius.Md; FontSize = FontSize.Body;    H = Length.ControlMd; }
+      Lg { Px = 5; Py = 3; Rounded = Radius.Lg; FontSize = FontSize.Subhead; H = Length.ControlLg; }
+    }
+  }
+
+  render {
+    Pressable(onClick: onPress, disabled: disabled || !canPress, whenDenied: whenDenied,
+              label: announceAs != "" ? announceAs : label, shortcut: shortcut) {
+      Row(align: Align.Center, justify: Justify.Center, gap: 2) {
+        Slot;
+        Text(label);
+        if (shortcut != "" && showShortcut) { ButtonKeycap(shortcut); }
+      }
+      if (shortcut != "" && !showShortcut) { KeyTip(label, shortcut); }
+    }
+  }
+}

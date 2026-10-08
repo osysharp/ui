@@ -1,0 +1,266 @@
+// Ui — THE EDITORIAL SHELL. A brand site's frame: the page is a composition, and the chrome gets out of its way.
+//
+//     [Layout] component Site() {
+//       render {
+//         EditorialShell(chrome) {
+//           Outlet(retain: 8);
+//           slot actions { Button("Book", onPress: Book, tone: Tone.Primary); }
+//           slot footer  { EditorialFooter(chrome, "Three chairs on Harbour Street."); }
+//         }
+//       }
+//     }
+//
+// FOR A BRAND'S OWN SITE — a studio, a salon, a restaurant, a practice, a maker: somewhere a visitor comes to be
+// convinced, and the pages are art-directed rather than listed. Where `StorefrontShell` organises a site around what it
+// SELLS (categories, search, a bag), this one organises it around how it LOOKS.
+//
+// ⭐ THE HEADER FLOATS ON THE PICTURE. On a route whose page opens with a full-bleed photograph, the header lies OVER it
+//    — transparent, in light type, over a soft shade so the words read on any photo — and scrolls away with it. That
+//    is the move the best studio sites share, and a solid bar above the hero makes it impossible (measured on salon S0
+//    run 3, 2026-09-26: every page sat under the storefront's solid strip, and read as Rust & Chrome's banner). Which
+//    routes open on a picture is the app's to say — `chrome.Immersive` — and the home route does by default
+//    (`floatOnHome`). Everywhere else the header sits solid on the page's own ground, so a page that opens with a
+//    heading is never under it.
+//
+// ⭐ THE SITE ENDS WITH ITS NAME. `EditorialFooter` sets the brand enormous across the width — a sign-off rather than
+//    a directory. It is shaped for this shell's `footer` slot, and any shell's.
+//
+// ⭐ THE BANDS:
+//   compact  < 768   the wordmark left, the page's action and a menu button right; the WHOLE nav in a drawer from the
+//                    left (the storefront's drawer — one implementation of the phone menu, not two).
+//   cozy/wide 768+   the wordmark left, the nav CENTRED, the action right — three columns, the outer two sharing the
+//                    width, so the nav sits at the true centre whatever the wordmark and the action measure.
+//
+// ⚑ THE SLOTS: the six every shell has (switching arrangement drops nothing) plus `promo` and `footer`, the two a brand
+//   site uses. Each is a POSITION; what fills it brings its own chrome.
+
+namespace Osysharp.Ui;
+
+/// THE EDITORIAL SHELL — a brand site's frame: the wordmark, a centred nav and one call to action, FLOATING over the
+/// page's opening photograph on the routes that open with one, and solid on the rest. A drawer on a phone. For a
+/// studio, a salon, a restaurant, a maker — a site whose pages are art-directed compositions rather than a catalogue.
+/// Takes the same `AppChrome` and slots as every other shell, plus `promo` and `footer`.
+///
+/// `floatOnHome` (default true) floats the header on the home route; `chrome.Immersive` lists any other route whose
+/// page opens on a full-bleed image. A floating header is `Colors.OnImage` over a shade, so the page's picture must run
+/// to the top edge — put the hero first, full-bleed, and give it room for the header (about 80px) at its top.
+///
+/// Slots, all optional:
+///   (default)   the routed page — `Outlet(retain: 8)`. FULL BLEED: a page brings its own width.
+///   `actions`   the call to action — a "Book" button
+///   `promo`     a thin announcement bar above everything
+///   `footer`    the site footer — `EditorialFooter(chrome, …)` is shaped for it
+///   `search`, `aside`, `railFoot`, `primary` — rendered in the page column, so switching from another shell drops nothing
+///
+/// In a test the regions carry names: `Ui.Click("Team", within: "Site navigation")`, and on a phone `Ui.Click("Menu")`.
+/// need: a brand website, a studio or salon site, a restaurant site, a site whose header floats over a hero photo, an editorial marketing site
+/// e.g. `EditorialShell(chrome) { Outlet(retain: 8); slot actions { Button("Book", onPress: Book, tone: Tone.Primary); } slot footer { EditorialFooter(chrome, "Made by hand."); } }`
+[Composable]
+component EditorialShell(AppChrome chrome, bool floatOnHome = true) {
+  // ONE OVERLAY and the page it was opened on — the storefront's rule, for the same reason: a navigation from inside
+  // the drawer must close it, whoever made the navigation.
+  string overlay = "";
+  string overlayAt = "";
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+  live var immersive = (floatOnHome && chrome.AtHome(path)) || chrome.Immersive.Any(r => r == path);
+
+  live var shown = overlayAt == path ? overlay : "";
+  live var menuOpen = shown == "menu";
+  live var userMenuOpen = shown == "user";
+
+  action Toggle(string what) { overlay = shown == what ? "" : what; overlayAt = path; }
+  action ToggleMenu() { Toggle("menu"); }
+  action ToggleUserMenu() { Toggle("user"); }
+  action CloseMenu() { if (menuOpen) { overlay = ""; } }
+  action CloseUserMenu() { if (userMenuOpen) { overlay = ""; } }
+  action DismissAll() { overlay = ""; }
+  action Navigated() { overlay = ""; }
+
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    EditorialFrame(chrome, !Layout.AtLeast(Tablet), current, immersive, hasUser, hasMenu, menuOpen, userMenuOpen,
+                   ToggleMenu, CloseMenu, ToggleUserMenu, CloseUserMenu, DismissAll, Navigated) {
+      slot page { Slot; }
+      slot promo { Slot("promo"); }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot footer { Slot("footer"); }
+      slot aside { Slot("aside"); }
+      slot railFoot { Slot("railFoot"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the editorial shell DRAWS, once the band and the route's immersion are decided.
+[Composable, Part]
+component EditorialFrame(
+    AppChrome chrome, bool isPhone, string current, bool immersive, bool hasUser, bool hasMenu, bool menuOpen,
+    bool userMenuOpen, Action onToggleMenu, Action onCloseMenu, Action onToggleUserMenu, Action onCloseUserMenu,
+    Action onDismissAll, Action onNavigated) {
+  live var items = chrome.Primary();
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      Slot("promo");
+      // The header and the page share one positioned box, so a floating header lies over the TOP of the page — the
+      // hero — and not over the promo bar above it.
+      Stack(gap: 0, grow: 1, position: Position.Relative) {
+        EditorialHeader(chrome, items, current, immersive, isPhone, hasUser, hasMenu, menuOpen, userMenuOpen,
+                        onToggleMenu, onToggleUserMenu, onDismissAll, onNavigated) {
+          slot actions { Slot("actions"); }
+        }
+        Stack(gap: 0, grow: 1, minW: "0", role: UiRole.Main, label: "Page") {
+          Slot("search");
+          Slot("page");
+          Slot("aside");
+          Slot("railFoot");
+        }
+      }
+      Slot("primary");
+      Slot("footer");
+    }
+
+    if (menuOpen && isPhone) {
+      StorefrontScrim(onCloseMenu);
+      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+    }
+    if (userMenuOpen && hasMenu && !isPhone) { Backdrop(onCloseUserMenu); }
+  }
+}
+
+/// THE HEADER — the wordmark, the nav and the action. FLOATING (absolute, transparent, light type over a shade) on an
+/// immersive route; SOLID (sticky, on the page's ground) everywhere else. A `banner` landmark either way.
+[Composable, Part]
+component EditorialHeader(
+    AppChrome chrome, NavItem[] items, string current, bool immersive, bool isPhone, bool hasUser, bool hasMenu,
+    bool menuOpen, bool userMenuOpen, Action onToggleMenu, Action onToggleUserMenu, Action onDismissAll,
+    Action onNavigated) {
+  render {
+    // ⚠ THE SHADE IS PART OF THE FLOATING HEADER, never of the page: it is what lets light type read on a bright photo,
+    //   and it fades to nothing so it never draws an edge. Solid, the header paints the page's own ground.
+    Row(role: UiRole.Banner, label: "Site header", align: Align.Center, gap: 4,
+        px: isPhone ? 4 : 8, pb: immersive ? 6 : 0, minH: Length.EditorialHeaderH,
+        display: Display.Grid, cols: isPhone ? "1fr auto" : "1fr auto 1fr",
+        position: immersive ? Position.Absolute : Position.Sticky, top: "0", left: "0", right: "0", z: ZIndex.Sticky,
+        bg: immersive ? Colors.Transparent : Colors.Bg,
+        bgImage: immersive ? "linear-gradient(to bottom, rgb(0 0 0 / 0.45), rgb(0 0 0 / 0))" : "none",
+        color: immersive ? Colors.OnImage : Colors.OnBg,
+        borderBW: immersive ? 0 : 1, border: Colors.Border) {
+      EditorialBrand(chrome, onNavigated);
+      if (!isPhone) {
+        Row(role: UiRole.Navigation, label: "Site navigation", align: Align.Center, justify: Justify.Center, gap: 6,
+            minW: "0") {
+          foreach (var item in items) {
+            EditorialNavLink(item.Label, item.FirstRoute(), item.State(current) == NavState.Current, onNavigated);
+          }
+        }
+      }
+      Row(align: Align.Center, justify: Justify.End, gap: 2, minW: "0") {
+        Slot("actions");
+        if (hasUser && !isPhone) {
+          Box(position: Position.Relative) {
+            ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
+            if (userMenuOpen && hasMenu) {
+              Box(position: Position.Absolute, top: "calc(100% + 8px)", right: "0", z: ZIndex.Popover) {
+                Menu { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+              }
+            }
+          }
+        }
+        if (isPhone) { EditorialMenuButton(menuOpen, onToggleMenu); }
+      }
+    }
+  }
+}
+
+/// The wordmark, in the display face. It takes the header's colour — light on a photo, ink on the page.
+[Composable, Part]
+component EditorialBrand(AppChrome chrome, Action onNavigated) {
+  variants {
+    base { TextDecoration = TextDecoration.None;
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: chrome.Home, label: chrome.Product, onClick: onNavigated) {
+      if (chrome.MarkSrc != "") {
+        Image(chrome.MarkSrc, alt: chrome.Product, h: "32px");
+      } else {
+        Text(chrome.Product, fontFamily: Font.Display, fontSize: FontSize.EditorialBrand, fontWeight: FontWeight.Semibold,
+             letterSpacing: "-0.01em", whiteSpace: WhiteSpace.Nowrap, color: "inherit");
+      }
+    }
+  }
+}
+
+/// One nav link — text in the header's colour; the current page and a hovered link are underlined, never boxed.
+[Composable, Part]
+component EditorialNavLink(string label, string to, bool isCurrent, Action onNavigated) {
+  variants {
+    base { Display = Display.InlineFlex; MinH = Length.Touch; TextDecoration = TextDecoration.None;
+           Transition = Motion.Fast;
+           Hover { TextDecoration = TextDecoration.Underline; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: to, label: label, current: isCurrent, onClick: onNavigated) {
+      Row(align: Align.Center, minH: Length.Touch) {
+        Text(label, fontSize: FontSize.Subhead, whiteSpace: WhiteSpace.Nowrap, color: "inherit",
+             textDecoration: isCurrent ? TextDecoration.Underline : TextDecoration.None);
+      }
+    }
+  }
+}
+
+/// The phone header's menu button — a full touch target, in the header's colour.
+[Composable, Part]
+component EditorialMenuButton(bool open, Action onPress) {
+  variants {
+    base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Pill;
+           Transition = Motion.Fast;
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: "Menu", expanded: open) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", minH: Length.Touch) { Icon(Icons.Menu, size: 24); }
+    }
+  }
+}
+
+/// THE EDITORIAL FOOTER — a line about the place and its links, then the brand's NAME set enormous across the whole
+/// width: the site signs off rather than listing itself. A `contentinfo` landmark.
+/// need: a brand website footer, a footer with the name set huge, a studio or salon site footer
+/// e.g. `slot footer { EditorialFooter(chrome, "Three chairs on Harbour Street, since 2011.", note: "© 2026 Harbour Street Hair"); }`
+[Composable]
+component EditorialFooter(AppChrome chrome, string blurb = "", string note = "") {
+  variants {
+    // Mobile-first: a breakpoint block ADDS from its width up, so the phone's gutter is the base and the wide one
+    // arrives at Tablet (a `Phone { }` block would have applied from 480px up — every desktop included).
+    base { Bg = Colors.Bg; Color = Colors.OnBg; Px = 4; Pt = 16; Pb = 6; Overflow = Overflow.Hidden;
+           Tablet { Px = 8; } }
+  }
+  render {
+    Stack(role: UiRole.ContentInfo, label: "Site footer", gap: 10) {
+      Row(gap: 10, justify: Justify.Between, align: Align.Start, wrap: Wrapping.Wrap) {
+        if (blurb != "") { Text(blurb, fontSize: FontSize.Subhead, lineHeight: "1.6", maxW: "420px"); }
+        // What the site says about itself — a region of footer blocks staff arrange (D-SITEFRAME1), as StoreFooter's.
+        Box(maxW: "420px") { Slot("about"); }
+        Stack(role: UiRole.Navigation, label: "Footer navigation", gap: 2) {
+          foreach (var c in chrome.Primary()) { StoreFooterLink(c.Label, c.FirstRoute()); }
+        }
+      }
+      // The sign-off. `aria-hidden` would lose it; it is the brand's name, so it is read — once, as text.
+      Text(chrome.Product, fontFamily: Font.Display, fontSize: FontSize.SignOff, fontWeight: FontWeight.Bold,
+           lineHeight: "0.85", letterSpacing: "-0.03em");
+      Row(gap: 3, justify: Justify.Between, wrap: Wrapping.Wrap, borderTW: 1, border: Colors.Border, pt: 4) {
+        Text(note != "" ? note : chrome.Product, fontSize: FontSize.Caption, color: Colors.TextMuted);
+        if (chrome.Tagline != "") { Text(chrome.Tagline, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+      }
+    }
+  }
+}

@@ -1,0 +1,688 @@
+// Ui — THE TABBED SHELL. One of four arrangements of the one `AppChrome` contract (`Shell.osy`).
+//
+//     [Layout] component Shell() {
+//       render { TabbedShell(chrome) { Outlet(retain: 8); } }   // ← the ONLY word that differs from SidebarShell
+//     }
+//
+// TWO ARRANGEMENTS, AND THE PHONE ONE IS NOT THE DESKTOP ONE SHRUNK:
+//
+//   compact  < 768   a slim top bar (brand mark · page title · identity) and a BOTTOM TAB BAR — the primary nav
+//                    moved to the thumb, which is where a phone's navigation belongs and where no amount of
+//                    narrowing would have put a top strip. Up to five entries; everything else, and every nested
+//                    child, is in the "More" sheet, so nothing declared is unreachable.
+//   pointer  768+    TWO ROWS, AND A THIRD THAT COMES AND GOES. Row one is brand · search · actions · identity;
+//                    row two is the horizontal tab strip. Once you are INSIDE a section that has sub-areas, a
+//                    SECONDARY STRIP appears beneath the bar carrying that section's areas and no others. At 1100+
+//                    the page and its `aside` sit side by side (`ShellBody`), exactly as in the sidebar.
+//
+// ⛔ A TAB DOES ONE THING, AND THIS IS THE RULE THE WHOLE ARRANGEMENT HANGS ON.
+//
+//    This shell used to open a DROPDOWN under a tab that had children — so pressing `Settings` both navigated to
+//    Settings AND opened a menu listing People / Billing / Invoices. One press, two acts. Measured 2026-09-07 in
+//    `osy-shots/tabbed-dropdown.png`: the page behind the open menu had already changed to "General". Every test
+//    passed, because `Assert.Visible("Billing")` is true of a row in a menu nobody asked for.
+//
+//    That idiom is a MENU BAR — File / Edit / View — and a menu bar is a DIFFERENT INTERACTION MODEL from tabs.
+//    Tabs are DESTINATIONS: you press one and you are there. A menu bar's items are not places at all, they are
+//    disclosures. Borrowing the sidebar's disclosure mechanism into a bar of destinations produced a shell that
+//    was neither, and it is the second time in this kit that a mechanism was taken from a sibling shell without
+//    asking whether the model came with it.
+//
+//    ⭐ THE SECONDARY STRIP IS THE ANSWER REAL PRODUCTS REACHED, and it dissolves the double action rather than
+//       arbitrating it: the tab navigates, and the strip for the section you are NOW IN simply appears. GitHub's
+//       repository tabs, Stripe's dashboard and Azure's blades all land here. Nothing is ever two targets, and a
+//       section's sub-areas are visible without a press instead of being hidden behind one.
+//
+//    ⚑ A TAB WITH CHILDREN AND NO ROUTE OF ITS OWN GOES TO ITS FIRST CHILD (`NavItem.FirstRoute`). The alternative
+//       — a tab that is inert until you find the right sub-area — is a destination that is not one, which is the
+//       same defect wearing different clothes. An entry whose whole subtree holds no route is drawn as plain text,
+//       because a link to nowhere is worse than a label.
+//
+// ⭐ WHY TWO ROWS ON A POINTER AND NOT ONE. One row has to divide a single line between the brand, the tabs, the
+//    search box, the page actions and the identity chip — so the tabs, which are the entire point of this shell,
+//    get whatever is left and start overflowing at eight entries on a 1280 screen. Two rows give the strip the FULL
+//    width and give row one room to be genuinely useful. It costs 52px of height on a surface that has plenty and
+//    buys the thing the arrangement exists for. (GitHub, Vercel and Stripe all landed here.)
+//
+// ⛔ THE OVERFLOW DECISION: THE STRIP SCROLLS. It does not wrap, and there is no "More" menu on a pointer.
+//
+//    A measured priority-plus menu — count what fits, move the rest into "More" — is the richer answer and this
+//    platform cannot honestly build it today. It needs a PER-ELEMENT width, and the only measurement a component
+//    can read is `Layout.Width`, its own container's. Deriving the cut from label LENGTHS instead was tried on
+//    paper and rejected for a specific reason, not for taste: `Layout.Width` is null on the first render and
+//    arrives after it (`kits/chart/Plot.osy` carries the same `?? 600.0` fallback for the same reason), so every
+//    page load would paint a full strip, then jump tabs into a "More" that was not there a frame earlier. A layout
+//    that moves under the reader on every navigation is a worse failure than a strip they have to scroll — and it
+//    would happen in the COMMON case (everything fits), not the rare one.
+//
+//    Scrolling costs nothing when it fits, never wraps, hides nothing permanently, and keyboard focus scrolls a tab
+//    into view natively. The scrollbar itself is suppressed (`ScrollbarWidth.None`): a horizontal bar under a tab
+//    row reads as a rendering fault. Material's own tab spec reaches the same answer for the same reason.
+//
+//    ⚑ WHAT WOULD CHANGE THE ANSWER: a platform measurement that answers "how wide are these N children" in one
+//    read, before paint. That is a real gap and it is in the ledger (D-SHELL2), not a thing this shell should fake.
+//
+// ⚑ THE PHONE GETS THE SECONDARY STRIP TOO, and that is a deliberate choice over the two obvious alternatives.
+//   Putting a section's sub-areas inside the section's own PAGE makes every page re-implement its own navigation
+//   and makes the shell's promise ("declare `Nav` once") false. Leaving them only in the "More" sheet buries the
+//   areas you use constantly behind two presses, and reads as an overflow bin rather than as where you are. A
+//   horizontally scrolling strip under the top bar is what a phone actually does with this (GitHub, Stripe and
+//   Reddit's mobile web all do it), it is the SAME component and the same data as the pointer band, and it costs
+//   nothing on a section that has no sub-areas because then it does not render. The "More" sheet still holds the
+//   WHOLE tree, so nothing declared is unreachable — it is the exhaustive index, not the only route in.
+//
+// ⚑ THE PHONE BAND IS WHERE THIS SHELL EARNS ITS KEEP. A sidebar's phone answer is a drawer you must open; a
+//   tabbed app's is a bar that is always there, one thumb-reach from every primary section. That is a genuinely
+//   better phone experience than the sidebar's — which is the argument for having four arrangements rather than
+//   one responsive compromise.
+
+namespace Osysharp.Ui;
+
+/// THE TABBED SHELL — a top bar with horizontal primary navigation on a pointer, and a bottom tab bar on a phone. For an application with a HANDFUL OF MAJOR AREAS that are peers rather than a hierarchy, and where the phone matters.
+/// Takes the same `AppChrome` and the same six slots as every other shell, so switching is one word.
+///
+/// Slots, all optional:
+///   (default)   the routed page — put your `Outlet(retain: 8)` here
+///   `search`    the global search affordance in the top row — `ShellSearch(…)` is shaped for it
+///   `actions`   controls right of search — a notification button, a primary call to action
+///   `railFoot`  this shell has no rail, so it sits at the FOOT OF THE PAGE as a help card. Rendered rather than
+///               dropped: a slot an app filled and a shell silently discarded is lost content, not lost layout.
+///   `aside`     a right rail. A COLUMN beside the page at 1100+, a section under it below that.
+///   `primary`   a task's commit bar (`ShellTaskBar`). Placed in all four arrangements so switching never DROPS an
+///               app's primary action; it is `FocusedShell` that is built around it.
+///
+/// In a test the regions carry names, so scope to them: `Ui.Click("Billing", within: "Main navigation")`.
+/// need: an app shell with top tabs, a horizontal nav, a product with a bottom bar on phones
+/// e.g. `TabbedShell(chrome) { Outlet(retain: 8); slot search { ShellSearch("Search", onPress: Palette); } }`
+[Composable]
+component TabbedShell(AppChrome chrome) {
+  bool userMenuOpen = false;
+  // The phone "More" sheet, which holds the WHOLE nav tree (see `TabbedMoreSheet`).
+  bool moreOpen = false;
+  // ⚑ NO `dropdown` STATE, AND ITS ABSENCE IS THE FEATURE. A tab is a destination; the section you are in is read
+  //   from the ROUTE (`AppChrome.CurrentSection`), never from a panel the reader had to open. So this shell holds
+  //   no transient nav state at all beyond the phone's sheet — there is nothing to leave hanging, nothing to close
+  //   on navigation, and no way for what is shown to disagree with where you are.
+
+  live var path = Navigation.CurrentPath ?? "";
+  // ONE current route for the whole tree — longest match wins, so exactly one tab is ever lit.
+  live var current = chrome.CurrentRoute(path);
+  // THE SECTION THE READER IS INSIDE, or null outside the nav. What the secondary strip is drawn from.
+  live var section = chrome.CurrentSection(current);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  action CloseUserMenu() { userMenuOpen = false; }
+  // ⭐ ONE ACT, NOT TWO — the same rule the sidebar follows. Opening one overlay closes every other, so a sheet is
+  //    never left hanging under a menu's backdrop.
+  action ToggleUserMenu() { userMenuOpen = !userMenuOpen; moreOpen = false; }
+  action ToggleMore() { moreOpen = !moreOpen; userMenuOpen = false; }
+  action CloseMore() { moreOpen = false; }
+  // Everything the shell owns, shut. Runs BEFORE an app's own menu action, so a `Dialog.Open` from a menu item
+  // opens over a clean page rather than over a menu nobody dismissed.
+  action DismissAll() { userMenuOpen = false; moreOpen = false; }
+  // A nav row was followed: every transient panel is now stale.
+  action Navigated() { moreOpen = false; userMenuOpen = false; }
+
+  // ⚠ NO `Display` HERE. A variants block merges onto the component's ROOT element, which is the `Stack` in
+  //   `render` — declaring a display would silently un-stack the whole shell.
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    // ⚠ THE BAND IS READ HERE AND NOWHERE ELSE. `Layout.AtLeast` measures a RENDERED container, so it is legal in
+    //   `render` and refused in a `live var` or an action — which is why the two band facts travel as parameters.
+    TabbedFrame(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), current, section, hasUser, hasMenu,
+                userMenuOpen, moreOpen,
+                ToggleUserMenu, CloseUserMenu, DismissAll,
+                ToggleMore, CloseMore, Navigated) {
+      slot page { Slot; }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot railFoot { Slot("railFoot"); }
+      slot aside { Slot("aside"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the shell DRAWS, once the band has been decided. Split from `TabbedShell` for the same reason the
+/// sidebar splits: `Layout.AtLeast` is readable only inside a `render` block.
+[Composable, Part]
+component TabbedFrame(
+    AppChrome chrome, bool isPhone, bool isWide, string current, NavItem section, bool hasUser, bool hasMenu,
+    bool userMenuOpen, bool moreOpen,
+    Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll,
+    Action onToggleMore, Action onCloseMore, Action onNavigated) {
+  // FIVE is the bar's ceiling and it is a convention, not a measurement — see `AppChrome.BarItems`. The "More"
+  // control appears when the tree holds anything the bar itself does not show.
+  live var barItems = chrome.BarItems(4);
+  live var needsMore = chrome.BarOverflow(4).Length > 0 || chrome.Nav.Length > barItems.Length;
+  // The secondary strip draws only when the section you are in actually HAS sub-areas. A section with none costs
+  // nothing — no empty rule, no reserved height, no layout that shifts when you move between the two kinds.
+  live var hasSub = section != null && section.Children.Length > 0;
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      // ⛔ THE TWO PINNED ROWS PIN AS ONE BOX, AND THAT IS A CORRECTNESS FIX RATHER THAN TIDINESS.
+      //
+      //    They used to stick individually: the brand row at `top: 0`, the tab strip at `top: Length.AppBarH`. But
+      //    the brand row's height is a `minH` — a FLOOR — so any lockup taller than the token (a two-line
+      //    Product + Tagline at a slightly larger type scale is enough) made the strip land ON TOP of it the
+      //    moment the page scrolled far enough for both to stick.
+      //
+      //    ⚑ MEASURED 2026-09-08 on `Apps/spendflow`, whose `Tagline` is the ORGANISATION — so what the strip
+      //      covered was which tenant you are looking at, on a product where one person is in several:
+      //      `Assert.Below("Main navigation", "Page header")` → "it starts at y=52 and the other ends at y=76, so
+      //      they OVERLAP". Every text assertion passed against it; it was found by opening a screenshot.
+      //
+      //    ⭐ A STICKY PARENT NEEDS NO MEASUREMENT. `TabbedSubStrip`'s own note says pinning a third bar "would
+      //      need the strip's own rendered height in a `calc`, which is a measurement this platform cannot take
+      //      before paint" — true, and the same objection already applied to the SECOND bar, whose offset was a
+      //      guess at the first one's height. Sticking the group removes the quantity from the problem instead of
+      //      approximating it. The sub-strip stays out of this box and stays unpinned, exactly as its note asks.
+      if (!isPhone) {
+        Stack(gap: 0, position: Position.Sticky, top: "0", z: ZIndex.Sticky) {
+          TabbedTopRow(chrome, hasUser, hasMenu, userMenuOpen, onToggleUserMenu, onCloseUserMenu, onDismissAll) {
+            slot search { Slot("search"); }
+            slot actions { Slot("actions"); }
+          }
+          TabbedStrip(chrome, current, onNavigated);
+        }
+      }
+      if (isPhone) {
+        TabbedPhoneTopRow(chrome, hasUser, hasMenu, userMenuOpen, onToggleUserMenu) {
+          slot actions { Slot("actions"); }
+        }
+      }
+      // ⭐ THE SECOND ROW OF NAVIGATION, AND IT IS THE SAME COMPONENT IN BOTH BANDS. Under the tab strip on a
+      //    pointer, under the slim top bar on a phone — in both cases directly beneath the primary nav and above
+      //    the page, which is what makes it read as "inside this section" rather than as part of the page.
+      if (hasSub) { TabbedSubStrip(section, current, onNavigated); }
+
+      // ⚠ THE FOOT SLOT GOES INSIDE THE PAGE COLUMN, not after `ShellBody`. It has no rail to sit in here, and a
+      //   sibling AFTER a `grow: 1` body is pushed to the bottom of the viewport — measured: the help card sat
+      //   alone at the foot of an empty 900px screen, 600px below the content it belongs to, which reads as a
+      //   stranded element rather than a footer. Under the page it is what it is: a help card after the content.
+      //   Bounded, because a help card stretched to 1280px is a banner. `ShellFootCard` draws nothing when the app
+      //   supplies nothing, so an unfilled slot costs a comment marker and no pixels.
+      ShellBody(isWide) {
+        slot page {
+          Slot("page");
+          Row(pt: 4, maxW: "420px") { Slot("railFoot"); }
+        }
+        slot aside { Slot("aside"); }
+      }
+
+      // A task's COMMIT BAR. This arrangement is not task-shaped, but the slot is placed in all four so that
+      // switching arrangement never DROPS an app's primary action — the record's promise is that you lose the
+      // layout and nothing else. A POSITION only; `ShellTaskBar` brings the chrome, so an unfilled slot is free.
+      Slot("primary");
+      // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+      KeyboardSheet();
+
+      // A phone's page must not end UNDER the fixed bar. A spacer in flow rather than padding on the body, so the
+      // page's own scroll length is right and the last card is fully reachable.
+      if (isPhone) { Box(h: "calc(3.5rem + env(safe-area-inset-bottom))", decorative: true); }
+    }
+
+    if (isPhone) {
+      TabbedPhoneBar(chrome, barItems, needsMore, current, moreOpen, onToggleMore, onNavigated);
+    }
+
+    // Overlays live at the FRAME's root, outside the bars, so no transform or overflow of a bar's can clip them.
+    if (userMenuOpen && isPhone && hasMenu) {
+      ShellSheet("Account", onCloseUserMenu) {
+        ShellSheetIdentity(chrome.User);
+        Divider();
+        ShellMenuItems(chrome.User.Menu, onDismissAll);
+      }
+    }
+    if (moreOpen && isPhone) {
+      ShellSheet("All sections", onCloseMore) { TabbedMoreSheet(chrome, current, onNavigated); }
+    }
+  }
+}
+
+// ── the pointer bands ───────────────────────────────────────────────────────────────────────────────────
+
+/// ROW ONE — brand, search, the page's own actions, and identity. A `banner` landmark.
+/// The page TITLE is deliberately absent: row two's lit tab already names the section, and a bar that repeats it
+/// is two answers to one question. A route the nav does not cover is named by `TabbedStrip` instead.
+[Composable, Part]
+component TabbedTopRow(
+    AppChrome chrome, bool hasUser, bool hasMenu, bool userMenuOpen,
+    Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll) {
+  live var path = Navigation.CurrentPath ?? "";
+  // ⚠ NOT STICKY ITSELF — `TabbedFrame` pins this row and the strip together, as one box. See the note there.
+  variants {
+    base { Bg = Colors.Surface; Px = 3; Pt = "env(safe-area-inset-top)"; Laptop { Px = 5; } }
+  }
+  render {
+    Row(gap: 3, align: Align.Center, minH: Length.AppBarH, py: 2, role: UiRole.Banner, label: "Page header",
+        minW: "0") {
+      // ⭐ THE SWITCHER CARRIES PINNED AND RECENT HERE. A bar has no rail to show them in, so the brand's menu — the
+      //    one place a tabbed product keeps "everywhere else you go" — lists them under the apps.
+      ShellBrand(chrome, shortcuts: true);
+      Spacer();
+      Slot("search");
+      Row(gap: 2, align: Align.Center, shrink: 0) {
+        if (chrome.TogglePin != null && path != "") { ShellPinButton(chrome.IsPinned(path), chrome.TogglePin); }
+        Slot("actions");
+      }
+      if (hasUser) {
+        Box(position: Position.Relative) {
+          ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, open: userMenuOpen);
+          if (userMenuOpen && hasMenu) {
+            Backdrop(onCloseUserMenu);
+            TabbedUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// The identity dropdown, hung under the chip on the trailing edge.
+[Composable, Part]
+component TabbedUserMenu(ShellUser user) {
+  variants {
+    // A connected menu (D-HELPDESKDESIGN1): it grows out of the chip's corner and keeps a notch pointing at it.
+    base { Position = Position.Absolute; Top = "100%"; Right = "0"; Mt = 2; MinW = "240px"; Z = ZIndex.Popover;
+           Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
+           TransformOrigin = "top right"; Animation = KitMenuGrow; }
+  }
+  render {
+    Stack(gap: 1, role: UiRole.Menu, label: user.Name) {
+      MenuNotch(MenuFrom.BelowEnd);
+      Stack(gap: 0, px: 3, py: 2) {
+        Text(user.Name, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold, whiteSpace: WhiteSpace.Nowrap,
+             overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (user.Secondary != "") { Hint(user.Secondary); }
+        ShellPresenceWord(user);
+      }
+      Divider();
+      Slot;
+    }
+  }
+}
+
+/// ROW TWO — the tab strip. A `nav` LANDMARK named "Main navigation", the same name every shell uses, so one test
+/// scopes to the nav whichever arrangement the app chose.
+///
+/// ⭐ IT CLIPS UNCONDITIONALLY NOW, AND THAT SIMPLIFICATION IS THE POINT. While this strip hung dropdowns off its
+///    tabs, `overflowX` had to flip to `Visible` whenever one was open — an `auto` overflow clips on BOTH axes, so
+///    a panel below a tab was sliced at the strip's own height. Nothing hangs below a tab any more, so the strip is
+///    a plain scroller with no state in it: one fewer thing that can be open, and one fewer way for the nav to
+///    disagree with the route.
+[Composable, Part]
+component TabbedStrip(AppChrome chrome, string current, Action onNavigated) {
+  live var primary = chrome.Primary();
+  variants {
+    // ⚠ NOT STICKY ITSELF, AND `Top` IS GONE WITH IT. Pinning at `Top = Length.AppBarH` was a GUESS at the brand
+    //   row's rendered height — right only while that row is exactly as tall as the token, and the token is its
+    //   `minH`. `TabbedFrame` pins the pair as one box instead; see the note there.
+    base { Bg = Colors.Surface; BorderBW = 1; Border = Colors.Border; Px = 3; Laptop { Px = 5; } }
+  }
+  render {
+    Row(gap: 1, align: Align.Stretch, role: UiRole.Navigation, label: "Main navigation", minW: "0",
+        overflowX: Overflow.Auto, scrollbarWidth: ScrollbarWidth.None) {
+      if (chrome.Loading) { TabbedStripSkeleton(); }
+      if (!chrome.Loading) {
+        if (primary.Length == 0) { TabbedStripEmpty(); }
+        foreach (var item in primary) { TabbedTab(item, item.State(current), onNavigated); }
+        // A page the nav does not cover — a record detail, a wizard step — is still NAMED, on the trailing edge of
+        // the strip where it reads as context rather than as a tab. Silent when a tab is lit, because then the tab
+        // is the answer and two answers is worse than one.
+        if (current == "") { Row(align: Align.Center, pl: 3, shrink: 0) { ShellPageTitle(""); } }
+      }
+    }
+  }
+}
+
+/// What the strip shows while the app's nav is still loading — bars the width of tabs, not a spinner.
+[Composable, Part]
+component TabbedStripSkeleton() {
+  render {
+    Row(gap: 3, align: Align.Center, minH: Length.Touch, label: "Loading navigation") {
+      Skeleton(); Skeleton(shape: SkeletonShape.HalfLine); Skeleton(); Skeleton(shape: SkeletonShape.HalfLine);
+    }
+  }
+}
+
+/// What the strip shows when the app declared no nav at all — a sentence, because an empty strip reads as broken.
+[Composable, Part]
+component TabbedStripEmpty() {
+  render {
+    Row(align: Align.Center, minH: Length.Touch, label: "No navigation") {
+      Text("No sections yet — add a NavItem to this app's chrome.", fontSize: FontSize.Caption,
+           color: Colors.TextMuted);
+    }
+  }
+}
+
+/// ONE TAB — A DESTINATION, AND ONLY EVER A DESTINATION.
+///
+/// ⛔ ONE PRESS, ONE ACT. This component used to have THREE presentations decided by the data — a link, a
+///    discloser, and a link with its own chevron — because a tab with children opened a dropdown. That made the
+///    third case (`Settings`, which both navigates and has sub-pages) a row with TWO targets, and made the second
+///    case a tab that was not a destination at all. Both are menu-bar behaviours; see the header.
+///
+///    Now there is one presentation. A tab goes to `FirstRoute()` — its own route when it has one, otherwise the
+///    first route beneath it — and its children appear as a SECONDARY STRIP once you are inside it. `Settings`
+///    navigates to `/settings` and People / Billing / Invoices appear under the bar. Nothing discloses, nothing is
+///    two things, and the sub-areas are visible instead of hidden behind a press.
+///
+/// The ACTIVE UNDERLINE lives on this component's root rather than on the link so it spans the whole tab; an
+/// indicator under half a tab reads as a rendering fault.
+///
+/// ⚠ AN ENTRY WHOSE SUBTREE HOLDS NO ROUTE AT ALL is drawn as plain text, not as a link. `Link(href: "")` is a
+///   control that looks live and does nothing, which is the one thing a degraded path may never be.
+[Composable, Part]
+component TabbedTab(NavItem item, NavState state, Action onNavigated) {
+  live var to = item.FirstRoute();
+
+  variants {
+    base { Shrink = 0; BorderBW = 2; Border = Colors.Transparent; Transition = Motion.Fast; }
+    state {
+      // The strongest signal a tab strip has, and the one readers actually track: a solid rule under the section
+      // you are in. Colour alone is not enough at a glance across a wide bar.
+      Current { Border = Colors.Primary; }
+      // An ancestor of the page you are on — present, not shouting. No rule, so exactly one tab reads as "here".
+      Trail   { Border = Colors.Border; }
+      Idle    { }
+    }
+  }
+  render {
+    // ⚠ `display`/`align` INLINE, NOT IN `variants` — the block's vocabulary has no flex `Align` (the compiler
+    //   says so and offers `AlignSelf`, which is a different question). Inline wins over the block anyway, which
+    //   is the same rule `RailNavBranch` relies on.
+    Box(display: Display.Flex, align: Align.Stretch) {
+      if (to != "") { TabbedTabLink(item, to, state, onNavigated); }
+      if (to == "") { TabbedTabInert(item); }
+    }
+  }
+}
+
+/// A top-level entry that leads nowhere — a heading whose whole subtree has no route. Rendered as words, because a
+/// link to nowhere accepts the press and does nothing, and a dead affordance is worse than an honest label.
+[Composable, Part]
+component TabbedTabInert(NavItem item) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.Touch; Px = 3; FontSize = FontSize.Body; Color = Colors.TextMuted; }
+  }
+  render {
+    Row(gap: 2, align: Align.Center, h: "100%", minW: "0") {
+      Icon(item.Icon, size: 16);
+      Text(item.Label, whiteSpace: WhiteSpace.Nowrap);
+    }
+  }
+}
+
+/// THE TAB ITSELF. A `Link`, never a `Pressable` that calls `Navigation.Go` — a link is what gives middle-click,
+/// open-in-new-tab, a status-bar preview and the "current page" a screen reader announces.
+/// ⚠ `to` IS RESOLVED BY THE CALLER (`NavItem.FirstRoute`), not read from `item.To`: a group with no route of its
+///   own still leads to its first child, and computing that here would hide the rule inside a leaf component.
+[Composable, Part]
+component TabbedTabLink(NavItem item, string to, NavState state, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.Touch; Px = 3; FontSize = FontSize.Body;
+           Color = Colors.TextSecondary; Transition = Motion.Fast; Rounded = Radius.Sm;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
+      Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
+      Idle    { }
+    }
+  }
+  render {
+    Link(href: to, label: item.Label, current: state == NavState.Current, onClick: onNavigated) {
+      Row(gap: 2, align: Align.Center, h: "100%", minW: "0") {
+        Icon(item.Icon, size: 16);
+        Text(item.Label, whiteSpace: WhiteSpace.Nowrap);
+        if (item.Badge != "") { ShellNavBadge(item); }
+      }
+    }
+  }
+}
+
+// ── the secondary strip ──────────────────────────────────────────────────────────────
+
+/// THE SECTION'S OWN AREAS — the row that appears beneath the bar once you are inside a section that has any.
+///
+/// ⭐ IT IS NOT A SECOND "Main navigation", AND ITS LANDMARK SAYS SO. The name is the section's — "Settings
+///    sections" — so a screen-reader user moving by landmark hears which one they are in, and a test can scope to
+///    it (`Ui.Click("Billing", within: "Settings sections")`) without ambiguity against the primary strip. Two
+///    landmarks with the same name is how a nav becomes unnavigable by keyboard.
+///
+/// ⭐ EVERY DESCENDANT, FLATTENED — the same `Descendants()` walk every other shell makes, so a three-level nav
+///    does not silently lose its third level here. What LIGHTS and what RENDERS read the identical walk.
+///
+/// ⚠ NOT STICKY, DELIBERATELY. The tab bar above it pins because it is the app's orientation and is true on every
+///   page; this strip belongs to the section's CONTENT and scrolls with it. Pinning it would need the strip's own
+///   rendered height in a `calc`, which is a measurement this platform cannot take before paint — and a stack of
+///   three sticky bars eats a third of a laptop's viewport before the page starts.
+[Composable, Part]
+component TabbedSubStrip(NavItem section, string current, Action onNavigated) {
+  variants {
+    base { Bg = Colors.Bg; BorderBW = 1; Border = Colors.Border; Px = 3; Laptop { Px = 5; } }
+  }
+  render {
+    Row(gap: 1, align: Align.Stretch, role: UiRole.Navigation, label: section.Label + " sections", minW: "0",
+        overflowX: Overflow.Auto, scrollbarWidth: ScrollbarWidth.None) {
+      foreach (var child in section.Children) {
+        TabbedSubTab(child, child.State(current), false, onNavigated);
+        foreach (var deeper in child.Descendants()) {
+          TabbedSubTab(deeper, deeper.State(current), true, onNavigated);
+        }
+      }
+    }
+  }
+}
+
+/// ONE AREA within the current section. Quieter than a tab — smaller type, no icon, a thinner underline — because
+/// it is subordinate to the tab above it, and a second row shouting as loudly as the first turns two levels into
+/// one flat bar that answers neither question.
+[Composable, Part]
+component TabbedSubTab(NavItem item, NavState state, bool nested, Action onNavigated) {
+  live var to = item.FirstRoute();
+  variants {
+    base { Display = Display.Flex; Shrink = 0; MinH = Length.TouchDense; Px = 2; FontSize = FontSize.Caption;
+           BorderBW = 2; Border = Colors.Transparent; Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Border = Colors.Primary; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
+      Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
+      Idle    { }
+    }
+  }
+  render {
+    Link(href: to, label: item.Label, current: state == NavState.Current, onClick: onNavigated) {
+      // A third level is INDENTED rather than given a row of its own — the strip stays ONE line, which is what
+      // keeps it reading as a strip rather than as a second nav.
+      Row(gap: 2, align: Align.Center, h: "100%", minW: "0", pl: nested ? 3 : 0) {
+        if (nested) { Icon(Icons.ChevronRight, size: 12, color: Colors.TextMuted); }
+        Text(item.Label, whiteSpace: WhiteSpace.Nowrap);
+        if (item.Badge != "") { ShellNavBadge(item); }
+      }
+    }
+  }
+}
+
+/// ONE ROW inside the phone's "More" sheet. A `Link`, for the same reasons a tab is one.
+[Composable, Part]
+component TabbedMenuRow(NavItem item, NavState state, bool nested, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Sm; FontSize = FontSize.Body;
+           Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
+      Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
+      Idle    { }
+    }
+  }
+  render {
+    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+      Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: nested ? 5 : 2) {
+        Icon(item.Icon, size: 16);
+        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis);
+        if (item.Badge != "") { ShellNavBadge(item); }
+      }
+    }
+  }
+}
+
+// ── the phone band ──────────────────────────────────────────────────────────────────────────────────────
+
+/// The phone's slim top bar: the brand MARK, the page's own title, its actions, and a mark-only identity chip.
+/// Search is absent by design — a global search crammed into a 390px bar is a 120px input nobody can type in, and
+/// the affordance belongs on the page. The primary nav is not here at all; it is at the bottom, in `TabbedPhoneBar`.
+///
+/// ⛔ THE TAGLINE RIDES UNDER THE PAGE TITLE, NOT BESIDE THE MARK, AND THAT IS THE WHOLE FIX. `markOnly: true`
+///   drops the product name AND the tagline, so on a multi-tenant product there was NO cue on a phone for which
+///   organisation you were in — two organisations' queues are pixel-identical, and `Apps/spendflow` puts people in
+///   several by design. `AppChrome.Tagline` is documented as "the workspace, the tenant, the environment": a fact
+///   that changes per reader, which is why losing it is a hole and not a trim.
+///
+/// ⚠ RESTORING THE FULL LOCKUP WOULD BE THE WRONG FIX AND IT IS WORTH SAYING WHY. The brand text is `Subhead`
+///   weight beside a 28px tile; at 390px it takes the room the page title needs, and the title — the answer to
+///   "what am I looking at" — starts truncating. That trades one invisible fact for another. This row already had
+///   a two-line `Stack` for the title, and the second line was free: `Caption`/`TextMuted`, under the title, in
+///   space that was empty. It costs no horizontal room at all.
+[Composable, Part]
+component TabbedPhoneTopRow(
+    AppChrome chrome, bool hasUser, bool hasMenu, bool userMenuOpen, Action onToggleUserMenu) {
+  live var path = Navigation.CurrentPath ?? "";
+  variants {
+    base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Surface; BorderBW = 1;
+           Border = Colors.Border; Px = 3; Pt = "env(safe-area-inset-top)"; }
+  }
+  render {
+    Row(gap: 3, align: Align.Center, minH: Length.AppBarH, py: 2, role: UiRole.Banner, label: "Page header",
+        minW: "0") {
+      ShellBrand(chrome, markOnly: true, shortcuts: true);
+      Stack(gap: 0, minW: "0", grow: 1) {
+        ShellPageTitle("");
+        // The same truncation trio the brand lockup uses — a long tenant name must clip, never wrap the bar open.
+        if (chrome.Tagline != "") {
+          Text(chrome.Tagline, fontSize: FontSize.Caption, color: Colors.TextMuted,
+               whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        }
+      }
+      Row(gap: 2, align: Align.Center, shrink: 0) {
+        if (chrome.TogglePin != null && path != "") { ShellPinButton(chrome.IsPinned(path), chrome.TogglePin); }
+        Slot("actions");
+      }
+      if (hasUser) { ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen); }
+    }
+  }
+}
+
+/// THE BOTTOM TAB BAR — the phone's primary navigation, fixed to the thumb edge.
+///
+/// ⭐ WHY A BAR AND NOT A DRAWER. A drawer costs a tap before you can even SEE where you might go; a bar is always
+///    legible and one tap from every primary section. That is the whole reason this arrangement exists on a phone,
+///    and it is a better phone experience than the sidebar's drawer rather than a worse desktop one — which is the
+///    point of shipping four arrangements instead of one compromise.
+///
+/// ⚠ SAFE AREA, TWICE: `pb` carries the home-indicator inset ON TOP of the padding so the row is not under the
+///   bar, and the frame renders a matching spacer in flow so the page can still scroll clear of it.
+[Composable, Part]
+component TabbedPhoneBar(AppChrome chrome, NavItem[] items, bool needsMore, string current, bool moreOpen,
+                         Action onToggleMore, Action onNavigated) {
+  variants {
+    base { Position = Position.Fixed; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Drawer;
+           Bg = Colors.Surface; BorderTW = 1; Border = Colors.Border;
+           Pb = "env(safe-area-inset-bottom)"; Tablet { Display = Display.None; } }
+  }
+  render {
+    Row(role: UiRole.Navigation, label: "Main navigation", align: Align.Stretch, justify: Justify.Around,
+        minH: "3.5rem") {
+      foreach (var item in items) { TabbedPhoneTab(item, item.State(current), onNavigated); }
+      if (needsMore) { TabbedPhoneMoreButton(moreOpen, onToggleMore); }
+    }
+  }
+}
+
+/// ONE BOTTOM-BAR ENTRY — glyph over label, the shape a thumb reads at a glance.
+/// ⚠ IT IS ALWAYS A LINK, even when the entry has children. On a phone the children live in the "More" sheet,
+///   which holds the WHOLE tree — so a bar entry never has to be both a destination and a discloser, and the
+///   ambiguous two-target row a pointer needs is simply not a phone problem.
+[Composable, Part]
+component TabbedPhoneTab(NavItem item, NavState state, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; MinH = Length.Touch;
+           Color = Colors.TextMuted; Transition = Motion.Fast;
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Color = Primary.Strong; }
+      Trail   { Color = Colors.OnSurface; }
+      Idle    { }
+    }
+  }
+  render {
+    // An address outside the site says so — in its name and with the outside glyph.
+    Link(href: item.To, label: item.Outside() ? $"{item.Label} (another site)" : item.Label, current: state == NavState.Current,
+         onClick: onNavigated, shortcut: item.Shortcut) {
+      Stack(gap: 0, align: Align.Center, justify: Justify.Center, w: "100%", h: "100%", px: 1, py: 1) {
+        Icon(item.Outside() ? Icons.ExternalLink : item.Icon, size: 20);
+        // The label is TINY and truncates rather than wrapping — a two-line bottom-bar label makes the bar jump
+        // between sections, which is worse than an ellipsis.
+        Text(item.Label, fontSize: "11px", whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis, maxW: "100%");
+      }
+    }
+  }
+}
+
+/// The bar's last cell — everything the bar could not show.
+[Composable, Part]
+component TabbedPhoneMoreButton(bool open, Action onPress) {
+  variants {
+    base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; MinH = Length.Touch;
+           Color = Colors.TextMuted; Transition = Motion.Fast;
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: "More", expanded: open) {
+      Stack(gap: 0, align: Align.Center, justify: Justify.Center, w: "100%", h: "100%", px: 1, py: 1) {
+        Icon(Icons.Menu, size: 20);
+        Text("More", fontSize: "11px", whiteSpace: WhiteSpace.Nowrap);
+      }
+    }
+  }
+}
+
+/// THE "MORE" SHEET — the WHOLE nav tree, not merely the tail the bar could not fit.
+///
+/// ⭐ THE WHOLE TREE IS THE POINT. A sheet holding only the overflow would leave a barred entry's CHILDREN with
+///    nowhere to live, so a phone reader could reach "Settings" and never "Settings → Billing" — declared,
+///    rendered nowhere, which is the exact silent-loss this kit has already been bitten by once. Showing
+///    everything is also what a phone "More" screen IS on both native platforms: the full menu, with the
+///    shortcuts duplicated at the bottom of the screen.
+///
+/// Sections keep their headings here, because a sheet has the width for them that a bar does not.
+[Composable, Part]
+component TabbedMoreSheet(AppChrome chrome, string current, Action onNavigated) {
+  render {
+    Stack(gap: 1, role: UiRole.Navigation, label: "All sections") {
+      foreach (var item in chrome.Nav) {
+        if (item.Shape() == NavKind.Section && item.Children.Length > 0) {   // an empty section draws nothing
+          Row(px: 2, pt: 3, pb: 1) { SectionLabel(item.Label); }
+          foreach (var child in item.Children) {
+            TabbedMenuRow(child, child.State(current), false, onNavigated);
+            foreach (var deeper in child.Descendants()) { TabbedMenuRow(deeper, current, true, onNavigated); }
+          }
+        }
+        if (item.Shape() != NavKind.Section) {
+          TabbedMenuRow(item, item.State(current), false, onNavigated);
+          foreach (var deeper in item.Descendants()) { TabbedMenuRow(deeper, deeper.State(current), true, onNavigated); }
+        }
+      }
+    }
+  }
+}

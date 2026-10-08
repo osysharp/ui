@@ -1,0 +1,143 @@
+// A FRAMING WORKSHOP — the orders it takes and the people who frame them. Framers work the orders; the owner also keeps
+// the workshop's settings.
+
+[Role] enum WorkshopRole { Framer, Owner }
+
+/// Somebody who works in the workshop.
+[Principal] entity Framer {
+  [Unique, MaxLength(200)] string Email;
+  security { allow read when IsAuthenticated; }
+}
+
+/// Who holds which of the workshop's roles.
+[RoleGrant] entity RoleGrant {
+  [Required] Framer Member;
+  [Required] WorkshopRole Role;
+  security { allow read when IsAuthenticated; }
+}
+
+policy IsFramer => RoleGrant.Any(g => g.Member == user && (g.Role == WorkshopRole.Framer || g.Role == WorkshopRole.Owner));
+policy IsOwner => RoleGrant.Any(g => g.Member == user && g.Role == WorkshopRole.Owner);
+
+/// A frame ordered for a customer's picture.
+[Title(Customer)]
+entity FrameOrder {
+  [Required, MaxLength(120)] string Customer;
+  [Required, MaxLength(120)] string Artwork;
+  bool Paid;
+  [ForeignKey(Order)] BenchNote[] Notes;
+  security { allow read, create, update when IsFramer; }
+}
+
+/// What a framer noted at the bench while working on an order.
+entity BenchNote {
+  [Required] FrameOrder Order;
+  [Required, MaxLength(200)] string Words;
+  security { allow read, create when IsFramer; }
+}
+
+// ── the orders ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Every order, by customer — each opens its own page.
+[Page("/")] [Authorize(IsFramer)] [Render(CSR)] [Title("Orders")]
+component OrdersPage() {
+  live var orders = FrameOrder.OrderBy(o => o.Customer).ToList();
+  render {
+    Stack(gap: 3, p: 6) {
+      // The workshop's own picture, from `model/textures/` — `Textures` is the vocabulary of the pictures an app ships
+      // (and what the kit's `SplitArt` takes, which is why a test app that resolves the whole kit ships one).
+      Image(texture: Textures.Workbench, alt: "The workbench", w: "100%", h: "120px", objectFit: ObjectFit.Cover);
+      PageTitle("Orders");
+      if (orders.Count == 0) { EmptyState("No orders yet", body: "An order appears here as soon as it is taken."); }
+      foreach (var o in orders) {
+        Card(o.Customer, subtitle: o.Artwork) { TextLink("Open " + o.Customer + "'s order", to: "/orders/" + o.Id); }
+      }
+    }
+  }
+}
+
+/// One order: its customer and artwork, the badges the rest of the app puts beside its name (`RecordBadge`), and the
+/// panels it adds under it (`RecordPanel`). The page names neither — whatever contributes to the slots is drawn.
+[Page("/orders/{id}")] [Authorize(IsFramer)] [Render(CSR)] [Title("Order")]
+component OrderPage(Guid id) {
+  live var order = FrameOrder.FirstOrDefault(o => o.Id == id);
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        Row(gap: 2, align: Align.Center) { PageTitle(order.Customer); RecordBadge(order); }
+        Text(order.Artwork, color: Colors.TextMuted);
+        RecordPanel(order);
+      }
+    }
+  }
+}
+
+/// "Paid" beside an order's name, once it is.
+[Contribution("Paid")]
+component PaidBadge(FrameOrder record) : RecordBadge<FrameOrder> {
+  render { if (record.Paid) { Badge("Paid", tone: Tone.Success); } }
+}
+
+/// The bench notes on an order — a panel under it.
+[Contribution("Bench notes", Order = 10)]
+component BenchNotesPanel(FrameOrder record) : RecordPanel<FrameOrder> {
+  render {
+    Card("Bench notes") {
+      if (record.Notes.Count == 0) { Text("Nothing noted yet.", color: Colors.TextMuted); }
+      foreach (var n in record.Notes) { Text(n.Words); }
+    }
+  }
+}
+
+// ── the settings area ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// The workshop's own settings — a section declared on its row: no page, no Save written here. The settings area lists
+/// it, and the head office fixes the glass every workshop uses (`[OrgPolicy(OrgPolicyMode.Lock)]`).
+[Settings("Workshop", Route = "/settings/workshop", Group = "The workshop", Order = 1, Icon = Icons.Gear,
+          Authorize = IsOwner, Hint = "Rush orders, and the glass the workshop frames with.",
+          Description = "What the workshop takes on, and the glass it frames with unless a customer asks otherwise.",
+          Saved = "Workshop settings saved.")]
+[SettingsGroup("Orders", "What the workshop takes on.")]
+[SettingsGroup("Glass", "What every frame gets unless a customer asks otherwise.")]
+entity WorkshopSettings {
+  [Setting("Take rush orders", Group = "Orders", Hint = "Framed within two days, for a surcharge.")]
+  bool TakesRushOrders = true;
+  [Setting("Museum glass", Group = "Glass", Hint = "Anti-reflective, and it filters the light that fades a print.")]
+  [OrgPolicy(OrgPolicyMode.Lock)] bool MuseumGlass = false;
+  security {
+    allow read when IsAuthenticated;
+    allow create, update when IsOwner;
+  }
+}
+
+/// The price list — a section with a page of the workshop's own, announced exactly as a kit announces its sections:
+/// found, never wired. Only the owner is shown it.
+public class PriceListSettings : ISettingsProvider {
+  public SettingsLink[] Sections() {
+    return [
+      new SettingsLink { Label = "Price list", To = "/settings/prices", Group = "The workshop", Icon = Icons.Tag, Order = 2,
+                         Shown = IsOwner, Hint = "What a frame costs, per metre of moulding." },
+    ];
+  }
+}
+
+/// The settings area's own address — each section opens beside the list of them.
+[Page("/settings")] [Layout(SettingsFrame)] [Authorize(IsFramer)] [Render(CSR)] [Title("Settings")]
+component SettingsHome() {
+  render { }
+}
+
+[Page("/settings/prices")] [Layout(SettingsFrame)] [Authorize(IsOwner)] [Render(CSR)] [Title("Price list")]
+component PriceListPage() {
+  render {
+    SettingsPage("Price list", description: "What a frame costs, per metre of moulding.") {
+      SettingsSection("Mouldings") { Text("Oak — 48 a metre"); Text("Walnut — 64 a metre"); }
+    }
+  }
+}
+
+/// Who changed the workshop's rush-order rule, and when — "Changed by …", or "" when nobody has (or the app keeps no
+/// change trail). What the workshop's own dashboard says beside the rule.
+public string RushRuleChangedBy(WorkshopSettings row) {
+  return SettingsChangedLine("WorkshopSettings", row.Id, ["TakesRushOrders"], DateTime.UtcNow);
+}

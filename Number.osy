@@ -1,0 +1,168 @@
+// Ui — the numeric fields (`using Osysharp.Ui;`).
+//
+// ⛔ NEITHER OF THESE IS AN `<input type="number">` ANY MORE, AND THAT IS THE WHOLE POINT OF THE FILE (I-77).
+//
+// A native number input renders and accepts in the BROWSER's locale — the machine's, not the app's. Nothing in Osy#
+// can reach it: not `app.DefaultCulture`, not `[PreferredCulture]`, not the culture plans the metadata channel has
+// been shipping to the browser all along. So a `DecimalField` bound to `12.5m` drew `12,5` on a German laptop while
+// the `Text` beside it drew `13.5`, and one card carried two number systems. `input.value` on a `type="number"` is
+// the SANITISED value — always point-decimal, whatever is painted — so no text assertion, and neither happy-dom
+// harness, could see it. A screenshot could.
+//
+// So the box is a text input, and the CLIENT reads and writes its digits through the app's own culture: the same
+// plan, the same formatter and the same parser a culture-less `x.ToString("C")` uses. What `type="number"` was also
+// buying is kept rather than dropped — see the note on `Stepper` below and the one on `inputmode` in the client's
+// `numericInputMode`.
+
+namespace Osysharp.Ui;
+
+/// A labelled NUMERIC input — a whole-number field for a quantity, an interval, a count. Binds an `int`
+/// directly, so what is typed is stored as a number. `min`/`max` are the field's RANGE: they bound the steppers and
+/// mark the box invalid when what is typed falls outside, so the reader sees it as they type rather than when the
+/// server refuses the save. `unit` prints AFTER the box ("days", "kg") and `prefix` BEFORE it, which is where a
+/// currency symbol belongs ("£").
+/// In a test it is filled by its label like any field: `Ui.Fill("How often", "10")`.
+/// need: type a whole number, an integer input, a quantity box, a counter you type into
+/// e.g. `NumberField("How often", value: draft.EveryDays, min: 1, unit: "days")`
+/// `value` takes an assignable field of your component, a field of an ENTITY row, or a `Binding<T>` you were
+/// handed — a field of a `class` value is refused, because there is no row to write the edit through.
+[Composable]
+component NumberField(
+    string label,
+    Binding<int> value,
+    int min = -2147483648,
+    int max = 2147483647,
+    string unit = "",
+    string prefix = "",
+    // The grey hint INSIDE the box. `Field` has always taken one and its own doc comment routes a
+    // `decimal` author here, so not offering it made the pair inconsistent for the same job (H-90).
+    string placeholder = "",
+    string hint = "",
+    string error = "",
+    bool disabled = false)
+{
+  variants {
+    base { Gap = Space.FieldGap; }
+  }
+
+  // The steppers. `+ 1` is exactly what the native control's arrows did under `step: 1`, and they CLAMP the same
+  // way it did rather than walking past the bound and leaving the box invalid.
+  action Up() { value = value + 1 > max ? max : value + 1; }
+  action Down() { value = value - 1 < min ? min : value - 1; }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      Row(align: Align.Center, gap: 0) {
+        if (prefix != "") { Text(prefix, fontSize: FontSize.Label, color: Colors.TextMuted, mr: 2); }
+        // ⚠ `min`/`max` STILL REACH THE ELEMENT, and they are not decoration. The browser only enforces them on a
+        //   native number input, so the client enforces them here instead (`rangeCheck` → `setCustomValidity`) —
+        //   the element is genuinely `:invalid`, and the app's design system paints the same danger border it
+        //   always did. Dropping the check along with `type="number"` would have left a declared range refusing
+        //   nothing until the server refused it, which is the inert affordance this platform does not ship.
+        // ⚠ `step` is GONE. It existed only to defeat HTML's `stepMismatch` on a native number input; on a text
+        //   input it is an attribute that claims a rule nothing applies, and the steppers above are what a step
+        //   actually means now.
+        Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, label: label,
+              min: min, max: max,
+              invalid: error != "", w: Length.NumberW, h: Length.ControlMd, px: 2, borderW: 1, border: Colors.Border,
+              bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body, textAlign: TextAlign.Center);
+        Stepper(label: label, onUp: Up, onDown: Down, disabled: disabled);
+        if (unit != "") { Text(unit, fontSize: FontSize.Label, color: Colors.TextMuted, ml: 2); }
+      }
+      if (error != "" || hint != "") {
+        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
+             color: error != "" ? Colors.Danger : Colors.TextMuted);
+      }
+    }
+  }
+}
+
+/// A labelled DECIMAL numeric input — money, a measurement, a rate; for a WHOLE number reach for `NumberField`
+/// instead. The same control as `NumberField` over a
+/// `decimal`, kept separate because a generic cannot do arithmetic over a number type it does not know.
+/// The box reads and accepts numbers in the app's culture (`app.DefaultCulture`, or the viewer's
+/// `[PreferredCulture]`), so a Swedish reader sees and types `12,5` where an American sees and types `12.5`.
+/// In a test it is filled by its label like any field: `Ui.Fill("Hundredweight", "12.50")`.
+/// ⚠ A CURRENCY SYMBOL GOES IN `prefix`, NOT IN `unit`. `unit` is drawn AFTER the box, which is what a TRAILING
+/// unit wants ("kr", "kg", "days") and reads as a stray glyph for a leading one: `unit: "£"` renders `[ 0 ] £`.
+/// No check catches it, because every text assertion still passes.
+/// need: type an amount of money, a decimal input, a price or a rate box
+/// e.g. `DecimalField("Hundredweight", value: bell.Weight, min: 0m, unit: "cwt")`
+/// e.g. `DecimalField("Deposit", value: draft.Deposit, min: 0m, prefix: "£")`
+[Composable]
+component DecimalField(
+    string label,
+    Binding<decimal> value,
+    decimal min = -999999999m,
+    decimal max = 999999999m,
+    string unit = "",
+    string prefix = "",
+    // The grey hint INSIDE the box. `Field` has always taken one and its own doc comment routes a
+    // `decimal` author here, so not offering it made the pair inconsistent for the same job (H-90).
+    string placeholder = "",
+    string hint = "",
+    string error = "",
+    bool disabled = false)
+{
+  variants {
+    base { Gap = Space.FieldGap; }
+  }
+
+  // Whole units, which is what the native arrows did on a `step: "any"` field — that spelling meant "any value is
+  // valid", never "step by a fraction". Clamped to the declared bound, as they were.
+  action Up() { value = value + 1m > max ? max : value + 1m; }
+  action Down() { value = value - 1m < min ? min : value - 1m; }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      Row(align: Align.Center, gap: 0) {
+        if (prefix != "") { Text(prefix, fontSize: FontSize.Label, color: Colors.TextMuted, mr: 2); }
+        // See the note on `NumberField`'s Input: `min`/`max` are enforced by the client now, and `step: "any"` —
+        // which existed solely because HTML's `step` defaults to 1 and made every fractional value a
+        // `stepMismatch` — has nothing left to defeat.
+        Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, label: label,
+              min: min, max: max,
+              invalid: error != "", w: Length.NumberW, h: Length.ControlMd, px: 2, borderW: 1, border: Colors.Border,
+              bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body, textAlign: TextAlign.Center);
+        Stepper(label: label, onUp: Up, onDown: Down, disabled: disabled);
+        if (unit != "") { Text(unit, fontSize: FontSize.Label, color: Colors.TextMuted, ml: 2); }
+      }
+      if (error != "" || hint != "") {
+        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
+             color: error != "" ? Colors.Danger : Colors.TextMuted);
+      }
+    }
+  }
+}
+
+/// The two stacked arrows beside a numeric box — the `<input type="number">` spinner, drawn by the kit because the
+/// kit's numeric fields are text inputs now (see the header of this file).
+///
+/// ⭐ IT IS NOT POLISH. The arrows are a real affordance people use, and they were visible on a shipped app's
+/// meals-limit field the day this changed; dropping them silently along with `type="number"` would have been a
+/// worse control delivered as a bug fix. Two chevrons at the box's right edge, the size the native pair was.
+///
+/// ⚠ EACH ARROW IS NAMED. There is no text in it, so `label:` is the only thing a screen reader can announce and
+/// the only handle a test has: `Ui.Click("Increase Price")`.
+///
+/// ⚠ `[Part]`, not a control: it exists so `NumberField` and `DecimalField` cannot drift apart about what a stepper
+/// looks like, and on its own — with no box beside it — it is nothing. Fork it by forking them.
+[Composable][Part]
+component Stepper(string label, Action onUp, Action onDown, bool disabled = false) {
+  render {
+    if (!disabled) {
+      Stack(gap: 0, ml: 1) {
+        Pressable(label: "Increase " + label, onClick: onUp, px: 1, borderW: 1, border: Colors.Border,
+                  bg: Colors.Surface, color: Colors.TextMuted, h: Length.StepperHalf) {
+          Icon(Icons.ChevronUp, size: Length.StepperGlyph);
+        }
+        Pressable(label: "Decrease " + label, onClick: onDown, px: 1, borderW: 1, border: Colors.Border,
+                  bg: Colors.Surface, color: Colors.TextMuted, h: Length.StepperHalf) {
+          Icon(Icons.ChevronDown, size: Length.StepperGlyph);
+        }
+      }
+    }
+  }
+}

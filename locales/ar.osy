@@ -1,0 +1,570 @@
+// ar (العربية): the words of Osysharp.Ui, translated.
+// Written and kept in step with the source by `osy translate`: a new text arrives as `=> null`, a text
+// whose source changed keeps its old translation in a `was` clause. The words are yours to edit.
+// Source language: en.
+
+translations ar {
+  // ── CalendarPanel ──
+  /// CalendarPanel · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "{label} calendar" => "تقويم {label}";
+
+  // ── CatalogueColumn ──
+  /// CatalogueColumn · a control's name for screen readers
+  /// beside: "Site header"
+  accessibleName "Departments" => "الأقسام";
+  /// CatalogueColumn · a control's name for screen readers
+  /// beside: "Departments"
+  /// also in EditorialHeader
+  /// also in MarqueeFrame
+  /// also in SplitWordmark
+  accessibleName "Site header" => "رأس الموقع";
+
+  // ── CatalogueFrame ──
+  /// CatalogueFrame · a control's name for screen readers
+  /// beside: "primary", "footer"
+  /// also in EditorialFrame
+  /// also in MarqueeFrame
+  accessibleName "Page" => "الصفحة";
+
+  // ── CommandMenu ──
+  /// CommandMenu · a control's name for screen readers
+  accessibleName "Commands" => "الأوامر";
+  /// CommandMenu · placeholder text inside an empty field · at most ~34 characters
+  /// shown through CommandMenu.placeholder
+  placeholder "Type a command or search" => "اكتب أمرًا أو ابحث";
+  /// CommandMenu · text on the page
+  /// placeholders: {query} = query (string)
+  text "Nothing matches “{query}”" => "لا توجد نتائج مطابقة لـ «{query}»";
+
+  // ── DataGrid ──
+  /// DataGrid · a control's name for screen readers
+  accessibleName "Column chooser" => "اختيار الأعمدة";
+  /// DataGrid · a control's name for screen readers
+  accessibleName "Filter row" => "صف التصفية";
+  /// DataGrid · a control's name for screen readers
+  /// placeholders: {h.Label} = h.Label (string)
+  accessibleName "Filter {h.Label}" => "تصفية {h.Label}";
+  /// DataGrid · a button's label · at most ~13 characters
+  /// shown through Button.label
+  button "Columns" => "الأعمدة";
+  /// DataGrid · a button's label · at most ~12 characters
+  /// shown through Button.label
+  button "Export" => "تصدير";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through Field.label
+  label "Search" => "بحث";
+  /// DataGrid · placeholder text inside an empty field · at most ~26 characters
+  /// shown through Field.placeholder
+  placeholder "Search all columns" => "البحث في كل الأعمدة";
+  /// DataGrid · placeholder text inside an empty field · at most ~15 characters
+  placeholder "contains…" => "يحتوي على…";
+  /// DataGrid · text on the page
+  text "No rows match the filter." => "لا توجد صفوف مطابقة للتصفية.";
+
+  // ── DatePicker ──
+  /// DatePicker · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "Clear {label}" => "مسح {label}";
+  /// DatePicker · placeholder text inside an empty field · at most ~17 characters
+  /// shown through DatePicker.placeholder
+  placeholder "Pick a date" => "اختر تاريخًا";
+  /// DatePicker · text on the page
+  /// also in DataGrid
+  text "Clear" => "مسح";
+
+  // ── Done ──
+  /// Done · a label (a field, a list item, a menu entry) · at most ~11 characters
+  /// shown through Done.label
+  label "Saved" => "تم الحفظ";
+
+  // ── DurationField ──
+  /// DurationField · a control's name for screen readers
+  /// beside: "How many", "Done"
+  accessibleName "Unit" => "الوحدة";
+  /// DurationField · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "{label} duration" => "مدة {label}";
+  /// DurationField · a button's label · at most ~10 characters
+  /// shown through Button.label
+  button "Done" => "تم";
+  /// DurationField · a label (a field, a list item, a menu entry) · at most ~14 characters
+  /// shown through NumberField.label
+  /// beside: "Unit", "Done"
+  label "How many" => "كم";
+
+  // ── DurationWords ──
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "1 day" => "يوم واحد";
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "1 hour" => "ساعة واحدة";
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "1 minute" => "دقيقة واحدة";
+  /// DurationWords · text on the page
+  /// shown through DurationWords()
+  text "No time" => "بلا وقت";
+  /// DurationWords · text on the page
+  /// placeholders: {n} = n (int) — {n} is a count: give one text per plural form
+  /// shown through DurationWords()
+  text "{n} days" => { zero: "{n} يوم", one: "يوم واحد", two: "يومان", few: "{n} أيام", many: "{n} يومًا", other: "{n} يوم" };
+  /// DurationWords · text on the page
+  /// placeholders: {n} = n (int) — {n} is a count: give one text per plural form
+  /// shown through DurationWords()
+  text "{n} hours" => { zero: "{n} ساعة", one: "ساعة واحدة", two: "ساعتان", few: "{n} ساعات", many: "{n} ساعة", other: "{n} ساعة" };
+  /// DurationWords · text on the page
+  /// placeholders: {n} = n (int) — {n} is a count: give one text per plural form
+  /// shown through DurationWords()
+  text "{n} minutes" => { zero: "{n} دقيقة", one: "دقيقة واحدة", two: "دقيقتان", few: "{n} دقائق", many: "{n} دقيقة", other: "{n} دقيقة" };
+
+  // ── EditorialFooter ──
+  /// EditorialFooter · a control's name for screen readers
+  /// beside: "420px"
+  accessibleName "Footer navigation" => "روابط التذييل";
+  /// EditorialFooter · a control's name for screen readers
+  /// also in StoreFooter
+  accessibleName "Site footer" => "تذييل الموقع";
+
+  // ── EditorialHeader ──
+  /// EditorialHeader · a control's name for screen readers
+  /// also in MarqueeNavRow
+  /// also in SplitNavRow
+  accessibleName "Site navigation" => "التنقل في الموقع";
+
+  // ── EditorialMenuButton ──
+  /// EditorialMenuButton · a control's name for screen readers
+  /// also in StorefrontMenuButton
+  /// also in StorefrontMenuDrawer
+  accessibleName "Menu" => "القائمة";
+
+  // ── FocusedBar ──
+  /// FocusedBar · a control's name for screen readers
+  /// also in RailTopBar
+  /// also in SidebarTopBar
+  /// also in TabbedTopRow
+  accessibleName "Page header" => "رأس الصفحة";
+  /// FocusedBar · text on the page
+  /// placeholders: {ToString} = active.Number.ToString(…) (int), {ToString2} = total.ToString(…) (int) — {ToString} is a count: give one text per plural form
+  text "Step {ToString} of {ToString2}" => { zero: "الخطوة {ToString} من {ToString2}", one: "الخطوة {ToString} من {ToString2}", two: "الخطوة {ToString} من {ToString2}", few: "الخطوة {ToString} من {ToString2}", many: "الخطوة {ToString} من {ToString2}", other: "الخطوة {ToString} من {ToString2}" };
+
+  // ── FocusedExit ──
+  /// FocusedExit · a control's name for screen readers
+  accessibleName "Exit" => "خروج";
+  /// FocusedExit · text on the page
+  text "Exit" => "خروج";
+
+  // ── FocusedFrame ──
+  /// FocusedFrame · a control's name for screen readers
+  accessibleName "Current task" => "المهمة الحالية";
+  /// FocusedFrame · a title
+  /// shown through ShellSheet.title
+  /// also in RailFrame
+  /// also in SidebarFrame
+  /// also in TabbedFrame
+  title "Account" => "الحساب";
+
+  // ── FocusedLeavePrompt ──
+  /// FocusedLeavePrompt · a button's label · at most ~23 characters
+  /// shown through Button.label
+  /// beside: "Keep editing"
+  button "Discard and exit" => "تجاهل والخروج";
+  /// FocusedLeavePrompt · a button's label · at most ~18 characters
+  /// shown through Button.label
+  /// beside: "Discard and exit"
+  button "Keep editing" => "متابعة التعديل";
+  /// FocusedLeavePrompt · a button's label · at most ~19 characters
+  /// shown through Button.label
+  button "Save and exit" => "حفظ والخروج";
+  /// FocusedLeavePrompt · a subtitle
+  /// shown through Dialog.subtitle
+  subtitle "This step has changes that have not been saved yet." => "في هذه الخطوة تغييرات لم تُحفظ بعد.";
+  /// FocusedLeavePrompt · a title
+  /// shown through Dialog.title
+  title "Leave without saving?" => "هل تريد المغادرة دون حفظ؟";
+  /// FocusedLeavePrompt · a title
+  /// shown through Alert.title
+  title "That could not be saved" => "تعذّر الحفظ";
+
+  // ── FocusedStepper ──
+  /// FocusedStepper · a control's name for screen readers
+  accessibleName "Progress" => "التقدم";
+
+  // ── FocusedSubsteps ──
+  /// FocusedSubsteps · a control's name for screen readers
+  /// placeholders: {step.Label} = step.Label (string)
+  accessibleName "{step.Label} parts" => "أجزاء {step.Label}";
+
+  // ── GroupBand ──
+  /// GroupBand · text on the page
+  /// shown through Strong.text
+  text "(none)" => "(لا شيء)";
+
+  // ── HeaderCell ──
+  /// HeaderCell · a control's name for screen readers
+  /// placeholders: {col.Label} = col.Label (string)
+  /// beside: "6px"
+  accessibleName "Move {col.Label} left" => "نقل {col.Label} إلى اليسار";
+  /// HeaderCell · a control's name for screen readers
+  /// placeholders: {col.Label} = col.Label (string)
+  /// beside: "6px"
+  accessibleName "Move {col.Label} right" => "نقل {col.Label} إلى اليمين";
+
+  // ── KeyboardSheet ──
+  /// KeyboardSheet · a subtitle
+  /// shown through Dialog.subtitle
+  subtitle "What each key does on this page." => "وظيفة كل مفتاح في هذه الصفحة.";
+  /// KeyboardSheet · a title
+  /// shown through KeyboardSheet.title
+  title "Keyboard shortcuts" => "اختصارات لوحة المفاتيح";
+
+  // ── Menu ──
+  /// Menu · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Menu.label
+  label "Menu" => "القائمة";
+
+  // ── MonthHeader ──
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Next year"
+  accessibleName "Next month" => "الشهر التالي";
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Next month"
+  accessibleName "Next year" => "السنة التالية";
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Previous year"
+  accessibleName "Previous month" => "الشهر السابق";
+  /// MonthHeader · a control's name for screen readers
+  /// beside: "Previous month"
+  accessibleName "Previous year" => "السنة السابقة";
+
+  // ── Osysharp.Ui.DurationUnit ──
+  /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Osysharp.Ui.DurationUnit.Days
+  /// beside: "Minutes", "Hours"
+  label "Days" => "أيام";
+  /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~11 characters
+  /// shown through Osysharp.Ui.DurationUnit.Hours
+  /// beside: "Minutes", "Days"
+  label "Hours" => "ساعات";
+  /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through Osysharp.Ui.DurationUnit.Minutes
+  /// beside: "Hours", "Days"
+  label "Minutes" => "دقائق";
+
+  // ── Osysharp.Ui.ShellPresence ──
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Osysharp.Ui.ShellPresence.Away
+  /// beside: "Online", "Do not disturb"
+  label "Away" => "بعيد";
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~20 characters
+  /// shown through Osysharp.Ui.ShellPresence.Busy
+  /// beside: "Online", "Away"
+  label "Do not disturb" => "عدم الإزعاج";
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through Osysharp.Ui.ShellPresence.Online
+  /// beside: "Away", "Do not disturb"
+  label "Online" => "متصل";
+
+  // ── RailBar ──
+  /// RailBar · a control's name for screen readers
+  /// also in SidebarRail
+  /// also in TabbedStrip
+  /// also in TabbedPhoneBar
+  accessibleName "Main navigation" => "التنقل الرئيسي";
+
+  // ── RailExpandButton ──
+  /// RailExpandButton · text on the page
+  /// shown through name
+  /// also in SidebarCollapseButton
+  text "Collapse navigation" => "طي التنقل";
+  /// RailExpandButton · text on the page
+  /// shown through name
+  /// also in SidebarCollapseButton
+  text "Expand navigation" => "توسيع التنقل";
+
+  // ── RailMenuButton ──
+  /// RailMenuButton · a control's name for screen readers
+  /// also in SidebarMenuButton
+  accessibleName "Open navigation" => "فتح التنقل";
+
+  // ── RailNavChevron ──
+  /// RailNavChevron · text on the page
+  /// placeholders: {item.Label} = item.Label (string)
+  /// shown through name
+  /// also in SidebarSplitChevron
+  text "{item.Label} sub-pages" => "الصفحات الفرعية لـ {item.Label}";
+
+  // ── RailNavEmpty ──
+  /// RailNavEmpty · a control's name for screen readers
+  /// also in SidebarNavEmpty
+  /// also in TabbedStripEmpty
+  accessibleName "No navigation" => "لا يوجد تنقل";
+  /// RailNavEmpty · text on the page
+  /// beside: "No sections yet"
+  /// also in SidebarNavEmpty
+  text "Add a NavItem to this app's chrome to fill this rail." => "أضف NavItem إلى إطار التطبيق لملء هذا الشريط.";
+  /// RailNavEmpty · text on the page
+  /// beside: "Add a NavItem to this app's chrome to fill this rail."
+  /// also in SidebarNavEmpty
+  text "No sections yet" => "لا توجد أقسام بعد";
+
+  // ── SaveBar ──
+  /// SaveBar · a control's name for screen readers
+  accessibleName "Not saved" => "لم يُحفظ";
+  /// SaveBar · a control's name for screen readers
+  accessibleName "Unsaved changes" => "تغييرات غير محفوظة";
+  /// SaveBar · a button's label · at most ~13 characters
+  /// shown through Button.label
+  /// beside: "Unsaved changes", "Save"
+  button "Discard" => "تجاهل";
+  /// SaveBar · a button's label · at most ~10 characters
+  /// shown through Button.label
+  /// beside: "Unsaved changes", "Discard"
+  button "Save" => "حفظ";
+  /// SaveBar · a button's label · at most ~10 characters
+  /// shown through Button.label
+  button "Undo" => "تراجع";
+  /// SaveBar · a button's label · at most ~20 characters
+  /// placeholders: {ToLower} = undoLabel.ToLower(…) (string)
+  /// shown through Button.label
+  button "Undo {ToLower}" => "تراجع عن {ToLower}";
+  /// SaveBar · text on the page
+  /// placeholders: {problem} = problem (string)
+  text "Not saved — {problem}" => "لم يُحفظ — {problem}";
+  /// SaveBar · text on the page
+  /// shown through SaveBar.saved
+  text "Saved." => "تم الحفظ.";
+  /// SaveBar · text on the page
+  /// beside: "Discard", "Save"
+  text "Unsaved changes" => "تغييرات غير محفوظة";
+
+  // ── SettingsArea ──
+  /// SettingsArea · a control's name for screen readers
+  accessibleName "Nothing to set up" => "لا توجد إعدادات";
+  /// SettingsArea · a control's name for screen readers
+  /// placeholders: {title} = title (string)
+  accessibleName "{title} sections" => "أقسام {title}";
+  /// SettingsArea · a link · at most ~18 characters
+  /// shown through TextLink.label
+  link "All settings" => "كل الإعدادات";
+  /// SettingsArea · text on the page
+  /// beside: "Sections appear here as the app and its kits offer settings you may change."
+  text "Nothing to set up" => "لا توجد إعدادات";
+  /// SettingsArea · text on the page
+  /// beside: "Nothing to set up"
+  text "Sections appear here as the app and its kits offer settings you may change." => "تظهر الأقسام هنا عندما يوفّر التطبيق وحزمه إعدادات يمكنك تغييرها.";
+  /// SettingsArea · a title
+  /// shown through SettingsArea.title
+  /// also in SettingsOverview
+  title "Settings" => "الإعدادات";
+
+  // ── SettingsOverview ──
+  /// SettingsOverview · a control's name for screen readers
+  accessibleName "All settings" => "كل الإعدادات";
+  /// SettingsOverview · a control's name for screen readers
+  accessibleName "Other settings" => "إعدادات أخرى";
+  /// SettingsOverview · text on the page
+  text "Everything you can change, by area. Nothing on a settings page is saved until you press Save." => "كل ما يمكنك تغييره، مرتبًا حسب المجال. لا يُحفظ أي شيء في صفحة الإعدادات حتى تضغط حفظ.";
+  /// SettingsOverview · text on the page
+  text "Nothing here is yours to change yet." => "لا يوجد هنا ما يمكنك تغييره بعد.";
+
+  // ── SettingsPage ──
+  /// SettingsPage · a control's name for screen readers
+  /// placeholders: {title} = title (string)
+  accessibleName "{title} page" => "صفحة {title}";
+
+  // ── SettingsSection ──
+  /// SettingsSection · a control's name for screen readers
+  accessibleName "Set by your organization" => "تحدده مؤسستك";
+  /// SettingsSection · text on the page
+  /// also in SettingRow
+  text "Set by your organization" => "تحدده مؤسستك";
+  /// SettingsSection · text on the page
+  text "You can see this, but not change it." => "يمكنك رؤية هذا، لكن لا يمكنك تغييره.";
+
+  // ── ShellAppMenu ──
+  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through MenuItem.label
+  /// beside: "Apps"
+  label "Home" => "الرئيسية";
+  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~16 characters
+  /// shown through Menu.label
+  label "Switch app" => "تبديل التطبيق";
+  /// ShellAppMenu · text on the page
+  /// shown through SectionLabel.text
+  text "Apps" => "التطبيقات";
+  /// ShellAppMenu · text on the page
+  /// shown through SectionLabel.text
+  /// also in ShellShortcuts
+  text "Pinned" => "المثبّتة";
+  /// ShellAppMenu · text on the page
+  /// shown through SectionLabel.text
+  /// also in ShellShortcuts
+  text "Recent" => "الأخيرة";
+
+  // ── ShellAside ──
+  /// ShellAside · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through ShellAside.label
+  label "Related" => "ذو صلة";
+
+  // ── ShellCountButton ──
+  /// ShellCountButton · text on the page
+  /// placeholders: {label} = label (string), {count} = count (int) — {count} is a count: give one text per plural form
+  /// shown through name
+  text "{label}, {count} new" => { zero: "{label}، الجديد: {count}", one: "{label}، الجديد: {count}", two: "{label}، الجديد: {count}", few: "{label}، الجديد: {count}", many: "{label}، الجديد: {count}", other: "{label}، الجديد: {count}" };
+
+  // ── ShellPinButton ──
+  /// ShellPinButton · text on the page
+  /// shown through name
+  text "Pin this page" => "تثبيت هذه الصفحة";
+  /// ShellPinButton · text on the page
+  /// shown through name
+  text "Unpin this page" => "إلغاء تثبيت هذه الصفحة";
+
+  // ── ShellShortcuts ──
+  /// ShellShortcuts · a control's name for screen readers
+  accessibleName "Pinned" => "المثبّتة";
+  /// ShellShortcuts · a control's name for screen readers
+  accessibleName "Recent" => "الأخيرة";
+
+  // ── ShellTaskBar ──
+  /// ShellTaskBar · a label (a field, a list item, a menu entry) · at most ~18 characters
+  /// shown through ShellTaskBar.label
+  label "Task actions" => "إجراءات المهمة";
+
+  // ── Stepper ──
+  /// Stepper · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "Decrease {label}" => "إنقاص {label}";
+  /// Stepper · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "Increase {label}" => "زيادة {label}";
+
+  // ── StoreLinkName ──
+  /// StoreLinkName · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  /// shown through StoreLinkName()
+  accessibleName "{label} (another site)" => "{label} (موقع آخر)";
+
+  // ── StorePromo ──
+  /// StorePromo · a control's name for screen readers
+  accessibleName "Announcement" => "إعلان";
+
+  // ── StorefrontBagButton ──
+  /// StorefrontBagButton · a control's name for screen readers
+  /// placeholders: {label} = label (string), {count} = count (int) — {count} is a count: give one text per plural form
+  accessibleName "{label}, {count} item(s)" => { zero: "{label}، عدد العناصر: {count}", one: "{label}، عدد العناصر: {count}", two: "{label}، عدد العناصر: {count}", few: "{label}، {count} عناصر", many: "{label}، {count} عنصرًا", other: "{label}، {count} عنصر" };
+
+  // ── StorefrontBagPanel ──
+  /// StorefrontBagPanel · a button's label · at most ~11 characters
+  /// shown through IconButton.label
+  /// also in StorefrontMenuDrawer
+  button "Close" => "إغلاق";
+
+  // ── StorefrontCategoryPanel ──
+  /// StorefrontCategoryPanel · a control's name for screen readers
+  /// placeholders: {category.Label} = category.Label (string)
+  accessibleName "{category.Label} menu" => "قائمة {category.Label}";
+  /// StorefrontCategoryPanel · a link · at most ~14 characters
+  /// shown through StorefrontPanelLink.label
+  /// also in StoreFooter
+  link "Shop all" => "تسوّق الكل";
+
+  // ── StorefrontHeader ──
+  /// StorefrontHeader · a control's name for screen readers
+  /// beside: "search"
+  /// also in StorefrontMenuDrawer
+  accessibleName "Categories" => "الفئات";
+
+  // ── StorefrontPhoneBar ──
+  /// StorefrontPhoneBar · a control's name for screen readers
+  accessibleName "Shop navigation" => "التنقل في المتجر";
+  /// StorefrontPhoneBar · a button's label · at most ~10 characters
+  /// shown through StorefrontPhoneButton.label
+  button "Menu" => "القائمة";
+
+  // ── StorefrontShell ──
+  /// StorefrontShell · a button's label · at most ~9 characters
+  /// shown through StorefrontShell.bagLabel
+  button "Bag" => "السلة";
+
+  // ── TabbedFrame ──
+  /// TabbedFrame · a title
+  /// shown through ShellSheet.title
+  title "All sections" => "كل الأقسام";
+
+  // ── TabbedMoreSheet ──
+  /// TabbedMoreSheet · a control's name for screen readers
+  accessibleName "All sections" => "كل الأقسام";
+
+  // ── TabbedPhoneMoreButton ──
+  /// TabbedPhoneMoreButton · a control's name for screen readers
+  accessibleName "More" => "المزيد";
+  /// TabbedPhoneMoreButton · text on the page
+  text "More" => "المزيد";
+
+  // ── TabbedPhoneTab ──
+  /// TabbedPhoneTab · a control's name for screen readers
+  /// placeholders: {item.Label} = item.Label (string)
+  accessibleName "{item.Label} (another site)" => "{item.Label} (موقع آخر)";
+
+  // ── TabbedStripEmpty ──
+  /// TabbedStripEmpty · text on the page
+  text "No sections yet — add a NavItem to this app's chrome." => "لا توجد أقسام بعد. أضف NavItem إلى إطار التطبيق.";
+
+  // ── TabbedStripSkeleton ──
+  /// TabbedStripSkeleton · a control's name for screen readers
+  /// also in ShellNavSkeleton
+  accessibleName "Loading navigation" => "جارٍ تحميل التنقل";
+
+  // ── TabbedSubStrip ──
+  /// TabbedSubStrip · a control's name for screen readers
+  /// placeholders: {section.Label} = section.Label (string)
+  accessibleName "{section.Label} sections" => "أقسام {section.Label}";
+
+  // ── ThemeToggle ──
+  /// ThemeToggle · a label (a field, a list item, a menu entry) · at most ~18 characters
+  /// shown through ThemeToggle.label
+  label "Toggle theme" => "تبديل المظهر";
+
+  // ── TimePicker ──
+  /// TimePicker · a control's name for screen readers
+  /// beside: "hh"
+  accessibleName "Done" => "تم";
+  /// TimePicker · a control's name for screen readers
+  /// placeholders: {label} = label (string)
+  accessibleName "{label} time" => "وقت {label}";
+  /// TimePicker · a heading
+  /// shown through TimeColumn.heading
+  /// beside: "mm"
+  /// also in TimeStrip
+  heading "hh" => "ساعة";
+  /// TimePicker · a heading
+  /// shown through TimeColumn.heading
+  /// beside: "hh"
+  /// also in TimeStrip
+  heading "mm" => "دقيقة";
+  /// TimePicker · text on the page
+  text "Done" => "تم";
+
+  // ── TimeStrip ──
+  /// TimeStrip · a control's name for screen readers
+  accessibleName "Change the time" => "تغيير الوقت";
+
+  // ── WeekdayRow ──
+  /// WeekdayRow · text on the page
+  text "F" key "weekday-initial-friday" => "ج";
+  /// WeekdayRow · text on the page
+  text "M" key "weekday-initial-monday" => "ن";
+  /// WeekdayRow · text on the page
+  text "S" key "weekday-initial-saturday" => "س";
+  /// WeekdayRow · text on the page
+  text "S" key "weekday-initial-sunday" => "ح";
+  /// WeekdayRow · text on the page
+  text "T" key "weekday-initial-tuesday" => "ث";
+  /// WeekdayRow · text on the page
+  text "T" key "weekday-initial-thursday" => "خ";
+  /// WeekdayRow · text on the page
+  text "W" key "weekday-initial-wednesday" => "ر";
+}

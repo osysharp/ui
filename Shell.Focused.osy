@@ -1,0 +1,586 @@
+// Ui — THE FOCUSED SHELL. One of four arrangements of the one `AppChrome` contract (`Shell.osy`).
+//
+//     [Layout] component Shell() {
+//       render { FocusedShell(chrome) { Outlet(retain: 8); } }
+//     }
+//
+// FOR ONE TASK AT A TIME: a checkout, an approval, a configuration step, a guided multi-step flow.
+//
+// ⛔ IT IS TASK-ORIENTED, AND THAT IS A DIFFERENT THING FROM "MINIMAL". This shell was first written as "the other
+//    arrangements with the chrome removed", and that framing is wrong in a way that matters to the whole taxonomy
+//    (`Docs/OsySharp/shell_taxonomy.md`, SF-10): a later `Immersive` shell is the EXPERIENCE-oriented one — a map,
+//    a photo editor, a drawing tool, where the content IS the point and the chrome gets out of its way. Build
+//    Focused by subtraction and the two become one shell wearing two names.
+//
+//    A shell encodes an INTERACTION MODEL. This one's model is *complete this thing*, and its three structural
+//    features are the ones that model needs:
+//
+//      * A CLEAR PRIMARY ACTION — `slot primary`, a commit bar pinned to the foot of the task (`ShellTaskBar`).
+//        "Pay EUR 1,240", "Continue", "Submit for approval". A task you cannot see how to finish is not focused,
+//        it is merely undecorated, and this is the feature that separates the two shells.
+//      * POSITION IN A SEQUENCE. The app's own `Nav` is re-read as a linear FLOW (`AppChrome.Steps`) — top-level
+//        entries are the steps, in order, and their children are that step's parts. An app switching arrangement
+//        declares NOTHING new, which is the promise the record exists to make.
+//      * A WAY OUT, always in the same place, always a real link (`chrome.Home`). A modal task with no visible exit
+//        is the single most complained-about pattern in checkout design.
+//
+// ⛔ AND EVERY PIECE OF CHROME MUST EARN ITS PLACE AGAINST "the task matters more than the application". Three
+//    were cut on 2026-09-07 because they could not: the brand TAGLINE (a workspace subtitle is an application
+//    fact, and the task already names itself in the stepper), the progress RULE at pointer widths (a duplicate of
+//    the stepper's own state), and the horizontal stepper itself. What stays is a mark, a way out, the app's own
+//    `actions` slot, and identity — see `FocusedBar` for why identity survived the cut.
+//
+// ⚑ MINIMAL NAVIGATION IS A CONSEQUENCE OF THOSE, NOT THE DESIGN. There is no rail and no tab strip because a
+//   route out of the task is an invitation to abandon it — not because less chrome is a goal in itself. Read that
+//   ordering the wrong way round and the next person "improves" this shell by adding a nav to it.
+//
+// ⭐ LEAVING DOES NOT LOSE WORK, AND THE SHELL NEEDED NOTHING FROM THE APP TO PROMISE IT. `Navigation` is bound
+//   into every component's render scope, so the shell can ask `Navigation.IsDirty` for itself: on a task holding
+//   unsaved edits the exit becomes a button that raises the three-answer prompt (`FocusedLeavePrompt` — Save,
+//   Discard, Keep editing, exactly the three `Navigation.Save`/`Close(force)`/dismiss give you), and on a clean
+//   task it stays the plain `Link` it has always been, with no dialog and no extra press.
+//
+//   ⛔ THE WRONG VERSION OF THIS IS "ALWAYS CONFIRM", and it passes any test that only asks whether a dirty exit
+//      prompts. It makes every clean exit — the overwhelmingly common one — cost a pointless dialog, and it turns
+//      a link into a button for a reader who had nothing to lose. Both arms are gated by
+//      `osy-client/tests/e2e/visual/suites/shell-focused-exit-guard.mjs`, which asserts the clean exit is STILL an
+//      `<a>` with a real href and draws NO dialog. (`shell-focused-exit.mjs`, one name shorter, is the SELF-LINK
+//      gate — a different defect on the same control; do not confuse the two.)
+//
+//   ⚑ THIS WAS FILED AS AN OPEN OWNER CALL (D-SHELL4) PROPOSING AN `AppChrome.OnExit` FIELD, and both proposed
+//     contract changes were unnecessary — `NavigationRoute.IsDirty`'s own doc comment already said
+//     "`Navigation.Close` refuses a dirty route unless forced, so the app can confirm first", and `admin/`'s own
+//     shell had shipped the whole pattern for months. Nothing new is on `AppChrome`. Before adding a field to a
+//     record three of four arrangements would not use, run `osy docs ui-navigation#closing`.
+//
+// ⛔ THE STEPPER IS VERTICAL, AND THAT IS A TAXONOMY DECISION RATHER THAN A LAYOUT PREFERENCE.
+//
+//    It was horizontal until 2026-09-07 — a full-width row of labelled items directly under the top bar. Put
+//    `focused-wide-light.png` beside `tabbed-wide-light.png` from that day and they are the same picture: a bar,
+//    then a strip of labelled items, then the page. A chooser looking at two screenshots could not tell which
+//    shell they were looking at, which defeats the entire point of having a taxonomy.
+//
+//    ⚑ AND THE MODELS ARE OPPOSITES, which is what makes a shared silhouette actively harmful rather than merely
+//       unhelpful. Tabs are PARALLEL DESTINATIONS: choose any, in any order, and they persist for the life of the
+//       app. Steps are SEQUENTIAL POSITIONS inside ONE task: you cannot jump ahead, and they vanish when the task
+//       ends. A row that looks like tabs invites the reader to click ahead to step four, which is precisely the
+//       thing a wizard must not offer.
+//
+//    ⭐ WHY VERTICAL FIXES IT PROPERLY. Down-the-side is unmistakably a sequence at a glance — nobody has ever
+//       read a vertical list of numbered rows as a tab bar. It also uses the room this arrangement was WASTING:
+//       the task column is bounded at 760px on purpose, so a wide viewport had a large empty region beside it.
+//       And it composes into the classic three-column checkout — steps left, task centre, summary right — which
+//       is the shape every real checkout converges on.
+//
+//    ⚠ THIS IS THE SECOND TIME A MECHANISM WAS BORROWED FROM A SIBLING SHELL WITHOUT ITS MODEL. `TabbedShell`
+//      took the sidebar's disclosure and became a menu bar; this took `TabbedShell`'s strip and became a tab bar.
+//      Before copying a shape from another shell, ask whether the interaction model came with it.
+//
+// THE BANDS:
+//   compact  < 768   bar = [mark · "Step 2 of 5 · Payment" · exit], and a 4px progress rule under it. The numeric
+//                    form, because five labelled steps do not fit across 390px and a stepper squeezed to fit is
+//                    unreadable in a way a fraction never is.
+//   cozy     768+    bar = [brand · actions · identity · exit]; the stepper is a COLUMN to the left of the task,
+//                    with tick marks on the done steps and the active step's own parts nested under it.
+//   wide     1100+   the same three columns plus the `aside` — steps · task · summary. That is where a checkout's
+//                    order total lives, and the reason `aside` matters more in this arrangement than any other.
+//
+// ⚑ THE PROGRESS RULE IS PHONE-ONLY NOW. A 4px bar under the header and a ticked stepper beside the page are two
+//   answers to one question, and this shell's row in the taxonomy asks for reduced visual distraction. The phone
+//   has no stepper, so there the rule is the ONLY answer and it stays.
+//
+// ⚑ MOBILE LOSES THE STEPPER AND NOTHING ELSE. Every step is still counted, the active one is still named, the
+//   exit is still there and the aside still arrives (under the page, never dropped). The desktop is not the phone
+//   stretched and the phone is not the desktop with parts removed — they are two readings of one flow.
+
+namespace Osysharp.Ui;
+
+/// THE FOCUSED SHELL — minimal chrome around a single task, with the app's `Nav` read as progress rather than as navigation. For a TASK-ORIENTED flow: onboarding, checkout, approvals, guided data entry. Usually ONE ROUTE inside a larger app rather than a whole application — `[Layout(…)]` is per-page. Takes the same `AppChrome` and the same six slots as every other shell.
+///
+/// Slots, all optional:
+///   (default)   the routed page — put your `Outlet(retain: 8)` here. Centred, with a readable maximum width.
+///   `search`    in the bar on a pointer. A READER wants this (search within the document); a checkout will simply
+///               not fill it, and an unfilled slot draws nothing.
+///   `actions`   bar controls left of the identity — "Save draft" is the wizard-shaped one.
+///   `railFoot`  there is no rail, so it sits under the page, inside the same centred column — rendered rather
+///               than dropped, because a slot an app filled and a shell discarded is lost content.
+///   `aside`     the SUMMARY column. A checkout's order total, a wizard's context. Beside the page at 1100+, under
+///               it below that — never dropped.
+///   `primary`   THE COMMIT BAR — `ShellTaskBar(…)` is shaped for it. In the task's own column, under the form it
+///               finishes. This is the slot that makes the shell task-shaped rather than merely undecorated.
+///
+/// In a test: `Assert.Visible("Step 2 of 4")`, and the exit is `Ui.Click("Exit")`.
+/// need: a checkout shell, a wizard layout, a focused single-task frame, a reader with no navigation
+/// e.g. `FocusedShell(chrome) { Outlet(retain: 8); slot aside { ShellAside("Order summary") { … } } }`
+[Composable]
+component FocusedShell(AppChrome chrome) {
+  bool userMenuOpen = false;
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  // WHETHER THE EXIT HAS ANYWHERE TO GO — see the note on `FocusedBar`. Compared on the NORMALISED path because
+  // "/" and "" and "/checkout/" all name routes a reader would call the same place, and an exit that is inert on
+  // one spelling and live on another is worse than either.
+  live var atHome = chrome.AtHome(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  action CloseUserMenu() { userMenuOpen = false; }
+  action ToggleUserMenu() { userMenuOpen = !userMenuOpen; }
+  // Runs BEFORE an app's own menu action, so a `Dialog.Open` from a menu item opens over a clean page.
+  action DismissAll() { userMenuOpen = false; }
+
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    FocusedFrame(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), current, atHome, hasUser, hasMenu,
+                 userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll) {
+      slot page { Slot; }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot railFoot { Slot("railFoot"); }
+      slot aside { Slot("aside"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the shell DRAWS, once the band has been decided.
+[Composable, Part]
+component FocusedFrame(
+    AppChrome chrome, bool isPhone, bool isWide, string current, bool atHome, bool hasUser, bool hasMenu,
+    bool userMenuOpen, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll) {
+  live var steps = chrome.Steps(current);
+  live var total = steps.Length;
+  // The active step, or null on a route the flow does not cover — a confirmation page, say. Not an error: the
+  // shell then shows no counter and no stepper, which is truer than inventing a position.
+  live var active = steps.FirstOrDefault(s => s.Active);
+
+  // ── LEAVING A HALF-FINISHED TASK ───────────────────────────────────────────────────────────────────────────
+  //
+  // ⭐ THE SHELL ASKS `Navigation` DIRECTLY, AND THAT IS WHY NO CONTRACT CHANGE WAS NEEDED. `Navigation.IsDirty`
+  //    is bound into every component's render scope, so the shell knows whether this task holds unsaved edits
+  //    without the app declaring an exit handler, a slot, or a field on `AppChrome`.
+  //
+  // ⚠ THE STATE LIVES HERE, NOT ON `FocusedShell`, and that is structural rather than taste. `FocusedShell`
+  //   carries a `variants` block, and EVERY top-level element of a render wears the component's root classes — so
+  //   a prompt rendered as a sibling up there would inherit `MinH = Length.Screen; Bg = Colors.Bg` and paint a
+  //   full-viewport block into the page's normal flow. This component has no variants, and already renders
+  //   `ShellSheet` as exactly this kind of sibling.
+  string leaving = "";          // the route held back because it holds unsaved edits ("" = nothing held)
+  bool canSaveLeaving = false;  // snapshot of `Navigation.CanSave` — a render expression cannot call a client verb
+  string leaveError = "";       // a refused save, in the words the server used
+
+  // ⛔ ASKED AGAIN HERE, AGAINST THE ROUTER AS IT IS NOW. Which element the bar drew is a RENDER-TIME snapshot,
+  //    and a leave-guard that acts on a snapshot is the bug it exists to prevent. So the safety property is this
+  //    line, and the Link-or-button choice below is only about giving the reader the honest control.
+  action AskBeforeExit() {
+    if (!Navigation.IsDirty) { Navigation.Go(chrome.Home); }
+    else {
+      leaveError = "";
+      canSaveLeaving = Navigation.CanSave(Navigation.CurrentPath);
+      leaving = Navigation.CurrentPath;
+    }
+  }
+  action KeepEditing() { leaving = ""; leaveError = ""; }
+  // Discard: force-close the task's route so its unit of work is actually dropped — not merely hidden by `retain`
+  // — and only THEN go home, so the close's own fallback navigation cannot override the exit.
+  action DiscardAndExit() {
+    Navigation.Close(leaving, true);
+    Navigation.Go(chrome.Home);
+    leaving = "";
+  }
+  // Save & exit: commit the task's own edits through the router (the shell cannot reach the page's unit of work;
+  // `Navigation.Save` can), then leave. A save CAN be refused — the values break the entity's rules, or the server
+  // says no — so the prompt stays up saying why, with the edits intact. A prompt that closed itself on a failed
+  // save would look exactly like one that worked.
+  action SaveAndExit() {
+    leaveError = "";
+    try {
+      Navigation.Save(leaving);
+      Navigation.Go(chrome.Home);
+      leaving = "";
+    }
+    catch (ValidationException ex) { leaveError = ex.Message; }
+  }
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      FocusedBar(chrome, isPhone, atHome, hasUser, hasMenu, userMenuOpen, active, total,
+                 onToggleUserMenu, onCloseUserMenu, onDismissAll, Navigation.IsDirty, AskBeforeExit) {
+        slot search { Slot("search"); }
+        slot actions { Slot("actions"); }
+      }
+      // THE PROGRESS RULE — the phone's only answer to "how much is left", and 4px is the cheapest one there is.
+      // ⚠ POINTER WIDTHS DO NOT GET IT. There the stepper carries the same fact in a richer form, and a bar that
+      //   repeats it is the second of two answers to one question — exactly the kind of chrome this shell's row in
+      //   the taxonomy asks to be rid of.
+      if (isPhone && total > 0) { FocusedProgress(active == null ? 0 : active.Number, total); }
+
+      ShellBody(isWide, p: 5, pNarrow: 3) {
+        slot page {
+          // ⭐ STEPS BESIDE THE TASK, NOT ABOVE IT. `align: Start` so the stepper column sits at the top of the
+          //    page rather than centring itself against a long form; `justify: Center` so the task column stays
+          //    optically centred in what is left. On a phone there is no stepper and this row has one child, so
+          //    it collapses to exactly the layout that was here before.
+          Row(gap: 5, justify: Justify.Center, align: Align.Start, w: "100%") {
+            if (!isPhone && total > 0) { FocusedStepper(steps, active); }
+            // ⭐ A CENTRED, BOUNDED COLUMN — and this is the one arrangement where that is right. A dashboard
+            //    centred at 1440px is a phone layout on a desktop; a CHECKOUT centred at 1440px is a form you can
+            //    actually read. There is exactly one thing on this page, so the width that suits it is the width
+            //    of a line of text, not the width of the glass.
+            // ⚠ NAMED, BECAUSE THE PAGE LANDMARK NO LONGER MEANS "the task". The stepper sits INSIDE the page
+            //   region now, so `Page` is [steps | task] and a geometric claim against it cannot distinguish the
+            //   two columns — measured: `Assert.LeftOf("Progress", "Page")` reported an overlap, correctly,
+            //   because the stepper is a child of the thing it was being compared with. This is what a test (and
+            //   a screen reader moving by region) scopes to when it means the task itself.
+            Stack(gap: 0, w: "100%", maxW: "760px", minW: "0", label: "Current task") {
+              Slot("page");
+              // No rail here, so the foot slot sits under the page INSIDE the same column — never dropped.
+              Row(pt: 4) { Slot("railFoot"); }
+              // ⭐ THE COMMIT BAR, IN THE TASK'S OWN COLUMN — so the button that finishes the form is directly
+              //    under the form, which is where every real checkout puts it. A POSITION only; `ShellTaskBar`
+              //    brings the border, the fill and the safe-area inset, so an app that ends its task some other
+              //    way pays nothing for this line. It is `Position.Sticky`, so it still pins to the foot of the
+              //    viewport on a long form, and it is full width on a phone because the column is.
+              Slot("primary");
+              // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+              KeyboardSheet();
+            }
+          }
+        }
+        slot aside { Slot("aside"); }
+      }
+    }
+
+    if (userMenuOpen && isPhone && hasMenu) {
+      ShellSheet("Account", onCloseUserMenu) {
+        ShellSheetIdentity(chrome.User);
+        Divider();
+        ShellMenuItems(chrome.User.Menu, onDismissAll);
+      }
+    }
+
+    if (leaving != "") {
+      FocusedLeavePrompt(canSaveLeaving, leaveError, SaveAndExit, DiscardAndExit, KeepEditing);
+    }
+  }
+}
+
+/// THE THREE ANSWERS TO "you have unsaved work in this task". Raised by the exit, never by the platform — the
+/// platform ships no confirm dialog, and this shell is an app-space kit component drawing one like any app would.
+///
+/// ⭐ SAVE IS OFFERED ONLY WHEN THE PAGE SAYS IT CAN BE SAVED. `Navigation.CanSave(path)` is the target page's own
+///    `derived canSave` guard (true when it declares none), so a step whose form is invalid offers Discard and Keep
+///    editing and does not dangle a Save that would only fail. Snapshotted into a field by the action that raises
+///    this, because a render expression cannot evaluate a client verb.
+///
+/// ⚠ KEEP EDITING IS THE DISMISS, so it is what Escape and a backdrop click do as well — the safe answer is the
+///   one you reach by doing nothing, which is the rule for any prompt whose other options destroy work.
+///
+/// ⚠ THE DESTRUCTIVE ANSWER IS LAST AND TONED `Danger`. Discard drops the task's unit of work for real; it is not
+///   `retain` hiding the page, and there is no undo behind it.
+[Composable, Part]
+component FocusedLeavePrompt(bool canSave, string error, Action onSave, Action onDiscard, Action onKeep) {
+  render {
+    Dialog("Leave without saving?", onDismiss: onKeep,
+           subtitle: "This step has changes that have not been saved yet.") {
+      if (error != "") { Alert(error, title: "That could not be saved", tone: Tone.Danger); }
+      slot actions {
+        Button("Keep editing", onPress: onKeep, tone: Tone.Ghost);
+        if (canSave) { Button("Save and exit", onPress: onSave, tone: Tone.Primary); }
+        Button("Discard and exit", onPress: onDiscard, tone: Tone.Danger);
+      }
+    }
+  }
+}
+
+/// THE BAR — the mark, where you are, and the way out. A `banner` landmark, and the thinnest of the four.
+///
+/// ⛔ WHAT IS NOT HERE, AND WHY. Every element in a task shell competes with the task, so each has to answer
+///    "would a real checkout carry this?".
+///      * NO TAGLINE (`tagline: false`). "Finance operations" describes the application you left; the stepper
+///        beside the page already names the task you are in.
+///      * NO PROGRESS RULE at these widths — the stepper carries that, see `FocusedFrame`.
+///      * THE `search` SLOT IS STILL PLACED but most task apps will not fill it, and an unfilled slot draws
+///        nothing. It stays because a READER (a long document, a policy you must accept) genuinely wants search
+///        within the task, and a shell that silently discarded a slot an app filled would be losing content.
+///
+/// ⭐ IDENTITY STAYS, AND THAT IS A DECISION RATHER THAN AN OVERSIGHT. It is the only route to sign out and to
+///    the appearance control, and a shell whose whole design is to trap you in a task is exactly the one where
+///    being unable to reach your own account is worst. It is mark-only, so it costs 28px.
+///
+/// ⚠ THE EXIT IS ALWAYS PRESENT WHEREVER IT HAS SOMEWHERE TO GO, AND ALWAYS LAST, at both widths. A focused shell
+///   traps the reader in a task by design, so the one control that must never move is the one that ends it.
+///
+/// ⛔ THE ONE ROUTE IT IS ABSENT ON IS `chrome.Home` ITSELF, and that is the rule keeping its own reason rather
+///   than losing it. This read "always present" and was drawn unconditionally, which on a focused route that IS
+///   the home route drew `Link(href: "/")` on the page at "/" — an "Exit ✕" that does nothing. Measured on
+///   `Apps/spendflow`'s `/`, the account door: it is account-scoped, so no org nav can exist on it and its `Home`
+///   can only be `/`.
+///
+///   The REASON survives untouched: a reader on the home route is not trapped in anything, so there is nothing for
+///   an exit to end. What the old wording protected against — an exit that MOVES, or that vanishes part-way
+///   through a task — is unchanged, because every route inside a task has a Home that is not itself.
+///
+///   `TabbedTab` two files away already refused exactly this shape, in its own words: "`Link(href: "")` is a
+///   control that looks live and does nothing, which is the one thing a degraded path may never be." Two rules in
+///   one kit cannot disagree about one control.
+[Composable, Part]
+component FocusedBar(
+    AppChrome chrome, bool isPhone, bool atHome, bool hasUser, bool hasMenu, bool userMenuOpen, FlowStep active,
+    int total, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll, bool dirty,
+    Action onAskBeforeExit) {
+  variants {
+    base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Surface; Px = 3;
+           Pt = "env(safe-area-inset-top)"; Laptop { Px = 5; } }
+  }
+  render {
+    Row(gap: 3, align: Align.Center, minH: Length.AppBarH, py: 2, role: UiRole.Banner, label: "Page header",
+        minW: "0") {
+      // `switcher: false` — a focused task is not a place to wander off from; the brand stays a link home.
+      ShellBrand(chrome, markOnly: isPhone, tagline: false, switcher: false);
+      // THE PHONE'S WHOLE STEPPER, IN ONE LINE. Five labelled steps do not fit across 390px, and a stepper
+      // squeezed until they do is unreadable in a way a fraction never is — so the phone gets the count and the
+      // name of the step it is on, which is the part that actually answers "where am I".
+      if (isPhone && active != null) {
+        Stack(gap: 0, minW: "0", grow: 1) {
+          Text("Step " + active.Number.ToString() + " of " + total.ToString(), fontSize: FontSize.Caption,
+               color: Colors.TextMuted, whiteSpace: WhiteSpace.Nowrap);
+          Text(active.Item.Label, fontSize: FontSize.Label, fontWeight: FontWeight.Semibold,
+               whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        }
+      }
+      // On a route the flow does not cover there is no position to show, so the page names itself instead.
+      if (isPhone && active == null) { Stack(gap: 0, minW: "0", grow: 1) { ShellPageTitle(""); } }
+      if (!isPhone) { Spacer(); Slot("search"); }
+
+      Row(gap: 2, align: Align.Center, shrink: 0) { Slot("actions"); }
+      if (hasUser) {
+        Box(position: Position.Relative) {
+          ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
+          if (userMenuOpen && !isPhone && hasMenu) {
+            Backdrop(onCloseUserMenu);
+            FocusedUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+          }
+        }
+      }
+      // HIDDEN ON THE HOME ROUTE ITSELF — see the header. Everywhere else it is present, last, and unmoved.
+      if (!atHome) { FocusedExit(chrome.Home, isPhone, dirty, onAskBeforeExit); }
+    }
+  }
+}
+
+/// The identity menu, hung under the chip on the trailing edge.
+[Composable, Part]
+component FocusedUserMenu(ShellUser user) {
+  variants {
+    // A connected menu (D-HELPDESKDESIGN1): it grows out of the chip's corner and keeps a notch pointing at it.
+    base { Position = Position.Absolute; Top = "100%"; Right = "0"; Mt = 2; MinW = "240px"; Z = ZIndex.Popover;
+           Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
+           TransformOrigin = "top right"; Animation = KitMenuGrow; }
+  }
+  render {
+    Stack(gap: 1, role: UiRole.Menu, label: user.Name) {
+      MenuNotch(MenuFrom.BelowEnd);
+      Stack(gap: 0, px: 3, py: 2) {
+        Text(user.Name, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold, whiteSpace: WhiteSpace.Nowrap,
+             overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (user.Secondary != "") { Hint(user.Secondary); }
+        ShellPresenceWord(user);
+      }
+      Divider();
+      Slot;
+    }
+  }
+}
+
+/// THE WAY OUT. A `Link` while there is nothing to lose — leaving a task is exactly the case where a reader wants
+/// middle-click and open-in-new-tab, and where a screen reader should announce a destination.
+///
+/// ⭐ AND A BUTTON THE MOMENT THE TASK IS DIRTY, BECAUSE THE CONTROL'S JOB HAS CHANGED. It no longer GOES anywhere;
+///    it ASKS. Announcing "link, Exit" for a control that opens a prompt is a lie to a screen reader, and the href
+///    would be worse than a lie to a pointer: the router intercepts a plain left-click in the CAPTURE phase and has
+///    already navigated by the time any `onClick` runs, so a `Link` cannot decline to go. That is not a gap in
+///    `Link` — a link's contract IS that it navigates — it is why a guard is a button.
+///
+/// ⛔ DO NOT "SIMPLIFY" THIS TO ALWAYS-ASK. A clean task is the overwhelmingly common exit and it must cost exactly
+///    one press and no dialog; an always-ask exit satisfies every test that only checks the dirty arm. Both arms
+///    are gated — see the header.
+///
+/// ⚠ THE TWO FORMS REPEAT THEIR CONTENTS rather than sharing a "…Face" sub-component, for the reason
+///   `ShellUserChip` gives for the same shape: a shared part is one more link in the chain the tree loader walks,
+///   and this shell is already the deepest thing in the kit. The `variants` block reaches BOTH — an `if` is
+///   transparent to the render-root level, so every top-level arm wears the component's own classes.
+[Composable, Part]
+component FocusedExit(string home, bool isPhone, bool dirty, Action onAskBeforeExit) {
+  variants {
+    base { Display = Display.InlineFlex; MinH = Length.Touch; MinW = Length.Touch; Px = 2; Shrink = 0;
+           Rounded = Radius.Md; Color = Colors.TextMuted; FontSize = FontSize.Body; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    if (!dirty) {
+      Link(href: home, label: "Exit") {
+        Row(gap: 2, align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") {
+          if (!isPhone) { Text("Exit", whiteSpace: WhiteSpace.Nowrap); }
+          Icon(Icons.Close, size: 18);
+        }
+      }
+    }
+    if (dirty) {
+      Pressable(label: "Exit", onClick: onAskBeforeExit) {
+        Row(gap: 2, align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") {
+          if (!isPhone) { Text("Exit", whiteSpace: WhiteSpace.Nowrap); }
+          Icon(Icons.Close, size: 18);
+        }
+      }
+    }
+  }
+}
+
+/// The 4px rule under the bar. `decorative` — the numbers beside it already say this, and a progress bar that
+/// announces itself as well makes a screen reader read the same fact twice.
+[Composable, Part]
+component FocusedProgress(int done, int total) {
+  // Integer arithmetic on purpose: a percentage is a WIDTH here, not a measurement, and a whole number of percent
+  // is under half a pixel at any width this renders at.
+  live var pct = total <= 0 ? "0%" : ((done * 100) / total).ToString() + "%";
+  variants { base { H = "4px"; Bg = Colors.Muted; W = "100%"; Overflow = Overflow.Hidden; } }
+  render {
+    Box(decorative: true) { Box(h: "4px", w: pct, bg: Colors.Primary, transition: "width 240ms cubic-bezier(.2,.8,.2,1)"); }
+  }
+}
+
+/// THE STEPPER — every step, in order, DOWN THE SIDE of the task. The done ones are ticked, the active one is
+/// named and carries its own parts.
+///
+/// ⛔ VERTICAL, AND THE REASON IS THE TAXONOMY RATHER THAN THE LAYOUT. See the header: a horizontal row of
+///    labelled items under a top bar is a TAB STRIP's silhouette, and `TabbedShell` is one press away in the same
+///    application. Two shells whose models are opposites — parallel destinations against sequential positions —
+///    must not be told apart by inspection.
+///
+/// A `list` landmark rather than a `nav`: these are not places to go, they are where you are in one task, and
+/// calling them navigation would put a second "Main navigation" in a shell that deliberately has none.
+///
+/// ⚠ IT STICKS. A task is often longer than a viewport, and "where am I in this" is a question the reader has at
+///   the BOTTOM of a long form as much as at the top. `Top` is the bar's own height, so it parks directly beneath
+///   the one other thing that is pinned.
+///
+/// ⚠ `Shrink = 0` — a flex child beside a 760px column will otherwise give up its width first and hyphenate its
+///   labels, which turns a sequence into a wall of broken words.
+[Composable, Part]
+component FocusedStepper(FlowStep[] steps, FlowStep active) {
+  live var total = steps.Length;
+  variants {
+    base { W = "200px"; Shrink = 0; Position = Position.Sticky; Top = Length.AppBarH;
+           Laptop { W = "232px"; } }
+  }
+  render {
+    Stack(gap: 0, role: UiRole.List, label: "Progress", minW: "0") {
+      foreach (var step in steps) { FocusedStep(step, step.Number == total); }
+    }
+  }
+}
+
+/// ONE STEP — its mark, its label, and (while it is the active one) its own parts nested beneath.
+///
+/// ⭐ THE CONNECTOR IS AN ELEMENT, NOT A BORDER, and it is what makes a column of rows read as a SEQUENCE. It is
+///    drawn under the mark and stops at the last step — a line trailing off the bottom reads as a list that was
+///    cut off. `decorative`, because a screen reader gains nothing from "line".
+///
+/// ⚠ THE LABEL COLUMN CARRIES THE GAP, not the container. A uniform `gap` would push the connector away from the
+///   marks it joins; padding under the text instead keeps the line continuous while the rows stay apart.
+[Composable, Part]
+component FocusedStep(FlowStep step, bool last) {
+  render {
+    Row(gap: 3, align: Align.Start, minW: "0") {
+      // The mark and the line under it, as one column, so the line is always centred on the mark whatever the
+      // label beside it does.
+      Stack(gap: 0, align: Align.Center, shrink: 0) {
+        FocusedStepMark(step.Number, step.Done, step.Active);
+        if (!last) { Box(w: "2px", h: "28px", bg: step.Done ? Colors.Success : Colors.Border, decorative: true); }
+      }
+      Stack(gap: 1, minW: "0", pb: last ? 0 : 3, pt: 1) {
+        Text(step.Item.Label, fontSize: FontSize.Body,
+             fontWeight: step.Active ? FontWeight.Semibold : FontWeight.Regular,
+             color: step.Active ? Colors.OnSurface : (step.Done ? Colors.TextSecondary : Colors.TextMuted));
+        // THE ACTIVE STEP'S OWN PARTS, under it and indented. A step's children are the things INSIDE it, so they
+        // belong beneath the step rather than as steps of their own — and only while you are in it, because a
+        // wizard that shows every step's internals is a wizard that has stopped being one.
+        if (step.Active && step.Item.Children.Length > 0) { FocusedSubsteps(step.Item); }
+      }
+    }
+  }
+}
+
+/// The step's marker: a tick when done, its number otherwise, filled while active.
+///
+/// ⛔ NO `w: "100%"` / `h: "100%"` ON THE ROOT ROW, AND THIS IS WHY. A `variants` block merges onto the component's
+///    ROOT ELEMENT — and here that root IS the `Row`, not a `Link` wrapping one. An inline `w: "100%"` on it
+///    therefore fights the block's own `W = "22px"` and wins: measured 2026-09-06 in the first screenshot of this
+///    shell, the 22px circles rendered as ~105x18 ELLIPSES that stretched across the stepper and covered the step
+///    labels beside them. Every one of the eight tests passed — `Assert.Visible("Details", within: "Progress")` is
+///    true of text sitting under an ellipse.
+///
+/// ⚠ THE PATTERN IS COPIED FROM COMPONENTS WHERE IT IS CORRECT, which is what makes it easy to repeat: in
+///   `RailNavLink` and friends the root is the `Link` and the `Row` is its CHILD, so `w: "100%"` there means "fill
+///   the link" and is right. Ask which element the variants land on before writing a percentage size.
+[Composable, Part]
+component FocusedStepMark(int number, bool done, bool active) {
+  variants {
+    base { Display = Display.InlineFlex; W = "22px"; H = "22px"; Shrink = 0; Grow = 0; Rounded = Radius.Circle;
+           FontSize = "11px"; FontWeight = FontWeight.Semibold; BorderW = 1; Border = Colors.Border;
+           Color = Colors.TextMuted; }
+    // A BOOL dimension carries its styles directly — they apply when it is true, and there is no `False` arm.
+    // The two are mutually exclusive by construction (`FlowStep.Done` is `i < active`, `Active` is `i == active`),
+    // so neither needs to defend against the other.
+    done   { Bg = Colors.Success; Border = Colors.Success; Color = Colors.OnPrimary; }
+    active { Bg = Colors.Primary; Border = Colors.Primary; Color = Colors.OnPrimary; }
+  }
+  render {
+    // ⚑ `current:` RATHER THAN `decorative: true`, and this one was a REAL gap rather than a lint false positive.
+    //    The mark was the only thing carrying "which step am I on", it carried it as a FILL COLOUR, and it was
+    //    marked decorative — so the whole stepper was silent to a screen reader and to `Ui.Check`. The label beside
+    //    it only changes weight and colour, which is the same information in the same unreadable form, so there was
+    //    nowhere else the state was announced either.
+    //    Dropping `decorative` also lets the number and the tick read as content, which for a step marker is what
+    //    they are: "1", "2", "✓" is exactly what a reader needs to hear.
+    Row(align: Align.Center, justify: Justify.Center, current: active) {
+      if (done) { Icon(Icons.Check, size: 12); }
+      if (!done) { Text(number.ToString()); }
+    }
+  }
+}
+
+/// The active step's parts, as rows under it. Links where they have a route, so a reader can move between the
+/// parts of the step they are on — which is navigation WITHIN the task and not out of it.
+[Composable, Part]
+component FocusedSubsteps(NavItem step) {
+  render {
+    Stack(gap: 0, minW: "0", role: UiRole.List, label: step.Label + " parts") {
+      foreach (var child in step.Children) { FocusedSubstep(child); }
+    }
+  }
+}
+
+/// One part of the active step.
+[Composable, Part]
+component FocusedSubstep(NavItem item) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Sm; MinW = "0";
+           FontSize = FontSize.Caption; Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: item.To, label: item.Label) {
+      Row(gap: 2, align: Align.Center, h: "100%", minW: "0") {
+        Icon(item.Icon, size: 14);
+        Text(item.Label, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis);
+      }
+    }
+  }
+}

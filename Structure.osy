@@ -1,0 +1,133 @@
+// Ui — the structural primitives (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A flex spacer — eats the free space in a Row, pushing what follows to the far end.
+/// In a test there is nothing to assert — it is empty space.
+/// e.g. `Spacer()` in `Row { Text("Left"); Spacer(); Text("Right"); }`
+[Composable] component Spacer() {
+  variants { base { Grow = 1; } }
+  render { Box(); }
+}
+
+/// A hairline separator. Horizontal by default; `vertical: true` for a divider between items in a Row.
+/// In a test there is nothing to assert — it is a hairline with no text and no role.
+/// need: a horizontal rule between sections, a separating line
+/// e.g. `Divider()  ·  Divider(vertical: true)`
+[Composable] component Divider(bool vertical = false) {
+  variants { base { Bg = Colors.Border; } }
+  render {
+    if (vertical) { Box(w: "1px", h: "100%"); }
+    if (!vertical) { Box(w: "100%", h: "1px"); }
+  }
+}
+
+/// A page's heading row — the title (and optional subtitle) on the left, actions pushed to the right via the
+/// default slot. `PageHead("Belfries") { Button("New", onPress: Add, tone: Tone.Primary); }`
+/// In a test its title is ordinary text: `Assert.Visible("Orders")`.
+/// need: the heading at the top of a page, a title with actions beside it
+[Composable] component PageHead(string title, string subtitle = "") {
+  variants { base { Pb = 4; BorderBW = 1; Border = Colors.Border; } }
+  render {
+    // A page head is a NAMED REGION, exactly as a titled `Card` is: `label:` makes it addressable, so a test can
+    // say `Ui.Click("Add", within: "Houseplants")` and mean the button in the HEADER rather than the one of the
+    // same name further down the page.
+    //
+    // ⚑ MEASURED. With a page that had "Add a plant" in its head and again in an empty state, the ambiguity
+    // refusal listed the head's button as "inside nothing that carries a `label:`" — unreachable — so the only way
+    // out was renaming one of them. `Card` and `Dialog` already do this and their buttons were reachable; the head
+    // was the hole. It is an accessibility name too, not only a test affordance.
+    Row(align: Align.Center, gap: 3, label: title) {
+      Stack(gap: 1) {
+        PageTitle(title);
+        if (subtitle != "") { Hint(subtitle); }
+      }
+      Spacer();
+      Slot;
+    }
+  }
+}
+
+/// A horizontal strip of controls with consistent spacing — a filter bar, a card's footer, a row of actions.
+/// Wrap a `Spacer()` in it to split left-aligned from right-aligned groups. `label:` NAMES the strip so a test can
+/// scope to it — give it one whenever two strips on a page hold controls with the same words.
+/// In a test it is a container, so scope to it: `Ui.Click("New", within: "Orders")`.
+/// e.g. `Toolbar(label: "Filters") { SectionLabel("Cuisine"); Spacer(); Button("Apply", onPress: Apply); }`
+// ⛔ THE `label:` IS NOT DECORATION — WITHOUT IT THIS CONTROL CANNOT BE SCOPED AT ALL, and the line above told you
+//    to scope to it anyway. Measured: a page put the FILTER dropdown in a Toolbar and the add-form's dropdown in a
+//    Card, both wearing the same label. The Card was addressable by its title; the Toolbar was addressable
+//    by nothing, so the only way out was renaming a user-facing control — because only `Card` passes its label
+//    down as the container's name.
+//    ⭐ SO IT IS REQUIRED, as of 2026-08-29. The comment above has argued that since it was written, while the
+//    parameter defaulted to `""` and let every caller skip it. A default that contradicts the paragraph above it
+//    is not a default, it is the hole the paragraph is about.
+//    ⚑ Blast radius ZERO, measured: the two apps that write `Toolbar()` declare their OWN `Toolbar` component and
+//      never reach this one. That they shadow a kit control with a bare container is its own smell, and not this
+//      one — but it does mean nothing in the corpus was relying on the empty default.
+[Composable] component Toolbar(string label) {
+  variants { base { Gap = Space.Gutter; } }
+  render { Row(align: Align.Center, gap: 3, label: label) { Slot; } }
+}
+
+/// One row of a list, with the hairline between rows and a consistent height. The content is a slot, so a row can
+/// hold whatever the list is about — this owns the rhythm, never the contents.
+/// In a test it is a container, so scope to it: `Ui.Click("Remove", within: order)`.
+/// ⚠ IT DOES NOT LINE THE CELLS UP, and a list of them is where that shows. Each child takes its own width, so
+/// a badge after a title of varying length sits at a different x on every row and the eye cannot scan the column.
+/// `Spacer()` pins what FOLLOWS it to the right edge, which is enough for one trailing group of actions; for the
+/// same field aligned in every row — a column of dates, a column of prices — reach for `DataGrid`.
+/// need: one row in a simple list, a line with a title and a trailing action
+/// e.g. `ListRow { Strong(o.Reference); Spacer(); Badge("Cast", tone: Tone.Success); }`
+[Composable] component ListRow() {
+  variants { base { Py = 3; BorderBW = 1; Border = Colors.Border; } }
+  render { Row(align: Align.Center, gap: 3) { Slot; } }
+}
+
+/// A square, icon-only button — a row action, a toolbar affordance, the rail's collapse chevron. The glyph is the
+/// default slot: pass an `Icon(…)` or a `Text("×")`.
+/// ⭐ EVERY APP HAS A GLYPH SET WITHOUT DRAWING ONE — `Icons.Trash`, `Icons.ChevronUp`, `Icons.ChevronDown`,
+/// `Icons.Close`, `Icons.Check`, `Icons.Pencil`, `Icons.Plus`, `Icons.Search`, `Icons.Menu`, `Icons.Gear`,
+/// `Icons.Updown` and ~40 more. `osy kit icons` lists them. Drop your own `.svg` into the `icons` glob and it
+/// REPLACES the built-in of that name. A `Text("×")` still works and is right for a one-off character, but reach
+/// for the icon first: a caret and a letter standing in for arrows is what a page looks like without one.
+/// In a test it is pressed by its `label` (the accessible name, since there is no text): `Ui.Click("Delete")`.
+/// ⭐ LABEL FIRST AND REQUIRED, and on THIS control it is load-bearing twice over. It is the accessible name —
+/// there is no text — so it is the only thing a screen reader announces and the only handle `Ui.Click` has. It
+/// used to default to `""`, which meant an icon button could ship addressable by nothing at all: exactly the harm
+/// `ui-control-call-without-an-accessible-name` exists to name, on the one control that can never have another
+/// name. Required makes it unrepresentable rather than merely diagnosed.
+/// ⚑ First, because every captioned control in this kit reads `(label, …)`. Measured 2026-08-29: both call sites
+/// in the corpus already passed `label:` by name, so the move cost two edits and closed the hole for free.
+/// need: a small square press target that is only a glyph, a close or an edit affordance in a row
+/// e.g. `IconButton("Remove", Remove, tone: Tone.Danger) { Icon(Icons.Trash); }`
+[Composable] component IconButton(string label, Action onPress, Tone tone = Tone.Default, Size size = Size.Md,
+                                  bool disabled = false, bool canPress = true, string whenDenied = "",
+                                  string shortcut = "") {
+  variants {
+    base {
+      Display = Display.InlineFlex; Rounded = Radius.Md; Transition = Motion.Fast; Color = Colors.TextMuted;
+      Position = Position.Relative;   // the key tip hangs from it
+      Disabled { Opacity = "0.5"; }
+    }
+    tone {
+      Default { Hover { Bg = Colors.Muted;          Color = Colors.OnSurface; } }
+      Primary { Hover { Bg = Primary.Subtle; Color = Primary.Strong; } }
+      Danger  { Hover { Bg = Danger.Subtle;  Color = Danger.Strong; } }
+      Success { Hover { Bg = Success.Subtle; Color = Success.Strong; } }
+      Warning { Hover { Bg = Warning.Subtle; Color = Warning.Strong; } }
+      Ghost   { Hover { Color = Colors.OnSurface; } }
+    }
+    size {
+      Sm { W = Length.ControlSm; H = Length.ControlSm; }
+      Md { W = Length.ControlMd; H = Length.ControlMd; }
+      Lg { W = Length.ControlLg; H = Length.ControlLg; }
+    }
+  }
+  render {
+    Pressable(onClick: onPress, label: label, disabled: disabled || !canPress, whenDenied: whenDenied, shortcut: shortcut) {
+      Row(align: Align.Center, justify: Justify.Center) { Slot; }
+      // The name an icon has no room for, and its key — on hover and keyboard focus (D-HELPDESKDESIGN1).
+      if (shortcut != "") { KeyTip(label, shortcut); }
+    }
+  }
+}

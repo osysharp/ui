@@ -1,0 +1,105 @@
+// Ui — KEYBOARD HINTS DERIVED FROM THE BINDING (`using Osysharp.Ui;`). D-HELPDESKDESIGN1, "keyboard hints wherever a key
+// works" (owner, 2026-10-01).
+//
+// ⭐ ONE SOURCE OF TRUTH: the `shortcut:` on the control the key presses. Every hint is derived from it — the chip at a
+//   menu row's end (`KeyHintOf`, from the action the row runs), the tip a button shows on hover and focus (`KeyTip`),
+//   the key inline on a primary button (`Button(showShortcut: true)`), and the `?` sheet (`KeyboardSheet`) listing
+//   everything bound on the page. Nothing here binds a key or types one twice; the platform spells each for the
+//   reader's platform from one `Mod+K` (⌘ on a Mac, Ctrl elsewhere).
+
+namespace Osysharp.Ui;
+
+/// A key chip showing the key bound ON THIS PAGE to `action` — a control whose `onPress` is that action and whose
+/// `shortcut:` binds the key — and nothing at all when no control binds one. The hint cannot drift from the binding:
+/// rename the key on the button and every chip follows; remove the button and the chip goes.
+/// e.g. `Row { Text("Assign to me"); KeyHintOf(AssignToMe); }`
+[Composable] component KeyHintOf(Action action) {
+  variants {
+    base { Display = Display.InlineFlex; Px = "5px"; MinW = "20px"; H = "20px"; Rounded = Radius.Sm; BorderW = 1;
+           BorderBW = 2; Border = Colors.Border; Bg = Colors.Sunken; Color = Colors.OnSurface;
+           FontFamily = Font.Mono; FontSize = "11.5px"; FontWeight = FontWeight.Medium;
+           FontVariant = FontVariant.TabularNums; Shrink = 0; WhiteSpace = WhiteSpace.Nowrap; LineHeight = "1"; }
+  }
+  render { Box(keycapOf: action, align: Align.Center, justify: Justify.Center, decorative: true); }
+}
+
+/// The tip a control with a key shows while it is hovered or keyboard-focused: its name, then its key. Hidden
+/// (`Display.None`, not transparent) otherwise, so it holds no space and no test reads it as on screen.
+/// ⚠ `decorative`: the control already announces its name and its key (`aria-keyshortcuts`).
+[Composable, Part]
+component KeyTip(string label, string keys) {
+  variants {
+    base { Display = Display.None; Position = Position.Absolute; Top = "100%"; Left = "50%"; TranslateX = "-50%";
+           Mt = 2; Px = 2; Py = 1; Rounded = Radius.Sm; Bg = Colors.OnSurface;
+           Color = Colors.Surface; FontSize = FontSize.Caption; FontWeight = FontWeight.Medium;
+           WhiteSpace = WhiteSpace.Nowrap; Z = ZIndex.Tooltip; Shadow = Shadow.Floating; PointerEvents = PointerEvents.None;
+           inside Button.Hover { Display = Display.Flex; }
+           inside Button.Focus { Display = Display.Flex; }
+           inside IconButton.Hover { Display = Display.Flex; }
+           inside IconButton.Focus { Display = Display.Flex; } }
+  }
+  render {
+    Row(gap: 2, align: Align.Center, decorative: true) {
+      Text(label);
+      // The key on an inverted ground: no chip border (it would vanish), just the mono glyphs, a little quieter.
+      Box(keycap: keys, fontFamily: Font.Mono, opacity: "0.75");
+    }
+  }
+}
+
+/// The key inline on a button's face, after its words ("Send ⌘↵") — `Button(…, showShortcut: true)`. Drawn on the
+/// button's own colour, so it is a quieter echo of the label rather than a chip.
+[Composable, Part]
+component ButtonKeycap(string keys) {
+  variants {
+    base { Display = Display.InlineFlex; FontFamily = Font.Mono; FontSize = "0.9em"; FontWeight = FontWeight.Medium;
+           Opacity = "0.72"; Ml = 1; LineHeight = "1"; }
+  }
+  render { Box(keycap: keys, decorative: true); }
+}
+
+/// THE `?` SHEET — every key bound on this page that a press would reach, grouped by the labelled region its control
+/// lives in (the main navigation, a ticket, a dialog), each row the control's name and its key. Generated from the
+/// live bindings, so it cannot list a key that does nothing nor miss one that works. `?` opens it from anywhere
+/// (except while typing in a field) and closes it again; Escape closes it too. Every work shell mounts one; an app
+/// with no shell renders `KeyboardSheet()` once in its layout.
+/// In a test: `Ui.Press("?"); Assert.Dialog("Keyboard shortcuts"); Assert.Visible("Next ticket", within: "Keyboard shortcuts")`.
+/// need: a keyboard shortcut cheat sheet, show all shortcuts, press ? for help, list the keys this page understands
+/// e.g. `KeyboardSheet()`
+[Composable]
+component KeyboardSheet(string title = "Keyboard shortcuts") {
+  bool open = false;
+  action Toggle() { open = !open; }
+  action Close() { open = false; }
+  render {
+    Box {
+      // The `?` binding, on a real control: it is how a keyboard reader finds the sheet too (it appears when
+      // focused, at the corner — the skip-link pattern) and it is listed in the sheet like any other key.
+      KeyboardSheetTrigger(title, Toggle);
+      if (open) {
+        Dialog(title, onDismiss: Close, subtitle: "What each key does on this page.") {
+          Box(shortcutList: true, maxH: "60vh", overflowY: Overflow.Auto);
+        }
+      }
+    }
+  }
+}
+
+/// The sheet's own `?` control — invisible until it takes keyboard focus, so a pointer never meets it and a keyboard
+/// reader can still reach it.
+[Composable, Part]
+component KeyboardSheetTrigger(string title, Action onPress) {
+  variants {
+    base { Position = Position.Fixed; Right = "16px"; Bottom = "16px"; Z = ZIndex.Tooltip; Opacity = "0";
+           PointerEvents = PointerEvents.None; Display = Display.InlineFlex; Px = 3; Py = 1;
+           Rounded = Radius.Md; Bg = Colors.Elevated; Color = Colors.OnSurface;
+           Shadow = Shadow.Floating; FontSize = FontSize.Caption;
+           Focus { Opacity = "1"; PointerEvents = PointerEvents.Auto; OutlineW = 2; OutlineColor = Colors.Primary;
+                   OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: title, shortcut: "?") {
+      Row(gap: 2, align: Align.Center) { Text(title); KeyHint("?"); }
+    }
+  }
+}

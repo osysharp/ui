@@ -1,0 +1,217 @@
+// Ui — the choice controls: one dropdown for anything you pick from, and the boolean pair (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// One option row in a dropdown panel — a tick when it is the current selection, and the row's own content.
+/// In a test it is chosen by what it IS: `Ui.Select("Cuisine", Cuisine.Thai)`, and read back with `Assert.Selected(Cuisine.Thai)`.
+/// ⚠ THE LABEL MAY BE EMPTY, AND THAT IS DELIBERATE — its name can come from its SLOT instead. `Dropdown`'s own
+/// panel writes `Option(selected: m == value) { Slot(m) { Text(m.Label); } }`, so the row IS named, just not by
+/// this parameter. Measured 2026-08-29: making it required broke every app in the corpus, through the kit itself.
+/// e.g. `Option("Active", selected: …)` · `Option(selected: …) { Avatar(p.Initials); Text(p.Name); }`
+[Composable] component Option(string label = "", bool selected = false) {
+  variants {
+    base { Px = 2; Py = 2; Rounded = Radius.Sm; FontSize = FontSize.Body; Color = Colors.OnSurface; Hover { Bg = Colors.Muted; } }
+  }
+  render {
+    Row(role: UiRole.Option, selected: selected, align: Align.Center, gap: 2) {
+      Slot { Text(label); }
+      Spacer();
+      if (selected) { Text("✓", color: Colors.Primary, decorative: true); }
+    }
+  }
+}
+
+/// A styled select over an enum OR over any collection of rows. Over an enum the options are the bound type's
+/// members, worded by their labels; over a collection the caller's template says what a row looks like.
+/// ⚑ THE DOMAIN OF EVERY EXAMPLE BELOW IS ARBITRARY — only the SHAPE is the teaching. `T` is whichever type your
+/// app binds: any enum (`Cuisine`, `Priority`, `Currency`) or any entity you hold rows of (`Supplier`, `Author`).
+/// There is one worked example per SHAPE, not per type, because the second type would teach nothing the first did
+/// not. Read a noun here as a placeholder and pick your own — an example that names a thing is not proposing that
+/// your model should have one.
+/// Bind a `T?` when the choice is optional — `null` is then "none"/"All", which is how an enum filter spells
+/// no-filter. `options` needs nothing extra for that: the default still resolves to the enum's own members, and
+/// passing them explicitly stays `options: Cuisine.Members` — a plain `Cuisine[]`, NOT a `Cuisine?[]`. (Read as C#
+/// the `T[] options = T.Members` above looks like it must become `Cuisine?[]` when `T` is `Cuisine?`; it does not —
+/// this looks like an array-variance problem and is not one.)
+/// `label` is the caption, FIRST and required, exactly as on `Field` and the three pickers: it is drawn above the
+/// control AND is what the control is announced and addressed by. Every value-entry control in this kit reads
+/// `(label, value, …)`, so one habit works everywhere.
+/// ⚠ IT IS REQUIRED BECAUSE AN UNLABELLED ONE IS UNREACHABLE, not for symmetry. Without it the trigger has no
+/// accessible name, the `placeholder:` becomes the only text on it, and `Ui.Select("Filter by cuisine", …)` finds
+/// nothing — so the control drops out of what any test can drive. A filter dropdown wants a real label even when
+/// the surrounding card seems to say it; `placeholder:` is what the EMPTY state reads ("All cuisines"), never a
+/// substitute for the name.
+/// In a test it is chosen by the VALUE, not the text — `Ui.Select("Cuisine", Cuisine.Thai)` — and read back with `Assert.Selected(Cuisine.Thai)`.
+/// need: choose one of a fixed set of options, pick a value from a list, select an enum member, a combo box, a picker over rows
+/// e.g. `Dropdown("Status", value: org.Status)`
+///   over ROWS — `options:` is the collection and the template says what one row reads:
+///   `Dropdown("Foundry", value: bell.Foundry, options: foundries) { f => Text(f.Name); }`
+///   the optional one, in full — `Cuisine? filter = null;` then `Dropdown("Cuisine", value: filter, placeholder: "All cuisines")`
+[Composable] component Dropdown<T>(string label, Binding<T> value, T[] options = T.Members,
+                                   string placeholder = "", bool disabled = false) {
+  bool open = false;
+  action Toggle() { open = !open; }
+  action Close() { open = false; }
+  action Choose(T m) { value = m; open = false; }
+
+  render {
+    Stack(gap: 1) {
+    // ⛔ THE LABEL IS RENDERED, like every other field control's. It used to go ONLY to the trigger's `label:` — an
+    //   ACCESSIBLE name — so a form built from the kit showed a label above `Field`, `NumberField` and
+    //   `DecimalField` and a BARE BOX above the dropdown, for the same argument passed the same way. Measured
+    //   2026-08-23 on a generated app: a `Dropdown(value: …, label: "…")` rendered its label nowhere on screen. Every check passed — `osy lint` reported zero MUSTs and four behavioural tests were
+    //   green — and a SCREENSHOT is what showed it, because happy-dom has no
+    //   compositor and a missing label is not a missing word.
+    //   ⚑ A parameter that is accepted and paints nothing is the inert-affordance failure CLAUDE.md names.
+      if (label != "") { Text(label, labelFor: trigger, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+    Box(position: Position.Relative) {
+      Pressable(onClick: Toggle, disabled: disabled, role: UiRole.ComboBox, expanded: open, label: label, id: trigger) {
+        Row(align: Align.Center, gap: 2, h: Length.ControlMd, px: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md,
+            bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body) {
+          if (value == null) { Text(placeholder, color: Colors.TextMuted); }
+          else { Slot(value) { Text(value.Label); } }
+          Spacer();
+          Text("▾", color: Colors.TextMuted, decorative: true);
+        }
+      }
+      if (open) {
+        Backdrop(Close);
+        // ⛔ THE PANEL MUST NOT WEAR THE TRIGGER'S NAME. Both carried `label:`, so the moment the dropdown opened
+        //   every locator naming the control matched TWO elements — the button and the list — and `Ui.Select(…)`
+        //   refused its own control as ambiguous. Measured twice: an author redesigned a whole page around it
+        //   ("both the trigger button and the popup stack carry the same label"), and a driver test reproduced it
+        //   exactly.
+        //   The options carry their own names and the panel is reached through the trigger, so it needs none.
+        Stack(role: UiRole.ListBox, position: Position.Absolute, z: ZIndex.Popover, mt: 1, minW: Length.MenuW, bg: Colors.Surface, borderW: 1, border: Colors.Border,
+              rounded: Radius.Md, shadow: Shadow.Floating, p: 1, gap: 0) {
+          foreach (var m in options) {
+            Pressable(onClick: () => Choose(m)) {
+              Option(selected: m == value) { Slot(m) { Text(m.Label); } }
+            }
+          }
+        }
+      }
+    }
+    }
+  }
+}
+
+/// A time-zone picker: a dropdown over the app's declared zones (`zones {}`, or the platform's default set), each read
+/// as its place and its region — "Stockholm — Europe". `value` is a two-way `Binding<Zone>`; what it stores is the zone
+/// itself, so a `Zone` field binds straight to it and every clock that reads the field (`DateTime.UtcNow.InZone(z)`,
+/// `z.Resolve(day, time)`, `Date.Bucket(…, z)`) follows the choice.
+/// In a test it is chosen by the VALUE — `Ui.Select("Time zone", Zone.Of("Europe/Stockholm"))`.
+/// need: pick a time zone, choose the zone a team, a shop or a report counts its days in, a zone dropdown
+/// e.g. `ZonePicker("Time zone", value: settings.TimeZone)`
+[Composable] component ZonePicker(string label, Binding<Zone> value, bool disabled = false) {
+  render {
+    Dropdown(label, value: value, options: Zone.Declared, disabled: disabled) { z => Text(ZoneWords(z)); }
+  }
+}
+
+/// How a zone reads to a person: the place, then the region — "Stockholm — Europe", "Los Angeles — America", "UTC".
+public string ZoneWords(Zone zone) {
+  var token = $"{zone}";
+  var cut = token.LastIndexOf("/");
+  if (cut < 0) { return token; }
+  return token.Substring(cut + 1).Replace("_", " ") + " — " + token.Substring(0, cut).Replace("_", " ");
+}
+
+/// A checkbox with its label. The label is part of the control, so clicking the word toggles it. `value` is a
+/// two-way binding and the control WRITES it — so `onToggle` must not flip it again, or the two cancel and nothing
+/// happens.
+/// In a test it is ticked by its label: `Ui.Check("I agree")` / `Ui.Uncheck("I agree")`, and read back with `Assert.Checked("I agree")`.
+/// ⚠ `Ui.Check` SETS, `Ui.Click` TOGGLES — and on a checkbox that difference decides whether your test is
+/// state-dependent. `Ui.Check` reads the current state and leaves the box ON whatever it was; `Ui.Click` flips
+/// whatever it finds, so a box that starts ticked ends up OFF and the assertion after it fails for a reason that
+/// has nothing to do with the code. Reach for `Click` only when pressing it IS the thing under test.
+/// ⚠ IN A LIST THE LABEL IS THE ROW'S SUBJECT, NOT THE CHECKBOX'S MEANING. The example above is a SINGLE checkbox,
+/// where the label has to say what ticking means because nothing else does. A row is the opposite: the label is the
+/// only text drawn for that row AND the handle a test addresses it by, so it must be the row's own name and nothing
+/// else. Prefixing the meaning onto it — the state word, then the name — is the mistake, and it is the one a
+/// generated app made on 2026-08-29: every row was labelled with the state followed by the title, so an untouched
+/// list read as though every item were already ticked. It passed validate, lint and every text assertion, because
+/// all the words were present; a screenshot is what showed it. The meaning belongs where it is said ONCE — a column
+/// heading, or the card's own title.
+/// ⭐ `(label, value, …)` — THE SAME SHAPE AND THE SAME MECHANISM as every other value-entry control in this kit.
+/// The order was made exceptionless in `743d1a1e6`; these two kept a `bool` + an `Action` for one round longer,
+/// and that residue is now closed too: `value` is a two-way `Binding<bool>`, so the control writes itself and the
+/// commonest page in any app stops needing an ACTION PER CHECKBOX.
+/// ⚑ `onToggle` is OPTIONAL and is the side effect, not the write — the press commits, cascades or logs through it.
+/// The binding lands in the page's unit of work exactly as a `Field`'s does; what makes it durable is the commit.
+/// ⛔ AND `value` IS ALREADY WRITTEN WHEN `onToggle` RUNS. Do NOT flip it again in the handler: the control has
+/// toggled it, so `onToggle: () => { t.IsDone = !t.IsDone; Save(); }` toggles it TWICE and the box springs back.
+/// A handler that only commits is the whole of it — `onToggle: Save`.
+/// (Eval run 20 of 019 reasoned its way to this from the example's NAME, and said so: *"if our action also sets
+/// job.IsDone = !job.IsDone, that would double-toggle it back … matching how the doc's example LIKELY just calls a
+/// plain commit"*. It guessed right and rewrote a just-written action on the guess. A contract nobody states is a
+/// contract every reader re-derives, and the next one guesses the other way.)
+/// need: tick a box, an on or off choice in a form, agree to something, mark an item done
+/// e.g. `Checkbox("Email me", value: notify)` — `value` is two-way, so a plain box needs NO action at all.
+/// e.g. in a row — `Checkbox(t.Step, value: t.IsDone, onToggle: Save)`
+[Composable] component Checkbox(string label, Binding<bool> value, Action onToggle = null, bool disabled = false) {
+  // ⛔ IT TOOK A `bool` + AN `Action` AND EVERY OTHER VALUE-ENTRY CONTROL TOOK A `Binding` (H19-92 b-mechanism).
+  //   A checkbox IS a place a person enters a value, so the odd one out was this one — and the cost was an ACTION
+  //   PER CHECKBOX in every app that has a list: `action ToggleDone(Job j) { j.IsDone = !j.IsDone; … }`, written
+  //   once per page for a control that could write itself.
+  //
+  // ⚑ `onToggle` SURVIVES, AS AN OPTIONAL SIDE EFFECT, which is what makes this a superset rather than a swap: the
+  //   common case loses the ceremony (`Checkbox("Done", value: j.IsDone)`) and the case that needs to DO something
+  //   on the press — commit, cascade, log — still says so. The binding writes into the page's unit of work like
+  //   every other edit; what makes it durable is the page's commit, exactly as for a `Field`.
+  action Flip() { value = !value; if (onToggle != null) { onToggle(); } }
+  render {
+    Pressable(onClick: Flip, disabled: disabled, role: UiRole.Checkbox, checked: value, label: label) {
+      Row(align: Align.Center, gap: 2) {
+        // THE TICK DRAWS ITSELF WHEN IT IS TICKED — `KitDraw`, keyed to the value so it plays on the press and never
+        // as the page appears (a form of twenty ticked boxes does not draw twenty ticks on load). The keyed box stays
+        // put across the flip; only what is inside it changes.
+        Box(animation: KitDraw, animationKey: value, display: Display.InlineFlex, shrink: 0, decorative: true) {
+          if (value) {
+            Box(w: "18px", h: "18px", rounded: "4px", bg: Colors.Primary, color: Colors.OnPrimary, display: Display.InlineFlex, align: Align.Center, justify: Justify.Center) {
+              Icon(Icons.Check, size: 14);
+            }
+          }
+          if (!value) { Box(w: "18px", h: "18px", rounded: "4px", borderW: 1, border: Colors.Border); }
+        }
+        Text(label, fontSize: FontSize.Body, color: Colors.OnSurface);
+      }
+    }
+  }
+}
+
+/// A switch — the same state as a Checkbox, for a setting that takes effect IMMEDIATELY. Use a Checkbox in a form
+/// that is submitted, a Switch for something that is on now. `value` is a two-way binding and the control WRITES
+/// it — `onToggle` applies the change, it does not make it.
+/// In a test it is flipped by its label: `Ui.Check("Email me")` / `Ui.Uncheck("Email me")`, and read back with `Assert.Checked("Email me")`.
+/// ⛔ As with `Checkbox`, `value` is ALREADY WRITTEN when `onToggle` runs — flipping it again there toggles it
+/// twice and the switch springs back. The handler applies the change; it does not make it.
+/// ⭐ LABEL FIRST — see `Checkbox` above for why, and it is the same reason.
+/// ⚠ `label` LOSES ITS DEFAULT in the move, and that is a gain rather than a cost: a switch with no label draws no
+/// text, so nothing on the page says what it does and no test can address it — which is exactly the harm
+/// `ui-control-call-without-an-accessible-name` exists to name. A required label makes it unrepresentable.
+/// need: a toggle that takes effect at once, turn a setting on or off, an immediate on off control
+/// e.g. `Switch("Live updates", value: live, onToggle: Apply)` — `value` writes itself; `onToggle` is what makes
+/// it take effect NOW, which is the whole difference from a Checkbox.
+[Composable] component Switch(string label, Binding<bool> value, Action onToggle = null, bool disabled = false) {
+  // The same change as `Checkbox` above, for the same reason — see its note. A switch is the immediate-effect
+  // sibling, so `onToggle` is where its commit usually goes.
+  action Flip() { value = !value; if (onToggle != null) { onToggle(); } }
+  render {
+    Pressable(onClick: Flip, disabled: disabled, role: UiRole.Switch, checked: value, label: label) {
+      Row(align: Align.Center, gap: 2) {
+        if (value) {
+          Box(w: "34px", h: "20px", rounded: Radius.Pill, bg: Colors.Primary, px: 1, display: Display.InlineFlex, align: Align.Center, justify: Justify.End) {
+            Box(w: "16px", h: "16px", rounded: Radius.Circle, bg: Colors.OnPrimary);
+          }
+        }
+        if (!value) {
+          Box(w: "34px", h: "20px", rounded: Radius.Pill, bg: Colors.Muted, px: 1, display: Display.InlineFlex, align: Align.Center, justify: Justify.Start) {
+            Box(w: "16px", h: "16px", rounded: Radius.Circle, bg: Colors.Surface);
+          }
+        }
+        if (label != "") { Text(label, fontSize: FontSize.Body, color: Colors.OnSurface); }
+      }
+    }
+  }
+}

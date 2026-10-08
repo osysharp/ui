@@ -1,0 +1,172 @@
+// Ui — THE CATALOGUE SHELL. The shop's shelves down a column that stays beside the page; the page is the grid.
+//
+//     [Layout] component Shop() {
+//       render {
+//         CatalogueShell(chrome) {
+//           Outlet(retain: 8);
+//           slot actions { Button("Bag (2)", onPress: OpenBag); }
+//           slot footer  { EditorialFooter(chrome); }
+//         }
+//       }
+//     }
+//
+// FOR A SHOP WHOSE CATALOGUE IS THE POINT — many shelves, a customer who browses by department. The whole category
+// tree is open in the column at all times (the way the big fashion and design retailers list theirs), so a shelf is
+// one click from anywhere and the reader always sees where they are. It is not a card grid with a header on top.
+//
+// ⭐ THE BANDS:
+//   compact  < 768   a solid bar (the wordmark, the action, a menu button); the tree in the storefront's drawer.
+//   cozy/wide 768+   a column of 260px, sticky to the viewport's height: the wordmark at its head, the tree, and the
+//                    action at its foot; the page beside it, full height, with the footer under it.
+//
+// ⚑ THE SLOTS: the six every shell has, plus `promo` and `footer`. `actions` sits at the foot of the column — a bag
+//   button — and in the phone bar.
+
+namespace Osysharp.Ui;
+
+/// THE CATALOGUE SHELL — the whole category tree open in a column that stays beside the page, the wordmark at its head
+/// and the bag at its foot. A bar and a drawer on a phone. For a shop with many shelves, browsed by department. Takes
+/// the same `AppChrome` and slots as every other shell, plus `promo` and `footer`.
+///
+/// Slots, all optional:
+///   (default)   the routed page — `Outlet(retain: 8)`
+///   `actions`   the bag, at the foot of the column and in the phone bar
+///   `promo`     a thin announcement bar above everything
+///   `footer`    the footer, under the page
+///   `search`, `aside`, `railFoot`, `primary` — rendered in the page column, so switching from another shell drops nothing
+///
+/// In a test the regions carry names: `Ui.Click("Shoes", within: "Departments")`, and on a phone `Ui.Click("Menu")`.
+/// need: a shop with a left category column, a department store layout, a catalogue with the shelves always open
+/// e.g. `CatalogueShell(chrome) { Outlet(retain: 8); slot actions { Button("Bag", onPress: OpenBag); } }`
+[Composable]
+component CatalogueShell(AppChrome chrome) {
+  string overlay = "";
+  string overlayAt = "";
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  live var shown = overlayAt == path ? overlay : "";
+  live var menuOpen = shown == "menu";
+
+  action ToggleMenu() { overlay = shown == "menu" ? "" : "menu"; overlayAt = path; }
+  action CloseMenu() { if (menuOpen) { overlay = ""; } }
+  action DismissAll() { overlay = ""; }
+  action Navigated() { overlay = ""; }
+
+  variants { base { MinH = Length.Screen; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    CatalogueFrame(chrome, !Layout.AtLeast(Tablet), current, hasUser, hasMenu, menuOpen,
+                   ToggleMenu, CloseMenu, DismissAll, Navigated) {
+      slot page { Slot; }
+      slot promo { Slot("promo"); }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot footer { Slot("footer"); }
+      slot aside { Slot("aside"); }
+      slot railFoot { Slot("railFoot"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// Everything the catalogue shell DRAWS, once the band is decided.
+[Composable, Part]
+component CatalogueFrame(AppChrome chrome, bool isPhone, string current, bool hasUser, bool hasMenu, bool menuOpen,
+                         Action onToggleMenu, Action onCloseMenu, Action onDismissAll, Action onNavigated) {
+  live var items = chrome.Primary();
+
+  render {
+    Stack(gap: 0, minH: Length.Screen) {
+      Slot("promo");
+      if (isPhone) {
+        SplitPhoneBar(chrome, menuOpen, onToggleMenu, onNavigated) { slot actions { Slot("actions"); } }
+        Stack(gap: 0, role: UiRole.Main, label: "Page", minW: "0") {
+          Slot("search");
+          Slot("page");
+          Slot("aside");
+          Slot("railFoot");
+        }
+        Slot("primary");
+        Slot("footer");
+      }
+      if (!isPhone) {
+        Box(display: Display.Grid, cols: "260px minmax(0, 1fr)", align: Align.Start) {
+          CatalogueColumn(chrome, items, current, onNavigated) { slot actions { Slot("actions"); } }
+          Stack(gap: 0, minW: "0", borderLW: 1, border: Colors.Border) {
+            Stack(gap: 0, role: UiRole.Main, label: "Page", minW: "0", minH: "80vh") {
+              Slot("search");
+              Slot("page");
+              Slot("aside");
+              Slot("railFoot");
+            }
+            Slot("primary");
+            Slot("footer");
+          }
+        }
+      }
+    }
+
+    if (menuOpen && isPhone) {
+      StorefrontScrim(onCloseMenu);
+      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+    }
+  }
+}
+
+/// The column — the wordmark, the whole tree open, and the action at its foot; sticky to the viewport's height.
+[Composable, Part]
+component CatalogueColumn(AppChrome chrome, NavItem[] items, string current, Action onNavigated) {
+  variants {
+    base { Position = Position.Sticky; Top = "0"; H = "100vh"; OverflowY = Overflow.Auto; Px = 6; Py = 8;
+           Bg = Colors.Bg; Color = Colors.OnBg; }
+  }
+  render {
+    Stack(gap: 8) {
+      // The wordmark and the action side by side at the head: the column is a viewport tall but starts under the promo
+      // bar, so an action at its FOOT began off-screen (measured on fashion-store/index, 2026-09-27).
+      // It WRAPS: a 260px column fits the wordmark and one action, and an app with two (an account and a bag) had the
+      // second cut off at the column's edge. Wrapped, the actions take their own line under the wordmark.
+      Row(justify: Justify.Between, align: Align.Center, gap: 3, wrap: Wrapping.Wrap, role: UiRole.Banner, label: "Site header") {
+        EditorialBrand(chrome, onNavigated);
+        Row(gap: 2, align: Align.Center) { Slot("actions"); }
+      }
+      Stack(gap: 5, role: UiRole.Navigation, label: "Departments", grow: 1) {
+        foreach (var item in items) {
+          Stack(gap: 1) {
+            CatalogueLink(item.Label, item.FirstRoute(), item.State(current) == NavState.Current, true, onNavigated);
+            foreach (var child in item.Children) {
+              CatalogueLink(child.Label, child.FirstRoute(), child.State(current) == NavState.Current, false, onNavigated);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// One shelf in the column — a department in the display face, a shelf under it quieter; the current one set on the
+/// accent in the accent's own text colour. ⚠ Never the accent AS TEXT: a light accent (lime, yellow) on a light ground
+/// is unreadable, and `Primary` + `OnPrimary` is the one pairing every theme guarantees legible.
+[Composable, Part]
+component CatalogueLink(string label, string to, bool isCurrent, bool isDepartment, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; TextDecoration = TextDecoration.None; Color = Colors.OnBg; Transition = Motion.Fast;
+           Hover { TextDecoration = TextDecoration.Underline; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Link(href: to, label: label, current: isCurrent, onClick: onNavigated) {
+      Row(gap: 2, align: Align.Center, minH: isDepartment ? "36px" : "30px", ml: isDepartment ? "0" : "12px") {
+        Text(label, fontFamily: isDepartment ? Font.Display : Font.Sans,
+             fontSize: isDepartment ? FontSize.Subhead : FontSize.Body,
+             fontWeight: isDepartment ? FontWeight.Semibold : FontWeight.Regular,
+             bg: isCurrent ? Colors.Primary : "transparent", px: isCurrent ? 2 : 0,
+             color: isCurrent ? Colors.OnPrimary : (isDepartment ? Colors.OnBg : Colors.TextMuted));
+      }
+    }
+  }
+}

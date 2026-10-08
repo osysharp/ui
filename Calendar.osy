@@ -1,0 +1,441 @@
+// Ui — the date, time and date-time pickers, and the month grid they open (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A labelled DATE field that opens a real month calendar — not the browser's own picker, which cannot be styled
+/// and looks different in every browser. Click a day to choose it; `‹`/`›` move a month; the backdrop closes.
+/// In a test it is filled by its label, in ISO form: `Ui.Fill("Due", "2026-08-23")` — which opens it, walks the
+/// calendar to that month and clicks the day, so the value arrives exactly as a person's click delivers it.
+/// It binds a `DateOnly` or a `DateOnly?`: an OPTIONAL date (a "valid from", a "due date (optional)") shows
+/// `placeholder` while empty and opens on this month, and `clearable: true` adds a "Clear" that empties it again —
+/// use it only with a `DateOnly?`, which is the one kind of field that can hold "no date".
+/// need: pick a date from a calendar, a due date field, choose a day, an optional date, a date that may be empty
+/// e.g. `DatePicker("Due", value: draft.DueOn)` · `DatePicker("First day", value: startsOn, clearable: true)`
+[Composable]
+component DatePicker(
+    string label,
+    Binding<DateOnly?> value,
+    string hint = "",
+    string error = "",
+    bool disabled = false,
+    bool clearable = false,
+    string placeholder = "Pick a date")
+{
+  bool open = false;
+  // An EMPTY date opens on this month — there is no chosen day to open on.
+  DateOnly month = FirstOfMonth(value ?? DateOnly.FromDateTime(DateTime.UtcNow));
+
+  DateOnly FirstOfMonth(DateOnly d) { return new DateOnly(d.Year, d.Month, 1); }
+
+  action Toggle() { open = !open; }
+  action Close()  { open = false; }
+  action Prev()   { month = month.AddMonths(-1); }
+  action Next()   { month = month.AddMonths(1); }
+  // ⚑ A YEAR STEP, BECAUSE MONTHS ALONE IS NOT A DATE PICKER. Reaching a date three years out took 36 presses of
+  //    `›`, and a birth date took hundreds — with no other affordance on the control, that was the only route a
+  //    person had. `«`/`»` make it one press per year.
+  action PrevYear() { month = month.AddYears(-1); }
+  action NextYear() { month = month.AddYears(1); }
+  action Pick(DateOnly d) { value = d; month = new DateOnly(d.Year, d.Month, 1); open = false; }
+  action Clear() { value = null; open = false; }
+
+  variants { base { Gap = Space.FieldGap; } }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      Box(position: Position.Relative) {
+        PickerTrigger(text: value == null ? placeholder : (value ?? month).ToString("d MMM yyyy"), label: label, open: open,
+                      invalid: error != "", disabled: disabled, onPress: Toggle);
+        if (clearable && value != null && !disabled) {
+          Pressable(onClick: Clear, label: $"Clear {label}") { Text("Clear", fontSize: FontSize.Label, color: Colors.TextMuted); }
+        }
+        if (open) {
+          Backdrop(Close);
+          CalendarPanel(label: label) {
+            MonthHeader(month: month, onPrev: Prev, onNext: Next, onPrevYear: PrevYear, onNextYear: NextYear);
+            WeekdayRow();
+            MonthGrid(month: month, selected: value, onPick: Pick);
+          }
+        }
+      }
+      FieldNote(hint: hint, error: error);
+    }
+  }
+}
+
+/// A labelled TIME field that opens hour and minute columns. `minuteStep` sets how the minutes are listed — 5 by
+/// default, so a quarter past is two clicks rather than fifteen. `use12Hour` reads the CLOSED field back as
+/// `2:15 PM`; the columns it opens are 24-hour either way.
+/// In a test it is filled by its label, in 24-hour form: `Ui.Fill("Opens", "09:30")` — which opens it and clicks
+/// the hour and the minute. The minute must be one `minuteStep` offers, and the refusal lists them if it is not.
+/// need: pick a time of day, choose an hour and a minute, an opening time
+/// e.g. `TimePicker("Opens", value: draft.OpensAt)` · `TimePicker("Reminder", value: t, minuteStep: 15)`
+[Composable]
+component TimePicker(
+    string label,
+    Binding<TimeOnly> value,
+    int minuteStep = 5,
+    bool use12Hour = false,
+    string hint = "",
+    string error = "",
+    bool disabled = false)
+{
+  bool open = false;
+
+  action Toggle() { open = !open; }
+  action Close()  { open = false; }
+  action PickHour(int h)   { value = new TimeOnly(h, value.Minute); }
+  action PickMinute(int m) { value = new TimeOnly(value.Hour, m); }
+
+  variants { base { Gap = Space.FieldGap; } }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      Box(position: Position.Relative) {
+        PickerTrigger(text: use12Hour ? value.ToString("h:mm tt") : value.ToString("HH:mm"), label: label,
+                      open: open, invalid: error != "", disabled: disabled, onPress: Toggle);
+        if (open) {
+          Backdrop(Close);
+          Stack(role: UiRole.Dialog, label: $"{label} time", position: Position.Absolute, z: ZIndex.Popover, mt: 1,
+                bg: Colors.Surface, borderW: 1, border: Colors.Border, rounded: Radius.Md, shadow: Shadow.Floating, p: 2, gap: 1) {
+            Row(gap: 1, align: Align.Start) {
+              TimeColumn(heading: "hh", values: Enumerable.Range(0, 24), selected: value.Hour, onPick: PickHour);
+              TimeColumn(heading: "mm", values: Enumerable.Range(0, 60 / minuteStep).Select(i => i * minuteStep),
+                         selected: value.Minute, onPick: PickMinute);
+            }
+            Pressable(onClick: Close, label: "Done") { Text("Done", fontSize: FontSize.Label, color: Colors.Primary); }
+          }
+        }
+      }
+      FieldNote(hint: hint, error: error);
+    }
+  }
+}
+
+/// A labelled DATE AND TIME field — the month calendar with a time strip under it, over one `DateTime`. Use it for
+/// a moment (a start, a deadline); for a calendar day with no time of day, use `DatePicker`.
+/// In a test it is filled by its label, date then time: `Ui.Fill("Starts", "2026-08-23 09:30")` — which walks to
+/// the month, clicks the day, opens the time strip and clicks the hour and minute. BOTH halves are required.
+/// need: pick a date and a time together, schedule a moment, a start timestamp
+/// e.g. `DateTimePicker("Starts", value: draft.StartsAt)`
+[Composable]
+component DateTimePicker(
+    string label,
+    Binding<DateTime> value,
+    int minuteStep = 5,
+    string hint = "",
+    string error = "",
+    bool disabled = false)
+{
+  bool open = false;
+  DateOnly month = new DateOnly(value.Year, value.Month, 1);
+
+  action Toggle() { open = !open; }
+  action Close()  { open = false; }
+  action Prev()   { month = month.AddMonths(-1); }
+  action Next()   { month = month.AddMonths(1); }
+  // ⚑ A YEAR STEP, BECAUSE MONTHS ALONE IS NOT A DATE PICKER. Reaching a date three years out took 36 presses of
+  //    `›`, and a birth date took hundreds — with no other affordance on the control, that was the only route a
+  //    person had. `«`/`»` make it one press per year.
+  action PrevYear() { month = month.AddYears(-1); }
+  action NextYear() { month = month.AddYears(1); }
+  action PickDay(DateOnly d) {
+    value = new DateTime(d.Year, d.Month, d.Day, value.Hour, value.Minute, 0);
+    month = new DateOnly(d.Year, d.Month, 1);
+  }
+  action PickHour(int h)   { value = new DateTime(value.Year, value.Month, value.Day, h, value.Minute, 0); }
+  action PickMinute(int m) { value = new DateTime(value.Year, value.Month, value.Day, value.Hour, m, 0); }
+
+  variants { base { Gap = Space.FieldGap; } }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      Box(position: Position.Relative) {
+        PickerTrigger(text: value.ToString("d MMM yyyy HH:mm"), label: label, open: open,
+                      invalid: error != "", disabled: disabled, onPress: Toggle);
+        if (open) {
+          Backdrop(Close);
+          CalendarPanel(label: label) {
+            MonthHeader(month: month, onPrev: Prev, onNext: Next, onPrevYear: PrevYear, onNextYear: NextYear);
+            WeekdayRow();
+            MonthGrid(month: month, selected: DateOnly.FromDateTime(value), onPick: PickDay);
+            TimeStrip(hour: value.Hour, minute: value.Minute, minuteStep: minuteStep,
+                      onHour: PickHour, onMinute: PickMinute);
+          }
+        }
+      }
+      FieldNote(hint: hint, error: error);
+    }
+  }
+}
+
+/// The unit a `DurationField` counts in.
+public enum DurationUnit {
+  [Label("Minutes")] Minutes,
+  [Label("Hours")] Hours,
+  [Label("Days")] Days,
+}
+
+/// A labelled DURATION field over a `TimeSpan` — "7 days", "90 minutes" — for how long something lasts or waits: an
+/// invitation's validity, a reminder's lead time, how long a record is kept. Closed it reads the duration in words; it
+/// opens to a number and its unit (minutes, hours or days), and Done sets it.
+/// In a test: `Ui.Click("Valid for")`, then `Ui.Fill("How many", "3")`, `Ui.Click("Days")` and `Ui.Click("Done")`.
+/// need: a duration input, how long something lasts, a number of days or hours, a time span field, a wait or a timeout
+/// e.g. `DurationField("Valid for", value: setup.ValidFor)`
+[Composable]
+component DurationField(
+    string label,
+    Binding<TimeSpan> value,
+    string hint = "",
+    string error = "",
+    bool disabled = false)
+{
+  bool open = false;
+  // What the panel holds while it is open — read from `value` as it OPENS, so a value changed elsewhere (a Discard)
+  // is what the next opening shows; nothing is written until Done.
+  int amount = 0;
+  DurationUnit unit = DurationUnit.Days;
+
+  action Toggle() {
+    if (!open) { unit = DurationUnitOf(value); amount = DurationAmountIn(value, unit); }
+    open = !open;
+  }
+  action Close() { open = false; }
+  action Pick(DurationUnit u) { unit = u; }
+  action Apply() { value = DurationOf(Math.Max(0, amount), unit); open = false; }
+
+  variants { base { Gap = Space.FieldGap; } }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      Box(position: Position.Relative) {
+        PickerTrigger(text: DurationWords(value), label: label, open: open, invalid: error != "", disabled: disabled,
+                      onPress: Toggle);
+        if (open) {
+          Backdrop(Close);
+          Stack(role: UiRole.Dialog, label: $"{label} duration", position: Position.Absolute, z: ZIndex.Popover, mt: 1,
+                bg: Colors.Surface, borderW: 1, border: Colors.Border, rounded: Radius.Md, shadow: Shadow.Floating, p: 3,
+                gap: 3) {
+            // The number and its unit read as one phrase — "4 | Minutes Hours Days" — the unit a segmented choice.
+            Row(gap: 3, align: Align.End, wrap: Wrapping.Wrap) {
+              NumberField("How many", value: amount, min: 0);
+              Row(gap: 1, p: 1, rounded: Radius.Md, borderW: 1, border: Colors.Border, role: UiRole.Group, label: "Unit") {
+                foreach (var u in DurationUnit.Members) {
+                  Button(u.Label, onPress: () => Pick(u), tone: u == unit ? Tone.Primary : Tone.Ghost, size: Size.Sm);
+                }
+              }
+            }
+            Row(justify: Justify.End) { Button("Done", onPress: Apply, size: Size.Sm); }
+          }
+        }
+      }
+      FieldNote(hint: hint, error: error);
+    }
+  }
+}
+
+/// The largest unit `span` is a whole number of — days, then hours, else minutes.
+public DurationUnit DurationUnitOf(TimeSpan span) {
+  var minutes = Convert.ToInt(Math.Truncate(span.TotalMinutes));
+  if (minutes > 0 && minutes % 1440 == 0) { return DurationUnit.Days; }
+  if (minutes > 0 && minutes % 60 == 0) { return DurationUnit.Hours; }
+  return DurationUnit.Minutes;
+}
+
+/// How many whole `unit`s `span` is.
+public int DurationAmountIn(TimeSpan span, DurationUnit unit) {
+  var minutes = Convert.ToInt(Math.Truncate(span.TotalMinutes));
+  if (unit == DurationUnit.Days) { return minutes / 1440; }
+  if (unit == DurationUnit.Hours) { return minutes / 60; }
+  return minutes;
+}
+
+/// `amount` of `unit`, as a span.
+public TimeSpan DurationOf(int amount, DurationUnit unit) {
+  if (unit == DurationUnit.Days) { return TimeSpan.FromDays(amount); }
+  if (unit == DurationUnit.Hours) { return TimeSpan.FromHours(amount); }
+  return TimeSpan.FromMinutes(amount);
+}
+
+/// A span in words, in the largest unit it is a whole number of — "7 days", "1 hour", "90 minutes", "No time".
+public string DurationWords(TimeSpan span) {
+  var unit = DurationUnitOf(span);
+  var n = DurationAmountIn(span, unit);
+  if (n == 0) { return "No time"; }
+  // Whole sentences, each with its count — a translation gives each its own plural forms, which a word glued to an
+  // "s" could never take.
+  if (unit == DurationUnit.Days) { return n == 1 ? "1 day" : $"{n} days"; }
+  if (unit == DurationUnit.Hours) { return n == 1 ? "1 hour" : $"{n} hours"; }
+  return n == 1 ? "1 minute" : $"{n} minutes";
+}
+
+/// The closed field a picker shows — the current value and a chevron.
+[Composable][Part]
+component PickerTrigger(string text, string label, bool open, bool invalid, bool disabled, Action onPress) {
+  render {
+    Pressable(onClick: onPress, disabled: disabled, role: UiRole.ComboBox, expanded: open, label: label, invalid: invalid) {
+      Row(align: Align.Center, gap: 2, h: Length.ControlMd, px: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md,
+          bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body) {
+        Text(text);
+        Spacer();
+        Text("▾", color: Colors.TextMuted, decorative: true);
+      }
+    }
+  }
+}
+
+/// The floating card a calendar opens in.
+[Composable][Part]
+component CalendarPanel(string label) {
+  render {
+    Stack(role: UiRole.Dialog, label: $"{label} calendar", position: Position.Absolute, z: ZIndex.Popover, mt: 1, w: Length.CalendarW,
+          bg: Colors.Surface, borderW: 1, border: Colors.Border, rounded: Radius.Lg, shadow: Shadow.Floating, overflow: Overflow.Hidden, gap: 0) {
+      Slot;
+    }
+  }
+}
+
+/// The month bar — a filled header, the month centred, a step either side.
+[Composable][Part]
+component MonthHeader(DateOnly month, Action onPrev, Action onNext, Action onPrevYear, Action onNextYear) {
+  render {
+    Row(align: Align.Center, justify: Justify.Between, bg: Colors.Primary, color: Colors.OnPrimary, px: 3, py: 2) {
+      Row(gap: 1, align: Align.Center) {
+        Pressable(onClick: onPrevYear, label: "Previous year") { Text("«", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+        Pressable(onClick: onPrev, label: "Previous month") { Text("‹", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+      }
+      Text(month.ToString("MMMM yyyy"), fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.OnPrimary);
+      Row(gap: 1, align: Align.Center) {
+        Pressable(onClick: onNext, label: "Next month") { Text("›", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+        Pressable(onClick: onNextYear, label: "Next year") { Text("»", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+      }
+    }
+  }
+}
+
+/// The M–S header above a month grid. Single letters: the row has to fit seven day cells and nothing else.
+/// Each letter has its own KEY: two days share one in English ("T", "S") and not in another language (Swedish
+/// Saturday is "L", Sunday "S"), and one text can only have one translation.
+[Composable][Part]
+component WeekdayRow() {
+  string[] days = [Translate("M", key: "weekday-initial-monday"), Translate("T", key: "weekday-initial-tuesday"),
+                   Translate("W", key: "weekday-initial-wednesday"), Translate("T", key: "weekday-initial-thursday"),
+                   Translate("F", key: "weekday-initial-friday"), Translate("S", key: "weekday-initial-saturday"),
+                   Translate("S", key: "weekday-initial-sunday")];
+  render {
+    Row(gap: 0, px: 2, pt: 2) {
+      foreach (var d in days) {
+        Box(w: Length.DayCell) { Text(d, fontSize: FontSize.Caption, color: Colors.TextMuted, textAlign: TextAlign.Center, decorative: true); }
+      }
+    }
+  }
+}
+
+/// Six weeks of seven days, starting on the Monday on or before the first of the month.
+[Composable][Part]
+component MonthGrid(DateOnly month, DateOnly? selected, Action<DateOnly> onPick) {
+  int[] weeks = [0, 1, 2, 3, 4, 5];
+
+  DateOnly Start() {
+    int lead = ((int)month.DayOfWeek + 6) % 7;
+    return month.AddDays(-lead);
+  }
+
+  /// The seven DATES of week `w`. A method rather than an inline expression because the `foreach` below must iterate
+  /// the DATES themselves: the platform stamps each row of a `foreach` with its item's identity, so iterating dates
+  /// is what gives every cell a `2026-04-20` a test can name. Iterating COLUMN INDICES — which this did until
+  /// 2026-08-28 — stamped every cell 0–6, and `Ui.Fill("Due", "2026-04-20")` had nothing to aim at.
+  DateOnly[] Week(int w) { return Enumerable.Range(0, 7).Select(c => Start().AddDays(w * 7 + c)); }
+
+  render {
+    Stack(gap: 0, px: 2, pb: 2) {
+      foreach (var w in weeks) {
+        Row(gap: 0) {
+          foreach (var day in Week(w)) {
+            DayCell(day: day, month: month, selected: selected, onPick: onPick);
+          }
+        }
+      }
+    }
+  }
+}
+
+/// One day — a filled circle when chosen, ringed when today, muted when it belongs to a neighbouring month.
+[Composable][Part]
+component DayCell(DateOnly day, DateOnly month, DateOnly? selected, Action<DateOnly> onPick) {
+  render {
+    Pressable(onClick: () => onPick(day), label: day.ToString("d MMMM yyyy"),
+              role: UiRole.Option, selected: day == selected) {
+      Box(w: Length.DayCell, h: Length.DayCell, rounded: Radius.Circle,
+          bg: day == selected ? Colors.Primary : Colors.Transparent,
+          borderW: day == DateOnly.FromDateTime(DateTime.UtcNow) && day != selected ? 1 : 0,
+          border: Colors.Primary) {
+        Row(align: Align.Center, justify: Justify.Center, h: Length.DayCell) {
+          Text($"{day.Day}", fontSize: FontSize.Label,
+               fontWeight: day == selected ? FontWeight.Semibold : FontWeight.Regular,
+               color: day == selected ? Colors.OnPrimary : (day.Month == month.Month ? Colors.OnSurface : Colors.TextMuted));
+        }
+      }
+    }
+  }
+}
+
+/// The time strip under a calendar — `14 : 30`, each half its own list.
+[Composable][Part]
+component TimeStrip(int hour, int minute, int minuteStep, Action<int> onHour, Action<int> onMinute) {
+  bool picking = false;
+  action Toggle() { picking = !picking; }
+
+  render {
+    Stack(gap: 0, px: 2, pb: 2) {
+      Pressable(onClick: Toggle, label: "Change the time", expanded: picking) {
+        Row(align: Align.Center, justify: Justify.Center, gap: 2, bg: Colors.Muted, rounded: Radius.Md, py: 2) {
+          Text(hour < 10 ? $"0{hour}" : $"{hour}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
+          Text(":", color: Colors.TextMuted, decorative: true);
+          Text(minute < 10 ? $"0{minute}" : $"{minute}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, color: Colors.Primary);
+        }
+      }
+      if (picking) {
+        Row(gap: 1, align: Align.Start, pt: 1) {
+          TimeColumn(heading: "hh", values: Enumerable.Range(0, 24), selected: hour, onPick: onHour);
+          TimeColumn(heading: "mm", values: Enumerable.Range(0, 60 / minuteStep).Select(i => i * minuteStep),
+                     selected: minute, onPick: onMinute);
+        }
+      }
+    }
+  }
+}
+
+/// One scrolling column of a time picker — the hours, or the minutes.
+[Composable][Part]
+component TimeColumn(string heading, int[] values, int selected, Action<int> onPick) {
+  render {
+    Stack(gap: 0, w: Length.TimeColW) {
+      Text(heading, fontSize: FontSize.Caption, color: Colors.TextMuted, textAlign: TextAlign.Center, decorative: true);
+      Stack(gap: 0, maxH: Length.TimeColH, overflow: Overflow.Auto) {
+        foreach (var v in values) {
+          Pressable(onClick: () => onPick(v), label: $"{heading} {v}", role: UiRole.Option, selected: v == selected) {
+            Box(rounded: Radius.Sm, py: 1, bg: v == selected ? Colors.Primary : Colors.Transparent) {
+              Text(v < 10 ? $"0{v}" : $"{v}", fontSize: FontSize.Label, textAlign: TextAlign.Center,
+                   color: v == selected ? Colors.OnPrimary : Colors.OnSurface);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// The hint-or-error line every picker shares with `Field`.
+[Composable][Part]
+component FieldNote(string hint, string error) {
+  render {
+    if (error != "" || hint != "") {
+      Text(error != "" ? error : hint, fontSize: FontSize.Caption, color: error != "" ? Colors.Danger : Colors.TextMuted);
+    }
+  }
+}

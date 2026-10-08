@@ -1,0 +1,74 @@
+// Ui — the COMMAND MENU (`using Osysharp.Ui;`): ⌘K. D-HELPDESKDESIGN1 — the Raycast / Linear shape, a filter field
+// over grouped actions with their shortcuts, for a tool people live in and drive from the keyboard.
+
+namespace Osysharp.Ui;
+
+/// One thing the command menu can do.
+public sealed class Command {
+  /// What it says, and what the filter matches.
+  public string Label;
+  /// What running it does. Runs with the menu already closed.
+  public Action OnPress;
+  /// The leading glyph.
+  public Icons Icon = Icons.ChevronRight;
+  /// The heading it is listed under ("Navigate", "Ticket", "Account"). Commands keep the order given within a group,
+  /// and groups the order their first command appears in.
+  public string Group = "";
+  // ⭐ NO `Shortcut` FIELD. A row shows the key bound on the page to `OnPress` (a control with `shortcut:` and the same
+  //   action), derived — the display-only string it replaced could advertise a key that pressed nothing, and did.
+}
+
+/// THE COMMAND MENU — a filter field over every command the app offers, grouped, each with the key bound to it on
+/// this page (derived from the control that binds it — see `MenuItem`): type to
+/// narrow, ↓/↑ to move, Enter to run, Escape to close. Open it from `ShellSearch` (which ⌘K presses from anywhere) or
+/// any button, and render it while open. It grows out of the top of the screen and takes the keyboard at once.
+/// In a test open it by its trigger and press a command by its label: `Ui.Click("Search"); Ui.Click("Assign to me")`;
+/// narrow it with `Ui.Fill("Type a command or search", "assign")`.
+/// need: a command palette, cmd+k, a quick actions menu, a launcher, jump to anything
+/// e.g. `if (paletteOpen) { CommandMenu(commands, onDismiss: ClosePalette); }`
+[AllowAnonymous]
+public component CommandMenu(Command[] commands, Action onDismiss, string placeholder = "Type a command or search") {
+  string query = "";
+
+  action Run(Command c) { onDismiss(); c.OnPress(); }
+  // Enter in the field runs the first match — the whole point of a launcher is that typing and Enter is enough.
+  action RunFirst() {
+    var hit = commands.FirstOrDefault(c => query == "" || c.Label.ToLower().Contains(query.ToLower()));
+    if (hit != null) { Run(hit); }
+  }
+
+  render {
+    Box {
+      Scrim(onDismiss);
+      Box(position: Position.Fixed, top: "12vh", left: "0", right: "0", z: ZIndex.Modal, display: Display.Flex,
+          justify: Justify.Center, px: 4, pointerEvents: PointerEvents.None) {
+        Stack(role: UiRole.Menu, label: "Commands", gap: 0, w: "640px", maxW: "100%", bg: Colors.Elevated,
+              color: Colors.OnSurface, rounded: Radius.Lg, shadow: Shadow.Deep, overflow: Overflow.Hidden,
+              animation: KitMenuGrow, transformOrigin: "top center", pointerEvents: PointerEvents.Auto) {
+          Row(gap: 3, align: Align.Center, px: 4, minH: "52px", borderBW: 1, border: Colors.Border) {
+            Icon(Icons.Search, size: 18, color: Colors.TextMuted);
+            Input(value: query, placeholder: placeholder, label: placeholder, autoFocus: true, onEnter: RunFirst,
+                  grow: 1, minW: "0", bg: Colors.Transparent, borderW: 0, fontSize: FontSize.Subhead,
+                  color: Colors.OnSurface, outlineStyle: OutlineStyle.None);
+            KeyHint("Escape");
+          }
+          Stack(gap: 0, p: 1, maxH: "52vh", overflowY: Overflow.Auto) {
+            var shown = commands.Where(c => query == "" || c.Label.ToLower().Contains(query.ToLower())).ToList();
+            if (shown.Count == 0) {
+              Text($"Nothing matches “{query}”", px: 3, py: 4, color: Colors.TextMuted, fontSize: FontSize.Body);
+            }
+            foreach (var group in shown.Select(c => c.Group).Distinct()) {
+              if (group != "") {
+                Text(group, px: 3, pt: 3, pb: 1, fontSize: FontSize.Caption, fontWeight: FontWeight.Medium,
+                     color: Colors.TextMuted);
+              }
+              foreach (var c in shown.Where(x => x.Group == group)) {
+                MenuItem(c.Label, () => Run(c), icon: c.Icon, hintFor: c.OnPress);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

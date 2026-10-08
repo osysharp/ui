@@ -1,0 +1,186 @@
+// Ui — the things that float above the page (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A full-viewport, invisible click-catcher rendered UNDER an open panel. A click anywhere outside the panel lands
+/// here and runs `onDismiss` — and so does Escape.
+/// Render it immediately BEFORE the panel so the panel paints on top.
+/// In a test drive the thing it sits behind; the backdrop itself carries no text.
+/// e.g. `Backdrop(CloseMenu)`
+[Composable] component Backdrop(Action onDismiss) {
+  variants { base { Position = Position.Fixed; Top = "0"; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Sticky; } }
+  render { Pressable(onClick: onDismiss, onEscape: onDismiss, decorative: true) { Box(w: "100%", h: "100%"); } }
+}
+
+/// A dimmed backdrop — the one a modal sits on. Click it or press Escape to dismiss.
+/// In a test drive the thing it sits behind; the scrim itself carries no text.
+/// e.g. `Scrim(CloseDrawer)`
+[Composable] component Scrim(Action onDismiss) {
+  variants { base { Position = Position.Fixed; Top = "0"; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Overlay; Bg = Colors.Scrim; } }
+  render { Pressable(onClick: onDismiss, onEscape: onDismiss, decorative: true) { Box(w: "100%", h: "100%"); } }
+}
+
+/// A modal dialog. Render it conditionally — `if (confirming) { Dialog("Delete this order?", onDismiss: Cancel) { … } }`.
+/// The body is the default slot; put the buttons in `slot actions { … }` and they land in the footer row.
+/// It is MODAL (`role: UiRole.ModalDialog`): the keyboard goes to its first control as it opens, Tab stays inside it, and
+/// the keyboard goes back to whatever opened it as it closes — the platform does all three.
+/// ⚠ IT CARRIES NO UNIT OF WORK. Being Composable it inlines into the page's own render tree, so it has no mount of its own and nothing it could savepoint: what you edit inside it is edited in the PAGE's unit of work, and the page's Save is what decides.
+/// ⭐ The overlay that DOES own one is `Dialog.Open(SomeComponent(…), unitOfWork: Inherit|Root)`, with `Dialog.Ask` / `Confirm` / `Discard` — run `osy docs ui-dialogs`, which is where that choice is explained.
+/// In a test assert it is open with `Assert.Dialog("Delete order?")`, and drive its buttons with `Ui.Click(...)` — scope with `within:` when the label also appears behind it.
+/// need: a modal over the page, ask before doing something, a popup form, confirm or cancel
+/// e.g. `Dialog("Delete this order?", onDismiss: Cancel) { slot actions { Button("Delete", onPress: Delete, tone: Tone.Danger); } }`
+[Composable] component Dialog(string title, Action onDismiss, string subtitle = "") {
+  render {
+    Box {
+      Scrim(onDismiss);
+      Box(position: Position.Fixed, top: "10%", left: "0", right: "0", z: ZIndex.Modal, display: Display.Flex, justify: Justify.Center) {
+        Stack(role: UiRole.ModalDialog, label: title, gap: 4, w: Length.DialogW, maxW: "92%", bg: Colors.Surface, color: Colors.OnSurface, rounded: Radius.Lg, shadow: Shadow.Deep, p: 5) {
+          Stack(gap: 1) {
+            CardTitle(title);
+            if (subtitle != "") { Hint(subtitle); }
+          }
+          Slot;
+          Row(align: Align.Center, gap: 2) { Spacer(); Slot("actions"); }
+        }
+      }
+    }
+  }
+}
+
+/// Where a `Menu` hangs off the thing that opened it — and so which corner it GROWS from (D-HELPDESKDESIGN1: a menu
+/// visibly connects to its trigger). The menu is placed against its nearest positioned ancestor, so put the trigger
+/// and the menu together in a `Box(position: Position.Relative)`.
+public enum MenuFrom {
+  BelowStart,   // under the trigger, left edges aligned — a toolbar button, a field's options
+  BelowEnd,     // under the trigger, right edges aligned — an avatar at the top right, a row's "…"
+  AboveStart,   // over the trigger — a control at the foot of a panel
+  Beside        // to the right of it, bottoms aligned — a rail's foot, a nested menu
+}
+
+/// A menu panel — the floating surface `MenuItem`s live on. It GROWS OUT OF ITS TRIGGER (a short scale-and-slide from
+/// the trigger's corner, with a notch pointing back at it), so a reader sees which control opened it. Pair it with a
+/// `Backdrop` for click-away and Escape. The keyboard is the platform's, because it is `role: Menu`: ↑/↓ move between
+/// items, Home/End jump, typing a letter moves to the next item starting with it, Enter presses.
+/// `from:` says where it hangs (`MenuFrom.BelowEnd` for a trigger at the right edge); `label:` names it for a reader.
+/// In a test open it by its trigger, then press the item: `Ui.Click("Actions"); Ui.Click("Archive")`.
+/// need: a list of actions behind a trigger, an overflow or context menu, a kebab menu, a dropdown menu
+/// e.g. `Box(position: Position.Relative) { IconButton("Actions", Toggle) { Icon(Icons.Dots); } if (open) { Backdrop(Close); Menu(from: MenuFrom.BelowEnd) { MenuItem("Rename", Rename, icon: Icons.Pencil, shortcut: "R"); } } }`
+[Composable] component Menu(MenuFrom from = MenuFrom.BelowStart, string label = "Menu") {
+  variants {
+    base {
+      Position = Position.Absolute; Z = ZIndex.Popover; MinW = Length.MenuW; Bg = Colors.Elevated; Color = Colors.OnSurface;
+      Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
+    }
+    from {
+      BelowStart { Top = "100%"; Left = "0"; Mt = 2; TransformOrigin = "top left"; Animation = KitMenuGrow; }
+      BelowEnd   { Top = "100%"; Right = "0"; Mt = 2; TransformOrigin = "top right"; Animation = KitMenuGrow; }
+      AboveStart { Bottom = "100%"; Left = "0"; Mb = 2; TransformOrigin = "bottom left"; Animation = KitMenuGrow; }
+      Beside     { Left = "100%"; Bottom = "0"; Ml = 2; TransformOrigin = "bottom left"; Animation = KitMenuGrowSide; }
+    }
+  }
+  render {
+    Stack(gap: 0, role: UiRole.Menu, label: label) {
+      MenuNotch(from);
+      Slot;
+    }
+  }
+}
+
+/// The notch: a small square turned 45°, in the menu's own colour, sitting on the edge that faces the trigger — the
+/// "connected" half of a connected menu. Drawn with the menu's hairline on its two outer sides only.
+[Composable, Part] component MenuNotch(MenuFrom from) {
+  variants {
+    base { Position = Position.Absolute; W = "10px"; H = "10px"; Bg = Colors.Elevated; Rotate = "45deg";
+           BorderStyle = BorderStyle.Solid; Border = Colors.Border; PointerEvents = PointerEvents.None; }
+    from {
+      BelowStart { Top = "-5px"; Left = "14px"; BorderTW = 1; BorderLW = 1; }
+      BelowEnd   { Top = "-5px"; Right = "14px"; BorderTW = 1; BorderLW = 1; }
+      AboveStart { Bottom = "-5px"; Left = "14px"; BorderBW = 1; BorderRW = 1; }
+      Beside     { Left = "-5px"; Bottom = "14px"; BorderBW = 1; BorderLW = 1; }
+    }
+  }
+  render { Box(decorative: true); }
+}
+
+/// One row of a Menu: a label, and optionally a leading `icon` and a tick. `checked:` (true or false) makes it one of a
+/// PICK-ONE menu (`menuitemradio` — a status, an order, the current app); `toggled:` makes it an on/off setting of its
+/// own (`menuitemcheckbox` — "Compact rows"). Either way the tick is read by a screen reader and by `Assert.Checked`. `tone:
+/// Tone.Danger` for a destructive entry — the one distinction a menu genuinely needs.
+/// ⭐ ITS KEY IS DERIVED, NEVER TYPED: the row's end shows the key bound on this page to the action it runs — a
+/// control elsewhere with `shortcut: "R"` and the same `onPress` — and nothing when no key is bound, so a row can
+/// never advertise a key that does nothing. A row that runs a wrapper (`() => Run(c)`) names the action whose key it
+/// shows with `hintFor:`.
+/// In a test it is pressed by its label, after the menu is open: `Ui.Click("Archive")`.
+/// e.g. `MenuItem("Delete", onPress: Delete, tone: Tone.Danger)` · `MenuItem("Assign to me", AssignMe, icon: Icons.User)`
+[Composable] component MenuItem(string label, Action onPress, Tone tone = Tone.Default, bool disabled = false,
+                                Icons? icon = null, bool? checked = null, Action hintFor = null, bool? toggled = null) {
+  variants {
+    base {
+      Display = Display.Flex; MinH = Length.ControlSm; Px = 2; Rounded = Radius.Md; FontSize = FontSize.Body;
+      Transition = Motion.Fast; Disabled { Opacity = "0.5"; }
+      Focus { Bg = Colors.Muted; OutlineStyle = OutlineStyle.None; }
+    }
+    tone {
+      Default { Color = Colors.OnSurface; Hover { Bg = Colors.Muted; } }
+      Primary { Color = Colors.Primary;   Hover { Bg = Primary.Subtle; } }
+      Danger  { Color = Colors.Danger;    Hover { Bg = Danger.Subtle; } }
+      Success { Color = Colors.Success;   Hover { Bg = Success.Subtle; } }
+      Warning { Color = Colors.Warning;   Hover { Bg = Warning.Subtle; } }
+      Ghost   { Color = Colors.TextMuted; Hover { Bg = Colors.Muted; } }
+    }
+  }
+  render {
+    Pressable(onClick: onPress, disabled: disabled,
+              role: toggled != null ? UiRole.MenuItemCheckbox : (checked != null ? UiRole.MenuItemRadio : UiRole.MenuItem),
+              checked: toggled ?? checked, label: label) {
+      Row(gap: 2, align: Align.Center, w: "100%") {
+        // A fixed column for the glyph, so a menu where only some rows have one still lines its words up.
+        Box(w: Length.IconSm, shrink: 0, display: Display.Flex, justify: Justify.Center, color: Colors.TextMuted) {
+          if (checked == true || toggled == true) { Icon(Icons.Check, size: 16, color: Colors.Primary); }
+          else if (icon != null) { Icon(icon, size: 16); }
+        }
+        Text(label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        KeyHintOf(hintFor ?? onPress);
+      }
+    }
+  }
+}
+
+/// A key chip — a BINDING (`"Mod+K"`, `"Shift+?"`, `"J"`) shown as the keys to press, spelled for the reader's
+/// platform: `⌘K` on a Mac, `Ctrl+K` elsewhere. Write the binding exactly as `shortcut:` takes it, never the glyphs.
+/// To show the key an ACTION is bound to, use `KeyHintOf(action)` — that one cannot drift from the binding at all.
+/// e.g. `KeyHint("Mod+K")` · `KeyHint("J")`
+[Composable] component KeyHint(string keys) {
+  variants {
+    base { Display = Display.InlineFlex; Px = "5px"; MinW = "20px"; H = "20px"; Rounded = Radius.Sm; BorderW = 1;
+           BorderBW = 2; Border = Colors.Border; Bg = Colors.Sunken; Color = Colors.OnSurface;
+           FontFamily = Font.Mono; FontSize = "11.5px"; FontWeight = FontWeight.Medium;
+           FontVariant = FontVariant.TabularNums; Shrink = 0; WhiteSpace = WhiteSpace.Nowrap; LineHeight = "1"; }
+  }
+  // Sized to its keys: an inline-flex box with no width, never `w: "100%"`, which took a menu row's whole line.
+  // `decorative`: the control that owns the key announces it (`aria-keyshortcuts`), so the chip is not read twice.
+  render { Box(keycap: keys, align: Align.Center, justify: Justify.Center, decorative: true); }
+}
+
+/// A transient message pinned to the corner of the viewport. Render it conditionally and clear it from an effect:
+/// it owns the appearance and the position, the app owns the timer.
+/// In a test it is read as text: `Assert.Visible("Saved")`.
+/// need: a brief message that appears and fades, confirm an action succeeded, a transient notification
+/// e.g. `Toast("Saved", tone: Tone.Success)`
+[Composable] component Toast(string message, Tone tone = Tone.Default) {
+  variants {
+    base {
+      Position = Position.Fixed; Bottom = "24px"; Right = "24px"; Z = ZIndex.Notification;
+      Px = 4; Py = 3; Rounded = Radius.Md; Shadow = Shadow.Floating; FontSize = FontSize.Body; MaxW = Length.MenuW;
+    }
+    tone {
+      Default { Bg = Colors.Surface;        Color = Colors.OnSurface; BorderW = 1; Border = Colors.Border; }
+      Primary { Bg = Colors.Primary;        Color = Colors.OnPrimary; }
+      Danger  { Bg = Colors.Danger;         Color = Colors.OnPrimary; }
+      Success { Bg = Colors.Success;        Color = Colors.OnPrimary; }
+      Warning { Bg = Colors.Warning;        Color = Colors.OnPrimary; }
+      Ghost   { Bg = Colors.Muted;          Color = Colors.OnSurface; }
+    }
+  }
+  render { Text(message); }
+}

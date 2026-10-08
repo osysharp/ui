@@ -1,0 +1,50 @@
+// Ui — Skeleton, the stand-in a component holds while its first read is in flight (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// The shapes a stand-in block comes in — sized to match what each stands in for.
+public enum SkeletonShape { Line, HalfLine, Control, Circle, Block }
+
+/// The kit's shimmer — a slow opacity pulse.
+animation KitShimmer {
+  Duration = "1.4s";
+  Easing = EaseInOut;
+  Repeat = Infinite;
+  0%   { Opacity = "0.45"; }
+  50%  { Opacity = "0.9"; }
+  100% { Opacity = "0.45"; }
+}
+
+/// One shimmering placeholder block. `Skeleton()` is a full-width text line; `Skeleton(shape: SkeletonShape.Circle)` stands in
+/// for an avatar, `Skeleton(shape: SkeletonShape.Control)` for a button or input.
+/// In a test it is a loading state — assert the real content once it has arrived, not the placeholder.
+/// need: a grey placeholder while data loads, a shimmering block before content arrives
+[Composable]
+component Skeleton(SkeletonShape shape = SkeletonShape.Line) {
+  variants {
+    base { Bg = Colors.Muted; Rounded = Radius.Sm; Animation = KitShimmer; }
+    shape {
+      Line     { W = "100%";  H = Length.TextLine; }
+      HalfLine { W = "60%";   H = Length.TextLine; }
+      Control  { W = "100%";  H = Length.ControlMd; Rounded = Radius.Md; }
+      Circle   { W = Length.AvatarMd; H = Length.AvatarMd; Rounded = Radius.Circle; }
+      Block    { W = "100%";  H = "120px"; Rounded = Radius.Md; }
+    }
+  }
+
+  render { Box(); }
+}
+
+/// A paragraph-shaped stand-in — three rows at the loaded text's line height, the last one short.
+/// In a test it is a loading state — assert the real content once it has arrived, not the placeholder.
+/// e.g. `SkeletonText()`
+[Composable]
+component SkeletonText() {
+  render {
+    Stack(gap: 2) {
+      Skeleton();
+      Skeleton();
+      Skeleton(shape: SkeletonShape.HalfLine);
+    }
+  }
+}

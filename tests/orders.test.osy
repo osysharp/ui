@@ -1,0 +1,48 @@
+// The orders, and one order's page: what the rest of the app adds to a record's page is drawn there — a badge beside
+// its name (`RecordBadge`), a panel under it (`RecordPanel`) — though the page names neither contribution.
+
+[TestFixture]
+void Workshop() {
+  var ines = new Framer { Email = "ines@frames.test" };
+  new RoleGrant { Member = ines, Role = WorkshopRole.Owner };
+  var tom = new Framer { Email = "tom@frames.test" };
+  new RoleGrant { Member = tom, Role = WorkshopRole.Framer };
+  var paid = new FrameOrder { Customer = "Ada Byrne", Artwork = "Harbour at dusk, oil on board", Paid = true };
+  new BenchNote { Order = paid, Words = "Ordered oak moulding, 40 mm." };
+  new FrameOrder { Customer = "Cy Lund", Artwork = "Two etchings, one frame" };
+}
+
+principal Ines => Framer.Single(f => f.Email == "ines@frames.test");
+principal Tom => Framer.Single(f => f.Email == "tom@frames.test");
+
+Guid OrderOf(string customer) {
+  var id = Guid.Empty;
+  runas (Tom) { id = FrameOrder.Single(o => o.Customer == customer).Id; }
+  return id;
+}
+
+/// The orders page lists every order, and each opens its own page.
+[Test(Workshop)]
+void the_orders_are_listed_and_each_opens_its_page() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/");
+  Assert.Visible("Ada Byrne");
+  Assert.Visible("Two etchings, one frame");
+  Ui.Click("Open Ada Byrne's order");
+  Assert.Visible("Harbour at dusk, oil on board");
+}
+
+/// An order's page draws what contributes to its slots: the bench notes panel under it, and — only once the order is
+/// paid — the "Paid" badge beside the customer's name.
+[Test(Workshop)]
+void an_orders_page_shows_the_panel_and_badge_the_app_contributes() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Ada Byrne"));
+  Assert.Visible("Paid");
+  Assert.Visible("Ordered oak moulding, 40 mm.", within: "Bench notes");
+
+  Ui.Visit("/orders/" + OrderOf("Cy Lund"));
+  Assert.Visible("Two etchings, one frame");
+  Assert.Hidden("Paid");
+  Assert.Visible("Nothing noted yet.", within: "Bench notes");
+}

@@ -1,0 +1,40 @@
+// Ui — Card, the kit's surface container (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A raised surface with an optional title, holding whatever you wrap in it.
+/// `Card("Recent orders") { … }` — the block is the body. Fill `slot actions { … }` to put controls in the
+/// header row, and `slot footer { … }` to put a form's buttons in a trailing footer row. Pass `title: ""` (the
+/// default) for a bare surface.
+/// In a test it is a container, so scope to it rather than asserting it: `Ui.Click("Save", within: "Billing")`.
+/// need: a bordered panel that groups related content, a surface with a title, a tile in a grid
+[Composable]
+component Card(string title = "", string subtitle = "") {
+  variants {
+    base {
+      Bg = Colors.Surface; Color = Colors.OnSurface; Rounded = Radius.Lg; Shadow = Shadow.Raised;
+      BorderW = 1; Border = Colors.Border; P = 5;
+    }
+  }
+
+  render {
+    // A titled card is a NAMED REGION: `label:` makes it addressable, so a test can say
+    // `Ui.Click("Save", within: "Add a plant")` and a screen reader announces the group by its heading.
+    Stack(gap: 4, label: title) {
+      if (title != "") {
+        Row(align: Align.Center, justify: Justify.Between) {
+          Stack(gap: 1) {
+            Text(title, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
+            if (subtitle != "") { Text(subtitle, fontSize: FontSize.Label, color: Colors.TextMuted); }
+          }
+          Slot("actions");
+        }
+      }
+      Slot;
+      // The trailing action row a form wants, the same shape `Dialog` uses for its own footer. A button dropped
+      // straight into the body `Stack` is a flex item and stretches to the full width of the card — 1010px against
+      // 97px, measured in a browser — which is a login's look, not a form's.
+      Row(align: Align.Center, gap: 2, justify: Justify.End) { Slot("footer"); }
+    }
+  }
+}

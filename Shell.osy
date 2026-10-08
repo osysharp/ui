@@ -1,0 +1,1389 @@
+// ⭐ SHIPPED — in `Platform.Core.csproj`, in `Osysharp.Ui` 2.3.0, and rendered: `demo/shell-showcase` mounts it and
+//    `osy test --pixels` photographs it into `osy-shots/`.
+//
+// ⚠ THIS HEADER USED TO CARRY A DIAGNOSIS, AND IT WAS WRONG — recorded because it is the interesting part and
+//   because acting on it would cost an afternoon. It said the blocker was `UiComponentTreeLoader` recursing
+//   (element nesting x component chain) deep and that the fix was to walk the render tree with an explicit stack.
+//   Re-measured 2026-09-06 with a depth probe on the real compile:
+//
+//     ui.BuildNode (loader, read side)   depth 10
+//     ui.EmitNode  (emitter, write side) depth 10
+//     expr.LoadNode (expression read)    depth 45+   <- the runaway
+//     expr.WriteNode (expression write)  depth 55
+//
+//   `DiscoverAndBuildAsync` is already an ITERATIVE BFS across components, so the component chain never nests at
+//   all; both UI walks are ten levels deep and an explicit-stack rewrite of either would have removed ~10 frames
+//   out of ~200. The runtime's own stack dump names the real one: `ExpressionTreeSerializer.LoadNodeAsync`,
+//   "Repeated 52 times".
+//
+// ⚑ WHAT ACTUALLY BROKE, at both ends:
+//     * THE PRODUCER — `Icon(<enum> value)` lowered to ONE TERNARY PER MEMBER, right-leaning. The kit's own
+//       54-member `Glyph` enum (deleted since — see below) built a 53-level expression spine for every
+//       `Icon(row.Icon)` in this file. Two things fixed it and the SECOND is the one that matters here: an
+//       int-keyed enum now folds to a BALANCED binary search (54 members cost 6 levels), and a nav row's glyph is
+//       now the app's own string-keyed `Icons`, whose `[Icon]` IS its `[Value]` — so the fold is the IDENTITY and
+//       costs ZERO nodes. Guarded by `IconEnumFoldDepthTests`, which asserts the depth rather than a limit.
+//     * THE WALK — one nesting level of `LoadNodeAsync` costs ~29 KB of stack in Debug and ~10.5 KB in Release
+//       (measured with a stack-pointer probe; the two methods are 769- and 815-line switches, so the JIT frame is
+//       the union of every arm's locals). ~50 levels is ~1.4 MB, past a request thread's stack, and a
+//       StackOverflowException is UNCATCHABLE — the process aborts. Both walks are bounded now
+//       (`DeepTreeWalk` + `OsySharpCompilerLimits.MaxNestingDepth`), so the ceiling is a message instead of a SIGABRT.
+//
+// ⛔ SO THE CEILING IS NOT "nine chained components" AND NEVER WAS. Composition depth was never the constraint —
+//   EXPRESSION depth was. Write the shell's components at whatever depth reads best; what to avoid is a
+//   40+-level chain inside a single expression, and the bound says so by name if you ever build one.
+
+// Ui — THE APP SHELL CONTRACT (`using Osysharp.Ui;` — or nothing at all; the kit is in scope for every app).
+//
+// ONE DECLARATION, FOUR ARRANGEMENTS. An app states its chrome ONCE — brand, nav tree, identity, menu — and hands
+// that one value to whichever shell it wants. `SidebarShell`, `TabbedShell`, `RailShell` and `FocusedShell` all take
+// `(AppChrome chrome)` and the same six slots, so switching is ONE line and nothing but the arrangement changes:
+//
+//     [Layout] component Shell() {
+//       render { SidebarShell(Chrome()) { Outlet(retain: 8); } }   // ← change this word, keep everything else
+//     }
+//
+// ⭐ WHY A RECORD AND NOT A PARAMETER LIST. Four shells with four hand-kept-in-sync signatures drift on the first
+//    addition — one of them grows a parameter and switching to it stops being a one-word edit. A record makes the
+//    signatures identical BY CONSTRUCTION, and a new field reaches all four the moment it is declared.
+//
+// ⭐ AND WHY DATA AND NOT SLOT CHILDREN. `Nav { NavItem(…) NavItem(…) }` reads well and cannot be REARRANGED: the
+//    child components decide their own layout, so a tabbed shell handed a rail's children renders a rail. The nav
+//    has to be a value the shell can walk, sort, nest and re-shape. Everything a shell genuinely cannot rearrange —
+//    a search box, a page's own actions — stays a slot.
+//
+// ⚑ IT IS A FLOOR, NOT A CEILING. Every declaration here is ordinary Osy# whose source ships: `osy kit SidebarShell`
+//   prints it, and declaring a `component SidebarShell` of your own in your app SHADOWS it whole. Nothing below is
+//   privileged and nothing is unforkable.
+
+namespace Osysharp.Ui;
+
+// ── the nav model ───────────────────────────────────────────────────────────────────────────────────────
+
+/// What a nav entry IS — the closed set every shell switches on, so each can arrange the same tree its own way.
+/// ⭐ You almost never write this. `Link` is the default and `Group` is INFERRED from having children, so the only
+/// member an author names is `Section` — the one genuine choice, because a section and a group differ in behaviour
+/// (a section's children are always shown; a group's open and close) and nothing about the data can decide which
+/// you meant.
+public enum NavKind {
+  /// A route. The common case, and the default.
+  Link,
+  /// A parent whose children are revealed by opening it. Inferred whenever `Children` is non-empty, so writing it
+  /// is optional. A group MAY also carry a `To` — then it navigates AND discloses, which is the "Settings" shape.
+  Group,
+  /// A static heading over children that are always visible — "MAIN", "ADMIN". Never navigates, never collapses.
+  Section
+}
+
+/// A nav row's relation to the page you are on — the three-step scale that makes a nav feel real.
+/// `Current` is the page itself, `Trail` is an ancestor of it, `Idle` is everything else.
+///
+/// ⚑ IT LIVES HERE, NOT IN A SHELL. It was declared in `Shell.Sidebar.osy` while it shipped alone; four shells all
+/// need the same three steps, and a second shell re-declaring it is how two arrangements end up disagreeing about
+/// which row reads as the one you are standing on.
+public enum NavState { Idle, Trail, Current }
+
+/// ONE ENTRY in an app's navigation. Nest with `Children` for a group or a section; every shell walks the same tree.
+///
+/// ```
+/// new NavItem { Label = "Dashboard", To = "/", Icon = Icons.Home },
+/// new NavItem { Label = "Telescopes", To = "/telescopes", Icon = Icons.File, Badge = "12", BadgeTone = Tone.Warning },
+/// new NavItem { Kind = NavKind.Section, Label = "Administration", Children = [
+///   new NavItem { Label = "Settings", Icon = Icons.Gear, Children = [       // a GROUP — inferred, not declared
+///     new NavItem { Label = "Users", To = "/settings/users", Icon = Icons.Users },
+///     new NavItem { Label = "Billing", To = "/settings/billing", Icon = Icons.Tag },
+///   ] },
+/// ] },
+/// ```
+///
+/// In a test a nav row is pressed by its label, scoped to the rail: `Ui.Click("Users", within: "Main navigation")`.
+public sealed class NavItem {
+  /// What the reader sees, and the accessible name of the row. Required in practice — a nameless row is
+  /// unreachable by keyboard, by screen reader and by a test.
+  public string Label;
+  /// The route this entry goes to. Empty for a `Section`, and optional on a `Group` that only discloses.
+  public string To = "";
+  /// The glyph — `Icons.Home`, `Icons.Users`, and YOUR OWN: any `.svg` under the app's `icons` glob is a member
+  /// of `Icons` beside the built-ins, so `Icon = Icons.MyOwnMark` needs nothing but the file.
+  public Icons Icon = Icons.Folder;
+  /// Nested entries. Non-empty makes this a `Group` unless `Kind` says `Section`.
+  public NavItem[] Children = [];
+  /// Usually left alone — see `NavKind`.
+  public NavKind Kind = NavKind.Link;
+  /// A count or a word on the trailing edge — "12", "New". Empty draws nothing.
+  public string Badge = "";
+  /// The badge's tone. `Tone.Warning` for something waiting on the reader, `Tone.Danger` for something wrong.
+  public Tone BadgeTone = Tone.Default;
+  /// The row holds something LIVE and the reader's own — work offered to them, their own items — so its count wears
+  /// a breathing accent lamp (the Switchboard floor's one signal for "live, and yours"). Spend it on one or two rows;
+  /// a rail of lamps says nothing. Drawn beside the badge, so it needs one.
+  public bool Live = false;
+  /// The key that goes to this row's route from anywhere on the page — a combo (`"Mod+1"`) or a sequence of presses
+  /// (`"G then M"`, the "go to" keys an inbox has). Listed in the `?` sheet and shown on the row's tip like every
+  /// other binding. Empty: none.
+  public string Shortcut = "";
+  /// Match this route EXACTLY, never as a prefix. Set it when a shorter route would otherwise swallow its own
+  /// children — `/` is exempt already (see `Matches`), so this is for the "/orders" that must not light up on
+  /// "/orders/42" because "/orders/42" has a nav row of its own.
+  public bool Exact = false;
+
+  /// This entry's identity for expansion memory. `To` when it has one — routes are unique — else the label.
+  /// ⚠ Two sibling groups with no route and the same label share a key and open together. Give one a `To`.
+  public string Key() { return To != "" ? To : Label; }
+
+  /// An address OUTSIDE the site (http/https) — a shell marks it as one, so nobody follows it thinking it is a page of
+  /// the site (a menu staff edit may hold one: D-SITEFRAME1).
+  public bool Outside() { return To.StartsWith("https://") || To.StartsWith("http://"); }
+
+  /// WHERE THIS ENTRY GOES WHEN PRESSED — its own `To`, or the first route beneath it when it has none.
+  ///
+  /// ⭐ THIS IS WHAT LETS A TAB BE ONE THING. A shell whose primary nav is a row of DESTINATIONS cannot afford a
+  /// row that both navigates and discloses: one press then does two things, which is a menu bar's behaviour and
+  /// not a tab strip's. A parent with no route of its own still has to lead somewhere, and the first route under
+  /// it is the only answer that needs nothing new from the author — the same reading every desktop product makes
+  /// of a section header you can click.
+  ///
+  /// ⚠ "" WHEN THE SUBTREE HOLDS NO ROUTE AT ALL — a heading over headings. A caller must not render a link to
+  /// nowhere; `TabbedStrip` draws such an entry as plain text instead.
+  public string FirstRoute() {
+    if (To != "") { return To; }
+    foreach (var d in Descendants()) { if (d.To != "") { return d.To; } }
+    return "";
+  }
+
+  /// The EFFECTIVE kind — `Kind` unless it is the default and children make it a group. One definition, so four
+  /// shells cannot each invent their own reading of "has children".
+  public NavKind Shape() {
+    if (Kind == NavKind.Section) { return NavKind.Section; }
+    if (Children.Length > 0) { return NavKind.Group; }
+    return Kind;
+  }
+
+  /// Does `path` fall under this entry's route? Exact, or a prefix at a SEGMENT boundary — so `/orders` claims
+  /// `/orders/42` and never `/orders-archive`.
+  /// ⚠ `/` IS EXEMPT from the prefix rule, and it has to be: the home route is a prefix of every path in the app,
+  /// so without this every shell would show Home lit on every page. It was the first thing to get wrong.
+  public bool Matches(string path) {
+    if (To == "") { return false; }
+    if (To == path) { return true; }
+    if (Exact || To == "/") { return false; }
+    return path.StartsWith(To + "/");
+  }
+
+  /// EVERY ENTRY BELOW THIS ONE, at any depth, in the order a reader meets them (pre-order). The one walk the tree
+  /// has; `BestMatch`, `HasRoute` and every shell's deepest render level all read it, so none of them can invent
+  /// its own idea of how deep the nav goes.
+  ///
+  /// ⛔ ITERATIVE — AN INDEX CURSOR, NOT A SELF-CALL, AND THAT IS NOT A STYLE CHOICE. A method that calls itself is
+  /// stored as an expression TREE whose loader INLINES the callee, so a self-call is an infinite expansion: it
+  /// compiles, and then the first load of the tree kills the server with an uncatchable stack overflow. Measured
+  /// 2026-09-06 — `ExpressionTreeSerializer.LoadNodeAsync` repeated to exhaustion. Until the platform refuses that
+  /// at compile time, a kit method may not recurse.
+  ///
+  /// ⚑ BUT "MAY NOT RECURSE" IS NOT "MUST BE BOUNDED", AND CONFLATING THE TWO COST THE NAV ITS DEEPER ROWS. These
+  /// three methods were each hand-unrolled to a fixed three nested `foreach`es, which caps the tree at FOUR levels
+  /// — one past the reference page's own worked example — and past that an entry was silently dropped: declared,
+  /// never rendered, not even counted as the current row when the reader was standing on its route. Measured on a
+  /// five-level nav: the rail drew L2, L3 and L4 and the page at `/l2/l3/l4/l5` had no current row at all. An
+  /// explicit worklist is unbounded and needs nothing from the platform.
+  public NavItem[] Descendants() {
+    List<NavItem> all = [];
+    foreach (var c in Children) { all.Add(c); }
+    int i = 0;
+    while (i < all.Count) {
+      var head = all[i];
+      int j = 0;
+      // Inserted right after their parent, so the order is the one a reader would read down the rail.
+      foreach (var g in head.Children) { all.Insert(i + 1 + j, g); j = j + 1; }
+      i = i + 1;
+    }
+    return all.ToArray();
+  }
+
+  /// The LONGEST route in this subtree that `path` falls under, or "" for none.
+  /// ⭐ THIS IS WHAT MAKES ACTIVE STATE FEEL REAL. With `/settings` and `/settings/users` both in the nav, a
+  /// per-row `Matches` lights BOTH on `/settings/users` — two current rows, which reads as a bug. Longest match
+  /// wins, computed once for the whole tree, so exactly one row is ever current.
+  public string BestMatch(string path) {
+    string best = Matches(path) ? To : "";
+    foreach (var d in Descendants()) {
+      if (d.Matches(path) && d.To.Length > best.Length) { best = d.To; }
+    }
+    return best;
+  }
+
+  /// THIS ENTRY'S RELATION TO THE PAGE YOU ARE ON, given the tree's one current route (`AppChrome.CurrentRoute`).
+  /// The single definition of the three-step scale — four shells all need it, and a hand-written ternary per call
+  /// site is how two of them end up disagreeing about what counts as "trail".
+  ///
+  /// ⚑ IT IS ALSO WHAT A `variants` DIMENSION NEEDS. A variants block binds to a PARAMETER, never to a `live var`,
+  /// so a row's state has to be computed by its CALLER and handed down — which makes a one-call expression the
+  /// difference between a readable call site and the same ternary copied into a dozen of them.
+  public NavState State(string current) {
+    if (To == current && current != "") { return NavState.Current; }
+    if (HasRoute(current)) { return NavState.Trail; }
+    return NavState.Idle;
+  }
+
+  /// Is `route` this entry or anything under it, AT ANY DEPTH? What "on the trail" means — a parent of the current
+  /// page reads as active AND opens, however far above it the parent sits.
+  public bool HasRoute(string route) {
+    if (route == "") { return false; }
+    if (To == route) { return true; }
+    foreach (var d in Descendants()) { if (d.To == route) { return true; } }
+    return false;
+  }
+}
+
+// ── identity and its menu ───────────────────────────────────────────────────────────────────────────────
+
+/// ONE ITEM in a menu the shell renders — the user menu today, and whatever else a shell grows.
+/// The app supplies these, so the shell never hardcodes which entries exist: an app with no billing has no
+/// "Billing" row, and an app that wants "Switch workspace" gets it without forking anything.
+///
+/// ⭐ AN ITEM MAY OPEN A DIALOG, and that is the point of it being an `Action` rather than a route. Call
+/// `Dialog.Open(AccountDialog(), unitOfWork: Root)` in your action: the platform hosts the overlay above the whole
+/// page, so it stacks correctly over the rail, the drawer and the scrim without the shell mediating — and the
+/// shell closes its own menu and drawer first, so nothing is left open underneath. `osy docs ui-dialogs`.
+public sealed class MenuAction {
+  /// The row's words, and its accessible name.
+  public string Label;
+  /// What pressing it does. Runs with the menu already closed.
+  public Action OnPress;
+  /// The leading glyph — `Icons.X`, a built-in or one of the app's own, exactly as on a nav row.
+  public Icons Icon = Icons.ChevronRight;
+  /// `Tone.Danger` for the destructive one — sign out, delete. The one distinction a menu genuinely needs.
+  public Tone Tone = Tone.Default;
+  /// Draw a hairline ABOVE this item, to separate a destructive tail from the rest.
+  public bool Divided = false;
+  // ⭐ NO `Shortcut` FIELD — the row shows the key bound on this page to `OnPress`, derived (see `MenuItem`).
+}
+
+/// THE SIGNED-IN PERSON, as the shell needs to show them. Left null on `AppChrome` when there is nobody — a
+/// marketing shell, a signed-out state — and every shell then renders no identity affordance rather than an empty
+/// chip.
+///
+/// ⚑ THE APP SUPPLIES THIS, the kit does not read it. `Session.CurrentUser` is the platform's current-principal
+/// read and the obvious source, but which of an app's own columns is the NAME and which is the ROLE is the app's
+/// question, not the kit's — every app declares its own `[Principal]`. So:
+///     User = new ShellUser { Name = me.DisplayName, Secondary = "Finance", Initials = Text.Upper(Text.Left(me.DisplayName, 1)) }
+public sealed class ShellUser {
+  /// Their name, as they would write it.
+  public string Name = "";
+  /// The second line — a role, an organisation, an email. Empty draws a single line.
+  public string Secondary = "";
+  /// One or two letters shown when there is no photograph. Empty and photoless draws a neutral person glyph.
+  public string Initials = "";
+  /// A photograph. Wins over `Initials` when set.
+  public string AvatarSrc = "";
+  /// THE MENU BEHIND THE CHIP. Empty makes the chip a label rather than a button — no menu, nothing to press — so
+  /// an app with nothing to offer is not offering a control that does nothing.
+  public MenuAction[] Menu = [];
+  /// Whether they are here — a lamp on the avatar (a breathing one when `Online`) and a word in the account menu's
+  /// header. `None` (the default) draws neither: an app that does not track presence shows no stale dot.
+  public ShellPresence Presence = ShellPresence.None;
+}
+
+/// THE SIGNED-IN PERSON'S PRESENCE, as the shell shows it. `None` draws nothing; the rest draw a lamp on the avatar —
+/// `Online` lit and breathing in `Success`, `Away` in `Warning`, `Busy` in `Danger` — and name themselves in the
+/// account menu. Kept to the four every all-day tool uses; an app with more states maps them onto these.
+public enum ShellPresence {
+  None,
+  [Label("Online")] Online,
+  [Label("Away")] Away,
+  [Label("Do not disturb")] Busy
+}
+
+/// ONE APPLICATION in the app switcher — the other tools this reader can open from the brand (`AppChrome.Apps`).
+/// `To` is a route in this app or a full address of another (`https://billing.example.com/`), which opens in the same
+/// tab, as switching apps does everywhere. Mark the one you are in `Current`, and it is ticked.
+public sealed class AppLink {
+  /// Its name, as the switcher lists it and a reader hears it.
+  public string Label;
+  /// Where it opens.
+  public string To = "/";
+  /// Its glyph in the list.
+  public Icons Icon = Icons.Apps;
+  /// A second line — what it is for, or the workspace it opens in. Empty draws one line.
+  public string Tagline = "";
+  /// This is the app the reader is in.
+  public bool Current = false;
+}
+
+/// ONE STEP OF A LINEAR FLOW — a nav entry seen as progress rather than as navigation.
+///
+/// ⭐ WHY A PROJECTION AND NOT MORE FIELDS ON `NavItem`. A `FocusedShell` reads the SAME `Nav` an app already
+/// declared: in a wizard or a checkout the top-level entries ARE the steps, in order, and their children are that
+/// step's parts. So an app switching to a focused arrangement declares nothing new — which is the whole promise of
+/// the record. What a step needs beyond a `NavItem` is its POSITION, and position is a property of the list rather
+/// than of the entry, so it cannot live on `NavItem` without every entry carrying a number that is meaningless in
+/// three of the four shells.
+///
+/// ⚠ `Done` IS ORDER, NOT HISTORY. The shell knows the flow's shape, never which steps the reader actually
+/// completed — a step reads as done because it comes BEFORE the one holding the current route. An app that tracks
+/// real completion should reorder or trim `Nav`; nothing here can know it.
+public sealed class FlowStep {
+  /// The entry this step was projected from — its label, icon, route and children.
+  public NavItem Item;
+  /// 1-based position, which is what "Step 2 of 5" reads from.
+  public int Number = 0;
+  /// It comes before the step holding the current route.
+  public bool Done = false;
+  /// It IS the step holding the current route.
+  public bool Active = false;
+}
+
+// ── the whole chrome ────────────────────────────────────────────────────────────────────────────────────
+
+/// EVERYTHING A SHELL NEEDS, as one value. Build it in your `[Layout]` and hand it to the shell of your choice.
+///
+/// ```
+/// [Layout] component Shell() {
+///   var me = Session.CurrentUser;
+///   action SignOut() { Session.SignOut(); }
+///   action Appearance() { Theme.Toggle(); }
+///   live var chrome = new AppChrome {
+///     Product = "SpendFlow", Tagline = "Finance operations", Home = "/",
+///     Nav = [ new NavItem { Label = "Dashboard", To = "/", Icon = Icons.Home } ],
+///     User = new ShellUser {
+///       Name = me.DisplayName, Secondary = "Finance manager", Initials = "OR",
+///       Menu = [
+///         new MenuAction { Label = "Appearance", Icon = Icons.Eye, OnPress = Appearance },
+///         new MenuAction { Label = "Sign out", Icon = Icons.Logout, OnPress = SignOut, Tone = Tone.Danger, Divided = true },
+///       ],
+///     },
+///   };
+///   render { SidebarShell(chrome) { Outlet(retain: 8); } }
+/// }
+/// ```
+public sealed class AppChrome {
+  /// The product's name — the rail's lockup and the browser-tab-sized identity.
+  public string Product = "";
+  /// A second line under the product: the workspace, the tenant, the environment. Empty draws one line.
+  public string Tagline = "";
+  /// THE BRAND MARK, as a glyph — `Mark = Icons.MyOwnLogo`, the app's own `.svg` or a built-in, the SAME spelling
+  /// a nav row and a menu row use. Left unset draws the product's first letter, so a shell still looks like
+  /// something without one.
+  /// ⚠ A glyph is drawn in `Colors.OnPrimary` on the brand tile, like every other icon — it takes the shell's
+  /// colour rather than its own. A mark that must keep its own colours is an IMAGE: use `MarkSrc`.
+  public Icons? Mark;
+  /// THE BRAND MARK, as an image — a full-colour logo, a raster file, or a tenant's own logo read from a row.
+  /// Wins over `Mark`, and replaces the tile rather than sitting on it. The same spelling as `ShellUser.AvatarSrc`,
+  /// for the same reason: a picture whose address is only known at runtime is a `src`, not a vocabulary member.
+  public string MarkSrc = "";
+  /// Where the brand lockup goes when pressed.
+  public string Home = "/";
+  /// The nav tree. Empty is legal and every shell draws its own empty state rather than a blank column.
+  public NavItem[] Nav = [];
+  /// The routes whose page OPENS ON A FULL-BLEED IMAGE — a hero photograph that runs to the top edge. A shell that can
+  /// float its header over the picture does so on these routes (`EditorialShell` also does it on the home route by
+  /// default); every other shell ignores it. Exact routes, as a page's `[Page]` declares them.
+  public string[] Immersive = [];
+  /// ⭐ THE PAGE IS A WORKSPACE OF PANES — a list beside a record, a mail client, a helpdesk — not a document. The
+  /// work column is then exactly the screen's height and the page fills it edge to edge with no padding, so each of
+  /// its panes scrolls on its own (`h: "100%"`, `overflowY: Overflow.Auto`) while the shell's bars stay put. Off (the
+  /// default), the page is a document that scrolls as a whole. The work shells — Sidebar and Rail — honour it.
+  public bool Panes = false;
+  /// Who is signed in, or null for nobody.
+  public ShellUser User;
+  /// The nav is still loading. Every shell draws skeleton rows instead of an empty column — the one loading state
+  /// the SHELL owns, as opposed to the ones a page owns.
+  public bool Loading = false;
+
+  /// PINNED — the pages this reader keeps within one press, in the order they arranged them. A rail draws them as a
+  /// section above the nav; a shell with no rail lists them in the switcher behind the brand.
+  /// ⭐ THE APP KEEPS THEM, AS ROWS PER USER, AND HANDS THEM IN — the kit holds no list of its own. A pin is a fact
+  /// about a PERSON, not a browser: it must be there on their phone and their other laptop, so it lives where their
+  /// data lives (`Pin.Where(p => p.Owner == me)` in the layout), and the shell only draws it. See `osy docs ui-shell-shortcuts`.
+  public NavItem[] Pinned = [];
+  /// RECENT — pages this reader opened lately, newest first, drawn under `Pinned`. The app records a visit (an
+  /// `on change` reading `Navigation.CurrentPath` in its layout) and hands in the last few — five is plenty. A recent
+  /// page that is also pinned is drawn once, under Pinned.
+  public NavItem[] Recent = [];
+  /// THE APP SWITCHER — the applications this reader can open, listed behind the brand. Empty (the default) keeps the
+  /// brand a plain link home; one or more makes it a connected menu listing them, with Home first.
+  public AppLink[] Apps = [];
+  /// PIN OR UNPIN THE PAGE YOU ARE ON. Set it and the shell draws a pin beside the page title — pressed when the
+  /// current page is in `Pinned` — and runs this when it is pressed; the app adds or removes its own row (it reads
+  /// `Navigation.CurrentPath`, and `ItemFor(path)` names it). Unset draws no pin.
+  public Action TogglePin;
+
+  /// Is `route` one of the reader's pins?
+  public bool IsPinned(string route) {
+    if (route == "") { return false; }
+    foreach (var p in Pinned) { if (p.To == route) { return true; } }
+    return false;
+  }
+
+  /// THE NAV ENTRY FOR A ROUTE — what a pin or a visit to `route` should be called and drawn with: the entry whose
+  /// `To` is the route's longest match. Null on a route the nav does not cover (a record page), where the app names
+  /// the row itself.
+  public NavItem ItemFor(string route) {
+    var best = CurrentRoute(route);
+    if (best == "") { return null; }
+    foreach (var item in Nav) {
+      if (item.To == best) { return item; }
+      foreach (var d in item.Descendants()) { if (d.To == best) { return d; } }
+    }
+    return null;
+  }
+
+  /// The recent pages worth drawing while the reader is on `path` — `Recent` without the page they are on (it is
+  /// already the lit row in the nav; listing it again only lights a second row) and without the ones already pinned,
+  /// so a page is never listed twice.
+  public NavItem[] RecentFor(string path) {
+    List<NavItem> rows = [];
+    foreach (var r in Recent) { if (r.To != path && !IsPinned(r.To)) { rows.Add(r); } }
+    return rows.ToArray();
+  }
+
+  /// THE ONE ROUTE that is current, across the whole tree — the longest `To` that `path` falls under. Every shell
+  /// computes this once per render and compares each row against it, which is what keeps exactly one row lit.
+  /// Returns "" on a page the nav does not cover (a record detail, a wizard step), and a shell must handle that:
+  /// no row is current, and nothing is wrong.
+  public string CurrentRoute(string path) {
+    string best = "";
+    foreach (var item in Nav) {
+      var found = item.BestMatch(path);
+      if (found.Length > best.Length) { best = found; }
+    }
+    return best;
+  }
+
+  /// WHETHER `path` IS THE HOME ROUTE ITSELF — so a shell can tell "somewhere inside the app" from "the place
+  /// Home points at", and not draw a control whose only job is to go where the reader already is.
+  ///
+  /// ⛔ IT EXISTS BECAUSE A SHELL DREW A SELF-LINK. `FocusedShell` rendered its exit unconditionally as
+  /// `Link(href: chrome.Home)`, so on a focused route that IS the home route it drew "Exit ✕" pointing at the page
+  /// under it — a control that looks live and does nothing, which `TabbedTab` refuses by name two files away.
+  ///
+  /// ⚠ NORMALISED ON BOTH SIDES, and that is the whole substance of the method. `""`, `"/"` and `"/checkout/"`
+  /// name routes a reader would call the same place, and a comparison that said yes to one spelling and no to
+  /// another would make the exit appear and vanish as the trailing slash changed — a control flickering with the
+  /// URL bar is worse than either answer taken consistently.
+  public bool AtHome(string path) {
+    var here = path == "" ? "/" : path;
+    var home = Home == "" ? "/" : Home;
+    if (here.Length > 1 && here.EndsWith("/")) { here = Text.Left(here, here.Length - 1); }
+    if (home.Length > 1 && home.EndsWith("/")) { home = Text.Left(home, home.Length - 1); }
+    return here == home;
+  }
+
+  /// THE ENTRIES A BAR PUTS SIDE BY SIDE — the top level, with every `Section` replaced by its children.
+  ///
+  /// ⭐ WHY A SECTION EXPANDS RATHER THAN RENDERING. A section is a HEADING, and a heading is not a destination: a
+  /// tab strip or a bottom bar has nowhere to put "ADMINISTRATION" and nothing to do when it is pressed. The rail
+  /// has room to draw it as a heading over its children; a bar does not, so the children ARE the entries. Both
+  /// readings are right for their own arrangement, which is exactly why this lives on the contract and not in one
+  /// shell — Tabbed and Rail must not each invent their own answer to "what is top level".
+  ///
+  /// ⚠ ONE LEVEL, DELIBERATELY. A section's children keep their OWN children, which a bar then discloses as a
+  /// dropdown or a sheet. Flattening further would turn a two-level menu into thirty peers.
+  public NavItem[] Primary() {
+    List<NavItem> all = [];
+    foreach (var item in Nav) {
+      if (item.Shape() == NavKind.Section) { foreach (var c in item.Children) { all.Add(c); } }
+      else { all.Add(item); }
+    }
+    return all.ToArray();
+  }
+
+  /// THE SECTION THE READER IS CURRENTLY INSIDE — the `Primary()` entry that holds `current`, or null when the
+  /// route falls outside the nav entirely (a record detail, a wizard step).
+  ///
+  /// ⭐ WHAT A SECONDARY STRIP IS DRAWN FROM. A bar shell shows a section's sub-areas only once you are in that
+  /// section, which is how a real tabbed product works and is what makes a tab a single destination rather than a
+  /// menu that also navigates. Computed against the tree's ONE current route, so the strip and the lit tab can
+  /// never disagree about which section you are in.
+  ///
+  /// ⚠ IT ANSWERS `Trail` AS WELL AS `Current`. Standing ON `/settings` and standing on `/settings/billing` are
+  /// both "inside Settings" — the second is the case the strip exists for, and matching only `Current` would make
+  /// the strip vanish the moment you used it.
+  public NavItem CurrentSection(string current) {
+    return Primary().FirstOrDefault(i => i.State(current) != NavState.Idle);
+  }
+
+  /// The first `max` of `Primary()` — what fits ACROSS a phone's bottom bar — or all of them when the tail would be
+  /// a single entry, because "four and a More holding one" is worse than five.
+  /// ⚑ A COUNT, NOT A MEASUREMENT, and that is the right kind of answer here: iOS and Android both cap a tab bar at
+  /// five by convention rather than by width, so a deterministic cut IS the platform behaviour rather than an
+  /// approximation of it. Nothing is lost — `BarOverflow` holds the rest.
+  public NavItem[] BarItems(int max) {
+    var all = Primary();
+    if (all.Length <= max + 1) { return all; }
+    List<NavItem> head = [];
+    int i = 0;
+    while (i < max) { head.Add(all[i]); i = i + 1; }
+    return head.ToArray();
+  }
+
+  /// THE NAV, SEEN AS A LINEAR FLOW — `Primary()` numbered, with the step holding `current` marked active and
+  /// everything before it done. What a `FocusedShell` renders instead of a navigation.
+  ///
+  /// ⚑ ONE PASS, TWO FACTS. Whether a step is ACTIVE is a per-entry question (`NavItem.State`); whether it is
+  /// BEHIND YOU is a question about the LIST. Both are answered here rather than at a call site: a `foreach` in a
+  /// render block has no index, and a shell that tried to derive position per row would re-walk the tree per step.
+  ///
+  /// ⚠ NOTHING ACTIVE IS NOT AN ERROR. On a route the flow does not cover, every step reads as todo and the shell
+  /// shows no "Step n of m" — which is right: a wizard's confirmation page is genuinely outside the numbered part.
+  public FlowStep[] Steps(string current) {
+    var items = Primary();
+    // Which one holds the page we are on — 0 when none does. Found first, because every earlier step is judged
+    // against its position.
+    int active = 0;
+    int n = 0;
+    foreach (var item in items) {
+      n = n + 1;
+      if (active == 0 && item.State(current) != NavState.Idle) { active = n; }
+    }
+    List<FlowStep> steps = [];
+    int i = 0;
+    foreach (var item in items) {
+      i = i + 1;
+      steps.Add(new FlowStep { Item = item, Number = i, Active = i == active, Done = active > 0 && i < active });
+    }
+    return steps.ToArray();
+  }
+
+  /// Everything `BarItems(max)` did not take — the "More" sheet's contents, empty when everything fit.
+  public NavItem[] BarOverflow(int max) {
+    var all = Primary();
+    if (all.Length <= max + 1) { return []; }
+    List<NavItem> tail = [];
+    int i = max;
+    while (i < all.Length) { tail.Add(all[i]); i = i + 1; }
+    return tail.ToArray();
+  }
+}
+
+// ── the parts every shell shares ────────────────────────────────────────────────────────────────────────
+//
+// These are the pieces the four arrangements have in common. They live HERE rather than inside `SidebarShell` so
+// Tabbed, Rail and Focused compose the same brand lockup, the same chip, the same menu — which is what makes four
+// shells feel like one product rather than four demos.
+
+/// THE BRAND LOCKUP — a mark, the product, and its tagline.
+///
+/// ⭐ THREE WAYS TO BE A MARK, and they fall back in this order, so an app gets a lockup with nothing declared and
+/// a real one with a single line:
+///   1. `chrome.MarkSrc` — an image, and it REPLACES the tile (a full-colour logo, a tenant's own logo from a row).
+///   2. `chrome.Mark` — a glyph on the brand tile, in `Colors.OnPrimary`. `Icons.MyOwnMark`, the app's own `.svg`.
+///   3. neither — a monogram tile from the product's first letter.
+///
+/// In a test it is read as text: `Assert.Visible("SpendFlow")`.
+/// need: the product name, logo and mark at the top of a shell
+[Composable, Part]
+/// ⚠ `tagline: false` DROPS THE SECOND LINE while keeping the product name. `FocusedShell` is the one caller that
+///   asks for it: a workspace subtitle is a fact about the APPLICATION, and that shell's whole claim is that the
+///   task matters more than the application. Defaulted true, so no other call site changes.
+component ShellBrand(AppChrome chrome, bool markOnly = false, bool tagline = true, bool switcher = true,
+                    bool shortcuts = false) {
+  bool appsOpen = false;
+  // THE APP SWITCHER, when the app lists other applications (`chrome.Apps`): the brand stops being a link home and
+  // opens a connected menu — Home first, then the apps, then (for a shell with no rail to show them in) the reader's
+  // pins and recent pages. Without `Apps` it is the plain link it always was, so an app that switches nothing is
+  // offered no menu that holds one row. `switcher: false` keeps it a link regardless (`FocusedShell`: a task, not a
+  // place to wander off from).
+  live var hasSwitcher = switcher && chrome.Apps.Length > 0;
+  action ToggleApps() { appsOpen = !appsOpen; }
+  action CloseApps() { appsOpen = false; }
+  live var initial = Text.Upper(Text.Left(chrome.Product, 1));
+  // THE LINK'S NAME CARRIES WHAT THE LOCKUP DROPPED. `markOnly` removes the product name and the tagline from the
+  // SCREEN — correct, that is what the caller asked for — but it must not remove them from the page's meaning:
+  // mark-only leaves a 28px tile whose accessible name was the product alone, so on a multi-tenant product a
+  // screen-reader user and a hover tooltip got no answer to "which organisation is this?" at all.
+  //
+  // ⚠ A TAGLINE IS DOCUMENTED AS "the workspace, the tenant, the environment" — facts that CHANGE per reader, not
+  //   a slogan. That is exactly why losing it silently is a hole rather than a trim, and why the name carries it
+  //   only when the lockup is not already showing it.
+  live var brandName = (markOnly || !tagline) && chrome.Tagline != ""
+      ? chrome.Product + " — " + chrome.Tagline
+      : chrome.Product;
+  variants { base { MinW = "0"; Color = Colors.OnSurface; Rounded = Radius.Md; Transition = Motion.Fast;
+                    Hover { Bg = Colors.Muted; } } }
+  render {
+    if (!hasSwitcher) {
+      Link(href: chrome.Home, label: brandName) { ShellBrandFace(chrome, markOnly, tagline, initial); }
+    }
+    if (hasSwitcher) {
+      Box(position: Position.Relative, minW: "0") {
+        Pressable(onClick: ToggleApps, label: brandName, expanded: appsOpen) {
+          Row(gap: 0, align: Align.Center, minW: "0", pr: markOnly ? 0 : 2) {
+            ShellBrandFace(chrome, markOnly, tagline, initial);
+            if (!markOnly) { Icon(Icons.ChevronDown, size: 14, color: Colors.TextMuted); }
+          }
+        }
+        if (appsOpen) {
+          Backdrop(CloseApps);
+          ShellAppMenu(chrome, shortcuts, CloseApps);
+        }
+      }
+    }
+  }
+}
+
+/// The lockup's face — the mark and the words — shared by the plain link and the switcher's trigger, so the brand
+/// looks the same whichever it is.
+[Composable, Part]
+component ShellBrandFace(AppChrome chrome, bool markOnly, bool tagline, string initial) {
+  render {
+    Row(gap: 3, align: Align.Center, px: 2, py: 2, minW: "0") {
+      // An IMAGE mark keeps its own colours, so it replaces the tinted tile rather than sitting on it — a logo
+      // on a `Colors.Primary` square is the commonest way a real brand mark ends up looking wrong.
+      if (chrome.MarkSrc != "") {
+        Box(w: Length.ShellMark, h: Length.ShellMark, rounded: Radius.Md, overflow: Overflow.Hidden, shrink: 0,
+            display: Display.Flex, align: Align.Center, justify: Justify.Center) {
+          Image(src: chrome.MarkSrc, alt: chrome.Product);
+        }
+      }
+      if (chrome.MarkSrc == "") {
+        Box(w: Length.ShellMark, h: Length.ShellMark, rounded: Radius.Md, bg: Colors.Primary, color: Colors.OnPrimary,
+            display: Display.Flex, align: Align.Center, justify: Justify.Center, shrink: 0) {
+          if (chrome.Mark != null) { Icon(chrome.Mark, size: 16); }
+          if (chrome.Mark == null && chrome.Product != "") {
+            Text(initial, fontSize: FontSize.Label, fontWeight: FontWeight.Bold);
+          }
+        }
+      }
+      if (!markOnly) {
+        // ⚠ INLINE, NOT A COMPONENT OF ITS OWN. Every component call is a link in a CHAIN the tree loader walks
+        //   in one recursion, and this shell is the deepest thing in the kit — `SidebarShell` → frame → rail →
+        //   head → brand is already five. A wrapper that exists only to group two `Text`s buys nothing and costs
+        //   a level. Split for REUSE or for a `variants` recipe, never for tidiness.
+        // ⚠ THE TRUNCATION TRIO, and all three are load-bearing: `Ellipsis` alone does nothing without `Nowrap`
+        //   to stop the wrap and `Hidden` to give it something to clip. A long product name is the commonest way
+        //   a rail breaks its own width.
+        Stack(gap: 0, minW: "0", overflow: Overflow.Hidden) {
+          Text(chrome.Product, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold,
+               color: Colors.OnSurface, letterSpacing: "-0.01em", whiteSpace: WhiteSpace.Nowrap,
+               overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+          if (tagline && chrome.Tagline != "") {
+            Text(chrome.Tagline, fontSize: FontSize.Caption, color: Colors.TextMuted,
+                 whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+          }
+        }
+      }
+    }
+  }
+}
+
+/// THE APP SWITCHER'S MENU — grown from the brand. Home, then every app the reader can open (the one they are in
+/// ticked), then — when the shell has no rail to show them in — their pins and recent pages. Each row navigates: a
+/// route in this app, or another app's full address in the same tab.
+/// In a test open it by the brand and press a row: `Ui.Click("Fulcrum"); Ui.Click("Billing")`.
+[Composable, Part]
+component ShellAppMenu(AppChrome chrome, bool shortcuts, Action onClose) {
+  live var path = Navigation.CurrentPath ?? "";
+  action Go(string to) {
+    onClose();
+    if (to.StartsWith("https://") || to.StartsWith("http://")) { Navigation.Open(to, true); }
+    else { Navigation.Go(to); }
+  }
+  live var recent = chrome.RecentFor(path);
+  render {
+    Menu(from: MenuFrom.BelowStart, label: "Switch app") {
+      Stack(gap: 0, px: 2, pt: 2, pb: 1, minW: "0") {
+        Text(chrome.Product, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold, whiteSpace: WhiteSpace.Nowrap,
+             overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (chrome.Tagline != "") { Hint(chrome.Tagline); }
+      }
+      MenuItem("Home", () => Go(chrome.Home), icon: Icons.Home);
+      Divider();
+      Row(px: 2, pt: 2, pb: 1) { SectionLabel("Apps"); }
+      foreach (var a in chrome.Apps) {
+        MenuItem(a.Label, () => Go(a.To), icon: a.Icon, checked: a.Current);
+      }
+      if (shortcuts && chrome.Pinned.Length > 0) {
+        Divider();
+        Row(px: 2, pt: 2, pb: 1) { SectionLabel("Pinned"); }
+        foreach (var p in chrome.Pinned) { MenuItem(p.Label, () => Go(p.To), icon: p.Icon); }
+      }
+      if (shortcuts && recent.Length > 0) {
+        Divider();
+        Row(px: 2, pt: 2, pb: 1) { SectionLabel("Recent"); }
+        foreach (var r in recent) { MenuItem(r.Label, () => Go(r.To), icon: r.Icon); }
+      }
+    }
+  }
+}
+
+/// PINNED AND RECENT, as a rail draws them — two short sections above the nav, each row a link. With labels: a
+/// heading over each. As an icon strip: the glyphs, between hairlines, each named for a reader and a hover. Draws
+/// nothing at all when the app hands in neither, so a rail without them is exactly the rail it was.
+/// In a test the rows are links in the rail: `Ui.Click("Purchase orders", within: "Pinned")`.
+[Composable, Part]
+component ShellShortcuts(AppChrome chrome, bool iconOnly, Action onNavigated) {
+  // The PATH, not the nav's current route: a pin can be a record page (`/orders/42`) that no nav row covers.
+  live var current = Navigation.CurrentPath ?? "";
+  live var recent = chrome.RecentFor(current);
+  render {
+    if (chrome.Pinned.Length > 0) {
+      Stack(gap: 1, role: UiRole.Group, label: "Pinned") {
+        if (!iconOnly) { Row(px: 2, pt: 2, pb: 1) { SectionLabel("Pinned"); } }
+        foreach (var p in chrome.Pinned) {
+          // The pin of the page you are on reads as TRAIL — weight and ink, no fill — so the nav's own row stays the
+          // ONE lit row on the screen. Two filled rows for one page reads as a bug (see `AppChrome.CurrentRoute`).
+          if (!iconOnly) { ShellShortcutRow(p, p.To == current && current != "" ? NavState.Trail : NavState.Idle, onNavigated); }
+          if (iconOnly) { ShellShortcutMarkRow(p, p.To == current && current != "" ? NavState.Trail : NavState.Idle, onNavigated); }
+        }
+      }
+    }
+    if (recent.Length > 0) {
+      Stack(gap: 1, role: UiRole.Group, label: "Recent") {
+        if (!iconOnly) { Row(px: 2, pt: 3, pb: 1) { SectionLabel("Recent"); } }
+        if (iconOnly && chrome.Pinned.Length > 0) { Box(py: 1) { Divider(); } }
+        foreach (var r in recent) {
+          if (!iconOnly) { ShellShortcutRow(r, NavState.Idle, onNavigated); }
+          if (iconOnly) { ShellShortcutMarkRow(r, NavState.Idle, onNavigated); }
+        }
+      }
+    }
+    if (chrome.Pinned.Length > 0 || recent.Length > 0) {
+      Box(py: 2) { Divider(); }
+    }
+  }
+}
+
+/// One pinned or recent page in a labelled rail — the nav row's look.
+[Composable, Part]
+component ShellShortcutRow(NavItem item, NavState state, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Md; FontSize = FontSize.Body;
+           Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
+      Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
+      Idle    { }
+    }
+  }
+  render {
+    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+      Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: 2) {
+        Icon(item.Icon, size: 18);
+        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis);
+      }
+    }
+  }
+}
+
+/// The same row in an icon strip — the paint on a square around the glyph (`ShellNavMark`), the rule every shell's
+/// icon rows follow; named for a reader and a hover by its label.
+[Composable, Part]
+component ShellShortcutMarkRow(NavItem item, NavState state, Action onNavigated) {
+  variants {
+    base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
+           Color = Colors.TextSecondary; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state {
+      Current { Color = Primary.Strong; }
+      Trail   { Color = Colors.OnSurface; }
+      Idle    { }
+    }
+  }
+  render {
+    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") { ShellNavMark(item.Icon, state); }
+    }
+  }
+}
+
+/// THE PIN BESIDE THE PAGE TITLE — pressed when the page you are on is pinned; pressing it runs the app's
+/// `chrome.TogglePin`. A toggle button (`pressed:`), named for what a press will do, and its glyph nudges when the
+/// state flips so the reader sees the press land. Drawn only when the app set `TogglePin`.
+/// In a test: `Ui.Click("Pin this page")`, then `Assert.Visible("Unpin this page")`.
+[Composable, Part]
+component ShellPinButton(bool pinned, Action onPress) {
+  live var name = pinned ? "Unpin this page" : "Pin this page";
+  variants {
+    base { Display = Display.InlineFlex; W = Length.ControlSm; H = Length.ControlSm; Rounded = Radius.Md; Shrink = 0;
+           Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: name, pressed: pinned) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%",
+          color: pinned ? Colors.Primary : "inherit", animation: KitNudge, animationKey: pinned) {
+        Icon(Icons.Pin, size: 16);
+      }
+    }
+  }
+}
+
+/// THE SEARCH AFFORDANCE a shell's `slot search` is shaped for — a hairline box, a magnifier, a placeholder and the
+/// keyboard hint. It is a BUTTON, not an input: a global search is a palette, and a box that looks like an input
+/// but opens an overlay is the more confusing of the two. ⌘K (Ctrl+K elsewhere) presses it from anywhere on the page
+/// — `shortcut:` changes the combo, `""` turns it off — and the keycap it shows is DERIVED from that binding, so the
+/// two cannot disagree. Open a `CommandMenu` from `onPress`.
+/// In a test it is pressed by its placeholder: `Ui.Click("Search requests")`.
+/// need: a global search box in the shell's top bar, a command palette trigger
+/// e.g. `ShellSearch("Search requests, people or departments", onPress: OpenPalette)`
+[Composable]
+component ShellSearch(string placeholder, Action onPress, string shortcut = "Mod+K") {
+  variants {
+    base { Display = Display.Flex; MinW = "0"; Grow = 1; MaxW = "440px"; MinH = Length.Touch; Px = 3;
+           Bg = Colors.Bg; BorderW = 1; Border = Colors.Border; Rounded = Radius.Md; Color = Colors.TextMuted;
+           Transition = Motion.Fast;
+           Hover { Border = Colors.TextMuted; Bg = Colors.Surface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: placeholder, shortcut: shortcut) {
+      Row(gap: 3, align: Align.Center, w: "100%", minW: "0") {
+        Icon(Icons.Search, size: 18);
+        Text(placeholder, fontSize: FontSize.Body, grow: 1, whiteSpace: WhiteSpace.Nowrap,
+             overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (shortcut != "") { ShellKeyHint(shortcut); }
+      }
+    }
+  }
+}
+
+/// The keycap on the trailing edge of a search box.
+[Composable, Part] component ShellKeyHint(string text) {
+  render { KeyHint(text); }
+}
+
+/// AN ICON BUTTON WITH A COUNT — notifications, messages, anything with a number waiting on the reader. The count
+/// is part of the accessible name, so it is announced rather than being a red dot only sighted users can read.
+/// In a test: `Assert.Visible("Notifications, 3 new")` and `Ui.Click("Notifications, 3 new")`.
+/// need: a bell with an unread count, an icon carrying a number badge, notifications waiting
+/// e.g. `ShellCountButton("Notifications", 3, onPress: OpenInbox) { Icon(Icons.Bell, size: 18); }`
+[Composable]
+component ShellCountButton(string label, int count, Action onPress, Tone tone = Tone.Danger) {
+  // The number is IN the name. `Ui.Click("Notifications")` still finds it by containment, and a reader hears what
+  // the badge shows instead of "button".
+  live var name = count > 0 ? $"{label}, {count} new" : label;
+  live var shown = count > 99 ? "99+" : count.ToString();
+  variants {
+    base { Display = Display.InlineFlex; Position = Position.Relative; MinW = Length.Touch; MinH = Length.Touch;
+           Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: name) {
+      // ⛔ NO `h: "100%"` HERE — the row must STRETCH to the button's height, and a percentage cannot: the button's
+      //    height is a MIN-height, which a percentage does not resolve against, so `100%` computed to the icon's own
+      //    18px and the row sat at the TOP of the 44px button. The glyph then spanned 8–26 instead of 13–31, and the
+      //    badge (placed for a centred glyph, below) covered half of it. Measured 2026-10-05 on Harbour's bell.
+      //    Left without a height, a flex item stretches across its container — the button — and the glyph centres.
+      Row(align: Align.Center, justify: Justify.Center, w: "100%") {
+        Slot;
+        if (count > 0) { ShellCountDot(shown, tone); }
+      }
+    }
+  }
+}
+
+/// The count itself, pinned to the glyph's top-right. `decorative: true` — the number is already in the button's
+/// accessible name, and announcing it twice is worse than not at all.
+[Composable, Part] component ShellCountDot(string text, Tone tone) {
+  variants {
+    // ⛔ THESE TWO NUMBERS ARE DERIVED, NOT CHOSEN, AND THE OLD PAIR PUT THE BADGE OVER THE GLYPH IT ANNOTATES.
+    //    The dot resolves against the BUTTON — `ShellCountButton` is the positioned ancestor — which is 44px, while
+    //    the icon inside it is 18px and centred, so the icon occupies 13–31 on both axes and its top-right corner
+    //    is at (31, 13). A badge CENTRED ON that corner is the placement every platform uses and the only one that
+    //    leaves the glyph readable: 18px outer centred at (31, 13) spans 22–40 and 4–22, which is `right: 4px` from
+    //    a 44px edge and `top: 4px`. It overlaps the icon's top-right quarter and clears its centre exactly.
+    //
+    // ⚠ MEASURED 2026-09-07, BOTH HALVES. At `top:6/right:4` the badge spanned 18–40 × 6–28 — straight over the
+    //   icon's centre at (22, 22) — and a notification bell rendered as an unreadable smudge under a red disc.
+    //   Reported from a screenshot as "the bell looks clipped": it was not clipped, it was COVERED. And the badge
+    //   was 22px outer against an 18px icon, i.e. LARGER than the thing it annotated, so no offset alone could
+    //   have saved it. Shrinking it to 18px is half the fix; landing it on the corner is the other half.
+    //
+    // ⚠ AND THE OFFSETS MUST STAY POSITIVE. A negative pair hangs the badge outside the button, where the top bar
+    //   clips it against the viewport's edge — measured, with the button temporarily filled so its box was visible.
+    base { Position = Position.Absolute; Top = "4px"; Right = "4px"; MinW = "14px"; H = "14px"; Px = "3px";
+           Rounded = Radius.Pill; FontSize = "10px"; FontWeight = FontWeight.Semibold; LineHeight = 1;
+           BorderW = 2; Border = Colors.Surface; }
+    tone {
+      Default { Bg = Colors.TextMuted; Color = Colors.Surface; }
+      Primary { Bg = Colors.Primary;   Color = Colors.OnPrimary; }
+      Danger  { Bg = Colors.Danger;    Color = Colors.OnPrimary; }
+      Success { Bg = Colors.Success;   Color = Colors.OnPrimary; }
+      Warning { Bg = Colors.Warning;   Color = Colors.OnPrimary; }
+      Ghost   { Bg = Colors.Muted;     Color = Colors.OnSurface; }
+    }
+  }
+  // ⭐ IT NUDGES WHEN THE NUMBER MOVES — `KitNudge` keyed to the count, so a new notification draws the eye once and a
+  //    page load (nothing moved) nudges nothing. Reduced motion: the number simply changes.
+  render { Row(align: Align.Center, justify: Justify.Center, decorative: true, animation: KitNudge, animationKey: text) { Text(text); } }
+}
+
+/// A NAV ROW'S COUNT — `NavItem.Badge` in its tone, nudging once when the value changes (a queue that just grew), never
+/// on load. Every shell's rows draw their badge through this, so the motion is the same in all of them. A `Live` row's
+/// count wears a breathing lamp before it — "live, and yours" (still under reduced motion: the lamp stays lit).
+[Composable, Part]
+component ShellNavBadge(NavItem item) {
+  render {
+    Row(gap: 2, align: Align.Center, shrink: 0) {
+      if (item.Live) { Lamp(live: true); }
+      Box(display: Display.InlineFlex, shrink: 0, animation: KitNudge, animationKey: item.Badge) {
+        Badge(item.Badge, tone: item.BadgeTone);
+      }
+    }
+  }
+}
+
+/// THE IDENTITY CHIP — avatar, name, and the second line. Pressable when the user has a menu, a plain label when
+/// they do not, so a shell never offers a control that does nothing.
+/// In a test: `Ui.Click("Olivia Rhye")` opens the menu.
+/// need: the signed-in person in a shell, an avatar with a name and role
+[Composable, Part]
+component ShellUserChip(ShellUser user, bool hasMenu, Action onPress, bool markOnly = false, bool open = false) {
+  variants {
+    base { Display = Display.Flex; MinW = "0"; MinH = Length.Touch; Px = 2; Rounded = Radius.Md;
+           Color = Colors.OnSurface; Transition = Motion.Fast;
+           Hover { Bg = Colors.Muted; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    // The two forms repeat their contents rather than sharing a sub-component: a shared "…Face" is one more link in
+    // the chain the tree loader walks, and this shell is already the deepest thing in the kit.
+    if (hasMenu) {
+      Pressable(onClick: onPress, label: user.Name, expanded: open) {
+        Row(gap: 3, align: Align.Center, minW: "0", w: "100%") {
+          ShellAvatar(user);
+          if (!markOnly) {
+            Stack(gap: 0, minW: "0", grow: 1) {
+              Text(user.Name, fontSize: FontSize.Body, fontWeight: FontWeight.Medium, whiteSpace: WhiteSpace.Nowrap,
+                   overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+              if (user.Secondary != "") {
+                Text(user.Secondary, fontSize: FontSize.Caption, color: Colors.TextMuted,
+                     whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+              }
+            }
+            Icon(Icons.ChevronDown, size: 16, color: Colors.TextMuted);
+          }
+        }
+      }
+    }
+    if (!hasMenu) {
+      Row(gap: 3, align: Align.Center, minW: "0", w: "100%") {
+        ShellAvatar(user);
+        if (!markOnly) {
+          Stack(gap: 0, minW: "0", grow: 1) {
+            Text(user.Name, fontSize: FontSize.Body, fontWeight: FontWeight.Medium, whiteSpace: WhiteSpace.Nowrap,
+                 overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+            if (user.Secondary != "") {
+              Text(user.Secondary, fontSize: FontSize.Caption, color: Colors.TextMuted,
+                   whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// The person's avatar as every shell draws it — with their PRESENCE as a lamp on its corner when the app tracks it
+/// (`ShellUser.Presence`): lit and breathing when online, amber when away, red when busy. Decorative — the presence
+/// is named in words in the account menu's header (`ShellPresenceWord`), where a reader can hear it.
+[Composable, Part]
+component ShellAvatar(ShellUser user, Size size = Size.Sm) {
+  render {
+    Box(position: Position.Relative, display: Display.InlineFlex, shrink: 0) {
+      Avatar(initials: user.Initials, src: user.AvatarSrc, alt: user.Name, size: size);
+      if (user.Presence != ShellPresence.None) {
+        // A ring of the surface around the lamp, so it reads against a photograph as well as against initials.
+        Box(position: Position.Absolute, right: "-1px", bottom: "-1px", p: "2px", rounded: Radius.Circle,
+            bg: Colors.Surface, display: Display.Flex, decorative: true, animation: KitPopIn,
+            animationKey: user.Presence.Label) {
+          if (user.Presence == ShellPresence.Online) { Lamp(live: true, tone: Tone.Success); }
+          if (user.Presence == ShellPresence.Away) { Lamp(tone: Tone.Warning); }
+          if (user.Presence == ShellPresence.Busy) { Lamp(tone: Tone.Danger); }
+        }
+      }
+    }
+  }
+}
+
+/// The person's presence in words — the account menu's header line under their name. Draws nothing for `None`.
+[Composable, Part]
+component ShellPresenceWord(ShellUser user) {
+  render {
+    if (user.Presence != ShellPresence.None) {
+      Row(gap: 2, align: Align.Center, pt: 1) {
+        if (user.Presence == ShellPresence.Online) { Lamp(tone: Tone.Success); }
+        if (user.Presence == ShellPresence.Away) { Lamp(tone: Tone.Warning); }
+        if (user.Presence == ShellPresence.Busy) { Lamp(tone: Tone.Danger); }
+        Text(user.Presence.Label, fontSize: FontSize.Caption, color: Colors.TextMuted);
+      }
+    }
+  }
+}
+
+/// THE USER MENU'S ROWS — the app's `MenuAction[]`, with the divider and the destructive tone honoured. Rendered
+/// inside whichever container the width calls for: a floating `Menu` on a pointer, a bottom sheet on a phone.
+/// One definition, so the two presentations can never offer different items.
+[Composable, Part]
+component ShellMenuItems(MenuAction[] items, Action onPick) {
+  render {
+    Stack(gap: 0) {
+      foreach (var item in items) {
+        if (item.Divided) { Divider(); }
+        ShellMenuRow(item, item.Tone, onPick);
+      }
+    }
+  }
+}
+
+/// One row of it. Closing the menu is the SHELL's job and happens first — an app's action that opens a dialog must
+/// not leave a menu hanging over it.
+[Composable, Part]
+component ShellMenuRow(MenuAction item, Tone tone, Action onPick) {
+  action Pick() { onPick(); item.OnPress(); }
+  variants {
+    // Focus is the HIGHLIGHT, as in a native menu: the platform moves the keyboard through a menu's items (↑/↓,
+    // type-ahead) and focuses the first when it opens, so a ring on every open would read as an error.
+    base { Display = Display.Flex; MinH = Length.TouchDense; Px = 3; Rounded = Radius.Md; FontSize = FontSize.Body;
+           Transition = Motion.Fast;
+           Focus { Bg = Colors.Muted; OutlineStyle = OutlineStyle.None; } }
+    tone {
+      Default { Color = Colors.OnSurface; Hover { Bg = Colors.Muted; } }
+      Primary { Color = Colors.Primary;   Hover { Bg = Primary.Subtle; } }
+      Danger  { Color = Colors.Danger;    Hover { Bg = Danger.Subtle; } }
+      Success { Color = Colors.Success;   Hover { Bg = Success.Subtle; } }
+      Warning { Color = Colors.Warning;   Hover { Bg = Warning.Subtle; } }
+      Ghost   { Color = Colors.TextMuted; Hover { Bg = Colors.Muted; } }
+    }
+  }
+  render {
+    Pressable(onClick: Pick, label: item.Label, role: UiRole.MenuItem) {
+      Row(gap: 3, align: Align.Center, w: "100%") {
+        Icon(item.Icon, size: 16);
+        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+             textOverflow: TextOverflow.Ellipsis);
+        KeyHintOf(item.OnPress);
+      }
+    }
+  }
+}
+
+/// A BOTTOM SHEET — the phone's answer to a dropdown. Slides up from the bottom edge, sits over a `Scrim`, dismisses
+/// on a tap outside or Escape, and keeps its content in the lower two-thirds where a thumb reaches.
+/// ⭐ WHY NOT JUST THE MENU. A menu pinned under a chip in the top-left corner is unreachable one-handed on a phone,
+/// and on a 390px screen a 200px panel next to a 44px chip has nowhere to go. Same items, same order, different
+/// place — which is what "two designs, one contract" means.
+/// In a test it is a container, so scope to it: `Ui.Click("Sign out", within: "Account")`.
+/// need: a phone menu that slides up from the bottom, an action sheet
+/// e.g. `ShellSheet("Account", onDismiss: Close) { ListRow("Sign out", onPress: SignOut); }`
+[Composable]
+component ShellSheet(string title, Action onDismiss) {
+  render {
+    Box {
+      Scrim(onDismiss);
+      Box(position: Position.Fixed, left: "0", right: "0", bottom: "0", z: ZIndex.Drawer) {
+        // `pb` carries the home-indicator inset ON TOP of the padding, so the last row is never under the bar.
+        Stack(role: UiRole.ModalDialog, label: title, gap: 2, bg: Colors.Surface, color: Colors.OnSurface,
+              rounded: Radius.Lg, shadow: Shadow.Deep, p: 3, pb: "calc(0.75rem + env(safe-area-inset-bottom))",
+              maxH: "80dvh", overflowY: Overflow.Auto) {
+          Row(justify: Justify.Center, pb: 1) { Box(w: "36px", h: "4px", rounded: Radius.Pill, bg: Colors.Border, decorative: true); }
+          if (title != "") { Row(px: 3, pb: 1) { SectionLabel(title); } }
+          Slot;
+        }
+      }
+    }
+  }
+}
+
+/// The person, at the head of a phone sheet — the same face the chip shows, at a size a phone has room for.
+[Composable, Part]
+component ShellSheetIdentity(ShellUser user) {
+  variants { base { Px = 3; Py = 2; } }
+  render {
+    Row(gap: 3, align: Align.Center, minW: "0") {
+      ShellAvatar(user, size: Size.Md);
+      Stack(gap: 0, minW: "0") {
+        Text(user.Name, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, whiteSpace: WhiteSpace.Nowrap,
+             overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (user.Secondary != "") { Hint(user.Secondary); }
+        ShellPresenceWord(user);
+      }
+    }
+  }
+}
+
+/// The dimmed backdrop behind a phone drawer. A component of its own so `Tablet { Display = None }` can retire it at
+/// the width where the nav is docked — a resize with the drawer open must not leave a desktop dimmed and unclickable.
+/// Shared by every shell with an off-canvas band, so none of them can forget the resize case.
+[Composable, Part]
+component ShellScrim(Action onDismiss) {
+  variants { base { Tablet { Display = Display.None; } } }
+  render { Scrim(onDismiss); }
+}
+
+/// THE COMMIT BAR A TASK ENDS WITH — what a shell's `slot primary` is shaped for. Pinned to the foot of the work
+/// column, above the home indicator, with the task's own buttons in it.
+///
+/// ⭐ THIS IS WHAT MAKES A `FocusedShell` TASK-ORIENTED RATHER THAN MERELY UNDECORATED. A shell encodes an
+/// INTERACTION MODEL, not a density of chrome: "complete this thing" needs a clear PRIMARY ACTION as much as it
+/// needs progress and a way out, and a focused shell built only by removing navigation is a different shell
+/// (experience-oriented, content-first) wearing the wrong name. The primary action is the half that distinguishes
+/// them, so it is structural here.
+///
+/// ⛔ THE CALLER DRAWS THE BAR, AND THAT IS THE I-79 RULE APPLIED AHEAD OF TIME. A shell that drew this chrome
+/// itself would draw it whether or not the app put anything in the slot — an empty hairline-topped band across the
+/// foot of every page, exactly the way an unfilled `aside` used to cost 340px of a 1280 screen. The shell reserves
+/// the POSITION; this control brings the border, the fill, the sticky box and the safe-area inset.
+///
+/// ⚠ PUT THE PRIMARY ACTION LAST. Buttons read left to right, so the one that completes the task belongs on the
+/// trailing edge where the eye and the thumb both finish — and `Tone.Primary` on exactly one of them.
+///
+/// In a test it is a container: `Ui.Click("Continue", within: "Task actions")`.
+/// need: a checkout's pay button, a wizard's next step, a sticky action bar at the foot of a form
+/// e.g. `ShellTaskBar { Button("Continue", onPress: Next, tone: Tone.Primary); }`
+/// e.g. `slot primary { ShellTaskBar { Button("Previous", onPress: Previous); Button("Continue", onPress: Next, tone: Tone.Primary); } }`
+[Composable]
+component ShellTaskBar(string label = "Task actions") {
+  variants {
+    base { Position = Position.Sticky; Bottom = "0"; Z = ZIndex.Sticky; Bg = Colors.Surface; BorderTW = 1;
+           Border = Colors.Border; Px = 3; Pb = "env(safe-area-inset-bottom)"; Laptop { Px = 5; } }
+  }
+  render {
+    // ⚠ IT DOES NOT CENTRE ITSELF — it fills whatever column it is placed in, and `FocusedShell` places it INSIDE
+    //   the page's own centred column. Measured 2026-09-06 in this control's first screenshot: an inner box that
+    //   centred on the WINDOW put "Continue" at x=973 while the form it finishes was centred at x=470, so the
+    //   commit button sat under the summary panel instead of under the form. Two things centring themselves
+    //   independently against different parents cannot line up; only one of them may decide, and it is the page.
+    Row(gap: 3, align: Align.Center, justify: Justify.End, w: "100%", minH: Length.Touch, py: 2,
+        role: UiRole.Region, label: label) {
+      Slot;
+    }
+  }
+}
+
+/// A CARD PINNED AT THE FOOT OF A RAIL — the help/support affordance the shell's `slot railFoot` is shaped for.
+/// In a test it is a container: `Ui.Click("Visit help centre", within: "Need a hand?")`.
+/// need: a help card at the bottom of a sidebar, a support prompt in the shell
+/// e.g. `ShellFootCard("Need a hand?", "Read the guides or talk to us.", "Visit help centre", onPress: Help)`
+[Composable]
+component ShellFootCard(string title, string body, string actionLabel, Action onPress) {
+  variants { base { Bg = Colors.Bg; BorderW = 1; Border = Colors.Border; Rounded = Radius.Md; P = 3; } }
+  render {
+    Stack(gap: 2, label: title) {
+      Row(gap: 2, align: Align.Center) {
+        Icon(Icons.Info, size: 16, color: Colors.Primary);
+        Text(title, fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.OnSurface);
+      }
+      Text(body, fontSize: FontSize.Caption, color: Colors.TextMuted, lineHeight: 1.45);
+      Button(actionLabel, onPress: onPress, tone: Tone.Primary, size: Size.Sm);
+    }
+  }
+}
+
+/// THE PANEL A SHELL'S `slot aside` IS SHAPED FOR — content BESIDE the page where there is room, a section UNDER it
+/// where there is not. A `region` landmark in its own right, named by you, because what is beside the page is the
+/// app's content and not the shell's chrome.
+///
+/// ⭐ THE CALLER DRAWS THE PANEL, AND THAT IS THE WHOLE REASON `aside` BEHAVES. A shell's slot reserves a POSITION;
+/// the chrome — the width, the hairline, the fill, the sticky box — arrives with the content or not at all. So an
+/// aside the app never fills, and a route-keyed one on a route that does not want it, both cost nothing: there is
+/// no panel, because nobody drew one. This is the same rule `ShellSearch`, `ShellCountButton` and `ShellFootCard`
+/// already follow for the other three slots; `aside` was the exception, and it was the one that misbehaved (I-79).
+///
+/// ⚠ THE BAND IS A BREAKPOINT HERE, NOT `Layout.AtLeast`, and it has to be. `Layout.AtLeast` measures the RENDERED
+/// CONTAINER, and this panel's container is the work column — narrower than the window by the rail's width, so at
+/// 1280 it measures 1016 and would answer "not wide" in the very band the shell calls wide. A `Laptop { }` variant
+/// block is a viewport media query, which is the same threshold the shell itself read.
+///
+/// ⛔ LIVE DEFECT, NOT A DESIGN CHOICE, AND IT WILL BITE THE ROUTE-KEYED FORM BELOW (found 2026-09-06 while
+/// building this control; the fix is in the client's render walker, not here). A slot fill wrapped in a DYNAMIC
+/// `if` loses its content when the CALLER re-renders for its own state — the layout opens a dialog, toggles the
+/// theme, sets any field — and it does not come back, even though the condition is still true. Measured by
+/// printing the condition into the top bar: `PATH=[/approvals] LIVE=[T]` on screen, and the panel gone. A fill
+/// wrapped in `if (true)` survives the same interaction, so it is the dynamic branch and not the fill.
+///
+/// It is general to slot fills rather than special to `aside` — any `slot x { if (…) { … } }` under a caller that
+/// holds state is exposed. Until it is fixed, a shell's aside is reliable when the layout holds NO state of its
+/// own, and a page's own two-column `Row` is the alternative that does not depend on it.
+///
+/// In a test it is a container, so scope to it: `Assert.Visible("Total", within: "Order summary")`.
+/// need: a right rail beside the page, a summary panel next to a record, a details column in a shell
+/// e.g. `ShellAside("Order summary") { Metric("420.00"); Hint("Incl. delivery"); }`
+/// e.g. `slot aside { if (Navigation.CurrentPath == "/approvals") { ShellAside("Waiting on you") { … } } }`
+[Composable]
+component ShellAside(string label = "Related") {
+  variants {
+    // ⚠ NO `Display` HERE. A variants block merges onto the component's ROOT element, which is the `Stack` below —
+    //   so a `Display = Display.Block` in this block silently un-stacks the panel's own children and they run
+    //   together on one line. Measured 2026-09-06, in the first screenshot of this control. Say nothing and the
+    //   `Stack` keeps being a stack.
+    // ⚑ SPACING IS A MARGIN IN THE NARROW BAND AND PADDING IN THE WIDE ONE, deliberately: below `Laptop` the panel
+    //   has no box, so the gap belongs OUTSIDE it (it separates the panel from the page above); at `Laptop` it has
+    //   a box, so the gap belongs inside. Writing both as `Pt` would leave a base `padding-top` fighting the wide
+    //   band's `padding` shorthand, which resolves on source order rather than on intent.
+    base { Mt = 4;
+           // Beside the page from the wide band up — the same 1100 the shell splits its own layout on. Below it the
+           // panel is an ordinary block under the page: full width, no border, no fill, because a 340px column
+           // squeezed onto a phone is how a right rail becomes unreadable rather than responsive.
+           Laptop { Mt = 0; P = 4; W = Length.AsideW; Shrink = 0; BorderLW = 1; Border = Colors.Border;
+                    Bg = Colors.Surface; Position = Position.Sticky; Top = Length.AppBarH;
+                    // ⚠ MIN AND MAX BOTH, and the MIN is what makes the hairline read as a separator. The parent
+                    //   row aligns to the START so this panel can be sticky, which means its height is its
+                    //   CONTENT's — so a short panel drew a 90px rule that stopped in mid-air and looked like a
+                    //   rendering fault rather than an edge. The max is what keeps a long one scrolling in place.
+                    MinH = "calc(100dvh - 3.25rem)"; MaxH = "calc(100dvh - 3.25rem)"; OverflowY = Overflow.Auto; } }
+  }
+  render { Stack(gap: 4, role: UiRole.Region, label: label) { Slot; } }
+}
+
+/// THE CONTEXTUAL PAGE TITLE, derived rather than passed. Reads the ACTIVE route's own `[Title("…")]` (or whatever
+/// it last gave `Navigation.SetTitle`), so a page names itself once and every shell's bar follows — no per-page
+/// wiring, and nothing to keep in sync.
+/// ⚠ A page that declares no title reports null; the shell then shows the current nav row's label, and failing that
+/// nothing. Silence is right here — a bar that invents a title from the URL is worse than a bar with none.
+/// In a test it is read as text: `Assert.Visible("Pending approvals")`.
+[Composable, Part]
+component ShellPageTitle(string fallback) {
+  live var active = Navigation.Routes.FirstOrDefault(r => r.IsActive);
+  live var title = (active?.Title ?? "") != "" ? active.Title : fallback;
+  render {
+    if (title != "") {
+      Text(title, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, color: Colors.OnSurface,
+           whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+    }
+  }
+}
+
+/// How a shell's page is laid out — a document that scrolls as a whole, or a workspace of panes (`AppChrome.Panes`).
+public enum ShellPage { Document, Panes }
+
+/// THE PAGE REGION AND THE OPTIONAL `aside`. SIDE BY SIDE where there is room, STACKED where there is not — the
+/// panel is never dropped, because a phone that silently loses a panel has lost content rather than layout.
+///
+/// ⭐ THE WIDE BAND IS NOT THE NARROW ONE STRETCHED. A single centred column at 1440px is a phone layout on a
+/// desktop: oceans of dead space and one thing visible at a time. Here the page keeps a readable maximum and the
+/// `aside` takes the room beside it, so a wide screen shows MORE, which is the entire point of having one.
+///
+/// ⛔ A SLOT CONTRIBUTES A POSITION, NEVER CHROME — and `aside` is where that rule was broken (I-79).
+///
+/// The shell used to draw the right rail's panel ITSELF: a `SidebarAside` component carrying the width, the
+/// hairline, the `Surface` fill and the sticky box. A component is drawn whether or not anything reached its slot,
+/// so an app that filled nothing still paid **340px of a 1280 screen (26%)**, a full-height hairline and a band of
+/// `Surface`, for an empty region. Measured 2026-09-06: the page column ended at x=940 instead of 1280. Two agents
+/// found it independently and one of them only by noticing an unexplained vertical edge in a screenshot — because
+/// no assertion can see it. `Assert.Hidden("Related")` PASSED throughout: a labelled region with no text has no
+/// text to find, so the behaviour tier is blind to it by construction.
+///
+/// ⚑ AND IT IS NOT FIXABLE BY ASKING "WAS THIS SLOT FILLED?", which is the obvious remedy and the wrong one. The
+/// renderer already collapses "an element whose entire content is an unfilled NAMED slot", and that rule
+/// deliberately stops short of a container whose contents can ARRIVE — collapsing one would move layout under the
+/// reader. An aside is exactly that container: the documented way to use it is route-keyed
+/// (`slot aside { if (path == "/approvals") { … } }`), an `if` leaves its `/if` anchor whichever way it goes, and
+/// a build-time answer cannot change when the route does.
+///
+/// ⭐ SO THE PANEL BELONGS TO THE CALLER, and that is what the other four slots already do. `search` is filled with
+/// `ShellSearch`, which carries its own box and border; `actions` with `ShellCountButton`, which carries its own;
+/// `railFoot` with `ShellFootCard`, which carries its own card. Every one of them draws nothing when the app
+/// supplies nothing, because there is nothing there to draw. It is `ShellAside` now and the shell reserves only the
+/// position — so an unfilled aside, a route-keyed one on a route that does not want it, and a `foreach` that yields
+/// nothing all cost nothing but comment markers.
+///
+/// ⚑ IT LIVES HERE, NOT IN A SHELL, AND THAT IS THE POINT OF THE PROMOTION. It was `SidebarBody`, and every other
+/// arrangement needs the identical answer to "page beside its aside, or page above it" — four copies of a rule this
+/// hard-won is four chances to fix I-79 in three places. `p` is the page's own padding, which the compact bands
+/// want tighter.
+[Composable, Part]
+component ShellBody(bool isWide, int p = 5, int pNarrow = 3, ShellPage arrangement = ShellPage.Document) {
+  variants {
+    base { Grow = 1; MinW = "0"; }
+    // A WORKSPACE (`AppChrome.Panes`): the body takes what is left of a screen-high column and never grows past
+    // it — `MinH = "0"` is what lets a flex child shrink below its content, so the panes inside scroll instead of
+    // pushing the column taller than the screen.
+    arrangement { Panes { MinH = "0"; Overflow = Overflow.Hidden; Display = Display.Flex; } Document { } }
+  }
+  render {
+    if (arrangement == ShellPage.Panes) {
+      Row(align: Align.Stretch, gap: 0, grow: 1, minW: "0", minH: "0") {
+        Stack(gap: 0, grow: 1, minW: "0", minH: "0", role: UiRole.Main, label: "Page") { Slot("page"); }
+        Slot("aside");
+      }
+    }
+    if (arrangement == ShellPage.Document && isWide) {
+      Row(align: Align.Start, gap: 0, grow: 1, minW: "0") {
+        Stack(gap: 0, grow: 1, minW: "0", p: p, role: UiRole.Main, label: "Page") { Slot("page"); }
+        Slot("aside");
+      }
+    }
+    if (arrangement == ShellPage.Document && !isWide) {
+      Stack(gap: 0, grow: 1, minW: "0", p: pNarrow, role: UiRole.Main, label: "Page") {
+        Slot("page");
+        Slot("aside");
+      }
+    }
+  }
+}
+
+/// ⭐ THE HIGHLIGHT OF A NAV ROW THAT HAS LOST ITS LABEL — a SQUARE around the glyph, never a band across the rail.
+///
+/// ⛔ THIS IS THE WHOLE RULE, AND IT IS ONE RULE FOR EVERY SHELL (owner, 2026-09-08): *when it's just icons the box
+///    should just be the icon; when it's with text, it should be the full row.* A collapsed rail, a collapsed
+///    sidebar and a phone drawer are three places a row can lose its label, so the decision lives HERE and each
+///    shell reaches for it — rather than being re-authored per shell, which is how the rail and the sidebar came to
+///    disagree with each other AND with the glyph (measured below).
+///
+/// ⚠ CENTRING THE GLYPH IN THE OLD PILL IS NOT THIS FIX, and it is the one that looks like it. A 43×40 box with the
+///   icon centred in it is still a wide rounded rectangle around an 18px glyph — the screenshot reads as fixed and
+///   the shape is the one that was wrong. What makes it right is the pill being SIZED to the glyph, so assert its
+///   own geometry (square, and concentric with the icon), never just the icon's offset within it.
+///
+/// ⚑ SIZE, DECIDED RATHER THAN TUNED — and it is `Length.ShellMark`, the SAME token `ShellBrand`'s tile uses. 28px
+///   around an 18px glyph is the breathing room that tile already gives its own 16px icon, and it sits four rows up
+///   the SAME 60px column. One token rather than two numbers that agree: two would drift the first time either
+///   moved, and the rail would read as a tile above a slab.
+///
+/// ⭐ AND THE PRESSABLE REGION IS STILL THE ROW. This paints; it does not receive the click. Its ancestor — the
+///    `Link` or `Pressable` the shell already had — keeps its full 44×40 box, so shrinking the PAINT costs no hit
+///    area at all. A 32px control would have been below `Length.TouchDense`, the kit's own documented floor for a
+///    dense nav row; a 32px mark inside a 40px target is not.
+///
+/// ⚠ THE HOVER PAINT MOVES WITH IT. `inside <row>.Hover` is an ancestor-conditioned variant (see `RailTip` for the
+///   mechanism) — without an arm per row type the mark would light up on `Current` and stay dead under the pointer,
+///   which reads as a broken control rather than as a styling miss.
+[Composable, Part]
+component ShellNavMark(Icons glyph, NavState state) {
+  variants {
+    base { Display = Display.Flex; W = Length.ShellMark; H = Length.ShellMark; Shrink = 0;
+           Rounded = Radius.Md; Transition = Motion.Fast;
+           inside RailNavMarkLink.Hover { Bg = Colors.Muted; }
+           inside RailNavMarkDiscloser.Hover { Bg = Colors.Muted; }
+           inside SidebarNavMarkRow.Hover { Bg = Colors.Muted; }
+           inside ShellShortcutMarkRow.Hover { Bg = Colors.Muted; } }
+    state {
+      Current { Bg = Primary.Subtle; }
+      Trail   { }
+      Idle    { }
+    }
+  }
+  render {
+    // ⚠ NO `w`/`h` HERE, AND THAT IS THE BUG THIS COMMENT EXISTS FOR. An inline style prop on the render ROOT beats
+    //   the variant class that the component's own `variants` block put on the same element — inline always wins in
+    //   CSS. So a reflexive `w: "100%", h: "100%"` silently overrode `W = Length.ShellMark` and the mark stretched
+    //   back to the full 43x40 row, repainting the exact shape this component was written to replace. It compiled,
+    //   it rendered, the glyph was still centred, and only the pill's own width said anything was wrong.
+    Row(align: Align.Center, justify: Justify.Center) { Icon(glyph, size: 18); }
+  }
+}
+
+/// THE SKELETON A SHELL DRAWS FOR ITS OWN NAV while `chrome.Loading` holds. Rows, not a spinner: a spinner says
+/// "wait" and a skeleton says "a list of about this many things is coming", which is the truer promise and the
+/// one that does not make the layout jump when it arrives.
+[Composable, Part]
+component ShellNavSkeleton(bool markOnly = false) {
+  render {
+    Stack(gap: 2, px: 2, py: 2, label: "Loading navigation") {
+      Row(gap: 3, align: Align.Center, minH: Length.TouchDense) { Skeleton(shape: SkeletonShape.Circle); if (!markOnly) { Skeleton(); } }
+      Row(gap: 3, align: Align.Center, minH: Length.TouchDense) { Skeleton(shape: SkeletonShape.Circle); if (!markOnly) { Skeleton(shape: SkeletonShape.HalfLine); } }
+      Row(gap: 3, align: Align.Center, minH: Length.TouchDense) { Skeleton(shape: SkeletonShape.Circle); if (!markOnly) { Skeleton(); } }
+      Row(gap: 3, align: Align.Center, minH: Length.TouchDense) { Skeleton(shape: SkeletonShape.Circle); if (!markOnly) { Skeleton(shape: SkeletonShape.HalfLine); } }
+    }
+  }
+}
+

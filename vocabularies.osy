@@ -1,0 +1,14 @@
+// Ui (part 1/3) — the declared UI value vocabularies (`using Osysharp.Ui;`).
+
+// The `Osysharp.Ui` kit namespace — its public types enter scope only via `using Osysharp.Ui;`.
+namespace Osysharp.Ui;
+
+/// Semantic intent of a control's chrome — the `tone` variant dimension (see Button, Badge). The platform ships
+/// these defaults; an app extends the set with its own members.
+public enum Tone { Default, Primary, Danger, Success, Warning, Ghost }
+
+/// T-shirt size scale — the `size` variant dimension. Design-system-owned; apps add `Xs`/`Xl`.
+public enum Size { Sm, Md, Lg }
+
+/// The semantic steps of a color ramp — the vocabulary behind `Primary.Hover` / `Surface.Subtle`.
+public enum Step { Subtle, Muted, Default, Hover, Active, Strong, OnColor }
