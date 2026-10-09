@@ -122,10 +122,10 @@ public enum MenuFrom {
     }
     tone {
       Default { Color = Colors.OnSurface; Hover { Bg = Colors.Muted; } }
-      Primary { Color = Colors.Primary;   Hover { Bg = Primary.Subtle; } }
-      Danger  { Color = Colors.Danger;    Hover { Bg = Danger.Subtle; } }
-      Success { Color = Colors.Success;   Hover { Bg = Success.Subtle; } }
-      Warning { Color = Colors.Warning;   Hover { Bg = Warning.Subtle; } }
+      Primary { Color = Primary.Text;     Hover { Bg = Primary.Subtle; } }
+      Danger  { Color = Danger.Text;      Hover { Bg = Danger.Subtle; } }
+      Success { Color = Success.Text;     Hover { Bg = Success.Subtle; } }
+      Warning { Color = Warning.Text;     Hover { Bg = Warning.Subtle; } }
       Ghost   { Color = Colors.TextMuted; Hover { Bg = Colors.Muted; } }
     }
   }

@@ -147,9 +147,9 @@ component Done(string label = "Saved", Tone tone = Tone.Success) {
     base { Display = Display.InlineFlex; FontSize = FontSize.Label; FontWeight = FontWeight.Medium; }
     tone {
       Default { Color = Colors.TextMuted; }
-      Primary { Color = Colors.Primary; }
-      Danger  { Color = Colors.Danger; }
-      Success { Color = Colors.Success; }
+      Primary { Color = Primary.Text; }
+      Danger  { Color = Danger.Text; }
+      Success { Color = Success.Text; }
       Warning { Color = Colors.Warning; }
       Ghost   { Color = Colors.TextMuted; }
     }

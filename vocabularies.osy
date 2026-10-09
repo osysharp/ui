@@ -10,5 +10,7 @@ public enum Tone { Default, Primary, Danger, Success, Warning, Ghost }
 /// T-shirt size scale — the `size` variant dimension. Design-system-owned; apps add `Xs`/`Xl`.
 public enum Size { Sm, Md, Lg }
 
-/// The semantic steps of a color ramp — the vocabulary behind `Primary.Hover` / `Surface.Subtle`.
-public enum Step { Subtle, Muted, Default, Hover, Active, Strong, OnColor }
+/// The semantic steps of a color ramp — the vocabulary behind `Primary.Hover` / `Surface.Subtle`. `Text` is the hue SET
+/// AS TEXT on the page: the colour itself when it reads there, else the nearest darker (on a dark page, lighter) step of
+/// its ramp that does — what a link, a ghost button or a selected tab is written in, whatever the brand colour is.
+public enum Step { Subtle, Muted, Default, Hover, Active, Strong, OnColor, Text }

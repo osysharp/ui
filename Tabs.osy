@@ -31,7 +31,7 @@ namespace Osysharp.Ui;
       Hover { Color = Colors.OnSurface; }
       Disabled { Opacity = "0.5"; }
     }
-    selected { Color = Colors.Primary; FontWeight = FontWeight.Semibold; Border = Colors.Primary; }
+    selected { Color = Primary.Text; FontWeight = FontWeight.Semibold; Border = Colors.Primary; }
   }
   render { Pressable(label, role: UiRole.Tab, selected: selected, onClick: onPress, disabled: disabled); }
 }

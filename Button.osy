@@ -54,7 +54,7 @@ component Button(
       Danger  { Bg = Colors.Danger;      Color = Colors.OnPrimary; Hover { Bg = Danger.Hover; } }
       Success { Bg = Colors.Success;     Color = Colors.OnPrimary; Hover { Bg = Success.Hover; } }
       Warning { Bg = Colors.Warning;     Color = Colors.OnPrimary; Hover { Bg = Warning.Hover; } }
-      Ghost   { Bg = Colors.Transparent; Color = Colors.Primary;   Hover { Bg = Colors.Muted; } }
+      Ghost   { Bg = Colors.Transparent; Color = Primary.Text;     Hover { Bg = Colors.Muted; } }
     }
     size {
       Sm { Px = 3; Py = 1; Rounded = Radius.Sm; FontSize = FontSize.Label;   H = Length.ControlSm; }

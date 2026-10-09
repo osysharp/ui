@@ -105,7 +105,7 @@ component TimePicker(
               TimeColumn(heading: "mm", values: Enumerable.Range(0, 60 / minuteStep).Select(i => i * minuteStep),
                          selected: value.Minute, onPick: PickMinute);
             }
-            Pressable(onClick: Close, label: "Done") { Text("Done", fontSize: FontSize.Label, color: Colors.Primary); }
+            Pressable(onClick: Close, label: "Done") { Text("Done", fontSize: FontSize.Label, color: Colors.Primary.Text); }
           }
         }
       }
@@ -396,7 +396,7 @@ component TimeStrip(int hour, int minute, int minuteStep, Action<int> onHour, Ac
         Row(align: Align.Center, justify: Justify.Center, gap: 2, bg: Colors.Muted, rounded: Radius.Md, py: 2) {
           Text(hour < 10 ? $"0{hour}" : $"{hour}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
           Text(":", color: Colors.TextMuted, decorative: true);
-          Text(minute < 10 ? $"0{minute}" : $"{minute}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, color: Colors.Primary);
+          Text(minute < 10 ? $"0{minute}" : $"{minute}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, color: Colors.Primary.Text);
         }
       }
       if (picking) {

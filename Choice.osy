@@ -16,7 +16,7 @@ namespace Osysharp.Ui;
     Row(role: UiRole.Option, selected: selected, align: Align.Center, gap: 2) {
       Slot { Text(label); }
       Spacer();
-      if (selected) { Text("✓", color: Colors.Primary, decorative: true); }
+      if (selected) { Text("✓", color: Colors.Primary.Text, decorative: true); }
     }
   }
 }

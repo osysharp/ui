@@ -147,10 +147,13 @@ component TextLink(string label, string to, Tone tone = Tone.Primary) {
     }
     tone {
       Default { Color = Colors.OnSurface; }
-      Primary { Color = Colors.Primary; }
-      Danger  { Color = Colors.Danger; }
-      Success { Color = Colors.Success; }
-      Warning { Color = Colors.Warning; }
+      // `X.Text`, not `Colors.X`: a brand colour is a FILL first, and as text it reads only when it is dark enough on
+      // the page — a yellow brand's links were 1.5:1 on white (build run 6). `Text` is the colour when it reads, else
+      // the nearest step of its ramp that does (PaletteRamp.TextAlias).
+      Primary { Color = Primary.Text; }
+      Danger  { Color = Danger.Text; }
+      Success { Color = Success.Text; }
+      Warning { Color = Warning.Text; }
       Ghost   { Color = Colors.TextMuted; }
     }
   }

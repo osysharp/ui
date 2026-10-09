@@ -714,7 +714,7 @@ public sealed class GridBand<T> {
                 //   this button cannot touch it — offering it anyway is a control that takes the click and
                 //   leaves the screen exactly as it was.
                 if (search.Trim() != "" || AnyColumnFilter()) {
-                  Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary); }
+                  Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary.Text); }
                 }
               }
             }
@@ -751,7 +751,7 @@ public sealed class GridBand<T> {
         if (visible.Count == 0 && AnyFilter()) {
           Row(gap: 2, py: 3, align: Align.Center) {
             Text("No rows match the filter.", color: Colors.TextMuted);
-            if (search.Trim() != "") { Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary); } }
+            if (search.Trim() != "") { Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary.Text); } }
           }
         }
       }
