@@ -64,7 +64,7 @@ public enum MenuFrom {
 /// `from:` says where it hangs (`MenuFrom.BelowEnd` for a trigger at the right edge); `label:` names it for a reader.
 /// In a test open it by its trigger, then press the item: `Ui.Click("Actions"); Ui.Click("Archive")`.
 /// need: a list of actions behind a trigger, an overflow or context menu, a kebab menu, a dropdown menu
-/// e.g. `Box(position: Position.Relative) { IconButton("Actions", Toggle) { Icon(Icons.Dots); } if (open) { Backdrop(Close); Menu(from: MenuFrom.BelowEnd) { MenuItem("Rename", Rename, icon: Icons.Pencil, shortcut: "R"); } } }`
+/// e.g. `Box(position: Position.Relative) { IconButton("Actions", Toggle) { Icon(Icons.Dots); } if (open) { Backdrop(Close); Menu(from: MenuFrom.BelowEnd) { MenuItem("Archive", Archive, icon: Icons.Archive, shortcut: "A"); } } }`
 [Composable] component Menu(MenuFrom from = MenuFrom.BelowStart, string label = "Menu") {
   variants {
     base {

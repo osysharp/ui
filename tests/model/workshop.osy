@@ -39,7 +39,7 @@ entity BenchNote {
 // ── the orders ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// Every order, by customer — each opens its own page.
-[Page("/")] [Authorize(IsFramer)] [Render(CSR)] [Title("Orders")]
+[Route("/")] [Authorize(IsFramer)] [Render(CSR)] [Title("Orders")]
 component OrdersPage() {
   live var orders = FrameOrder.OrderBy(o => o.Customer).ToList();
   render {
@@ -58,7 +58,7 @@ component OrdersPage() {
 
 /// One order: its customer and artwork, the badges the rest of the app puts beside its name (`RecordBadge`), and the
 /// panels it adds under it (`RecordPanel`). The page names neither — whatever contributes to the slots is drawn.
-[Page("/orders/{id}")] [Authorize(IsFramer)] [Render(CSR)] [Title("Order")]
+[Route("/orders/{id}")] [Authorize(IsFramer)] [Render(CSR)] [Title("Framing job")]
 component OrderPage(Guid id) {
   live var order = FrameOrder.FirstOrDefault(o => o.Id == id);
   render {
@@ -72,10 +72,10 @@ component OrderPage(Guid id) {
   }
 }
 
-/// "Paid" beside an order's name, once it is.
-[Contribution("Paid")]
+/// "Settled" beside an order's name, once it is.
+[Contribution("Settled")]
 component PaidBadge(FrameOrder record) : RecordBadge<FrameOrder> {
-  render { if (record.Paid) { Badge("Paid", tone: Tone.Success); } }
+  render { if (record.Paid) { Badge("Settled", tone: Tone.Success); } }
 }
 
 /// The bench notes on an order — a panel under it.
@@ -122,12 +122,12 @@ public class PriceListSettings : ISettingsProvider {
 }
 
 /// The settings area's own address — each section opens beside the list of them.
-[Page("/settings")] [Layout(SettingsFrame)] [Authorize(IsFramer)] [Render(CSR)] [Title("Settings")]
+[Route("/settings")] [Layout(SettingsFrame)] [Authorize(IsFramer)] [Render(CSR)] [Title("Settings")]
 component SettingsHome() {
   render { }
 }
 
-[Page("/settings/prices")] [Layout(SettingsFrame)] [Authorize(IsOwner)] [Render(CSR)] [Title("Price list")]
+[Route("/settings/prices")] [Layout(SettingsFrame)] [Authorize(IsOwner)] [Render(CSR)] [Title("Price list")]
 component PriceListPage() {
   render {
     SettingsPage("Price list", description: "What a frame costs, per metre of moulding.") {

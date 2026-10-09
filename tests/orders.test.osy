@@ -33,16 +33,16 @@ void the_orders_are_listed_and_each_opens_its_page() {
 }
 
 /// An order's page draws what contributes to its slots: the bench notes panel under it, and — only once the order is
-/// paid — the "Paid" badge beside the customer's name.
+/// paid — the "Settled" badge beside the customer's name.
 [Test(Workshop)]
 void an_orders_page_shows_the_panel_and_badge_the_app_contributes() {
   Ui.SignInAs(Tom);
   Ui.Visit("/orders/" + OrderOf("Ada Byrne"));
-  Assert.Visible("Paid");
+  Assert.Visible("Settled");
   Assert.Visible("Ordered oak moulding, 40 mm.", within: "Bench notes");
 
   Ui.Visit("/orders/" + OrderOf("Cy Lund"));
   Assert.Visible("Two etchings, one frame");
-  Assert.Hidden("Paid");
+  Assert.Hidden("Settled");
   Assert.Visible("Nothing noted yet.", within: "Bench notes");
 }

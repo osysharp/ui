@@ -68,7 +68,7 @@ public component BareWorkspaceShell() : WorkspaceShell { render { Box(w: "100%",
 /// The LAYOUT a kit's working page names — `[Layout(WorkspaceFrame)]` — the app's shell (its design of `WorkspaceShell`)
 /// with the page inside, scrolling, across the width. A page moving to another keeps the shell on screen.
 /// need: a layout for a kit's desk pages, the app's shell around a kit page
-/// e.g. `[Page("/knowledge")] [Layout(WorkspaceFrame)] [Nav("Knowledge base", Icon = Icons.File)] component KnowledgeDeskPage() { … }`
+/// e.g. `[Route("/knowledge")] [Layout(WorkspaceFrame)] [Nav("Knowledge base", Icon = Icons.File)] component KnowledgeDeskPage() { … }`
 /// ⚑ `[Composable]`: the frame is structure — the app's shell around a page — so a PUBLIC kit page may stand in it too;
 ///   whatever the app's shell reads is still read as its reader.
 [Layout]

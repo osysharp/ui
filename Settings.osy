@@ -194,6 +194,11 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
           if (atHome && gathered) { SettingsOverview(shown, title); }
           Slot;
         }
+      } else {
+        // A PHONE AT THE AREA'S HOME shows the index alone — and still holds the page's place: in a layout the default
+        // slot is the `Outlet`, and the router mounts the child route into it, so a render path without one fails the
+        // whole page ("renders no Outlet"). The area's own page has nothing to add here, so the column takes no width.
+        Stack(gap: 0, w: "0px", shrink: 0, overflowY: Overflow.Hidden) { Slot; }
       }
     }
   }

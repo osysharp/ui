@@ -6,8 +6,8 @@
     {
       "name": "Osysharp.Observability",
       "kind": "package",
-      "version": "1.0.0",
-      "hash": "sha256:aba8df0c3a7c56cfa752ad731283a5559ba21e6b04909ce580778518fe2f7196",
+      "version": "1.0.1",
+      "hash": "sha256:240f2b9d4a764186a4511669df519ad88399cc771ed87a643089a65ec25778f3",
       "minPlatform": "0.9.0",
       "shadow": "app-forkable",
       "source": "workspace:Platform.Core/Dsl/OsySharp/Baseline/Capabilities/Observability"
@@ -15,8 +15,8 @@
     {
       "name": "Osysharp.Ui",
       "kind": "package",
-      "version": "2.18.0",
-      "hash": "sha256:deccf5a06701c6af9cd880108de9426376c878130251be73adf1210cce94605b",
+      "version": "2.18.1",
+      "hash": "sha256:5dae9b4103cc649967664228cc945c2d8b5bd9ff8d45e62bf9b67d9db079545e",
       "minPlatform": "0.9.0",
       "shadow": "app-forkable",
       "source": "workspace:Platform.Core/Dsl/OsySharp/Baseline/Capabilities/Ui"

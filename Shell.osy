@@ -377,7 +377,7 @@ public sealed class AppChrome {
   public NavItem[] Nav = [];
   /// The routes whose page OPENS ON A FULL-BLEED IMAGE — a hero photograph that runs to the top edge. A shell that can
   /// float its header over the picture does so on these routes (`EditorialShell` also does it on the home route by
-  /// default); every other shell ignores it. Exact routes, as a page's `[Page]` declares them.
+  /// default); every other shell ignores it. Exact routes, as a page's `[Route]` declares them.
   public string[] Immersive = [];
   /// ⭐ THE PAGE IS A WORKSPACE OF PANES — a list beside a record, a mail client, a helpdesk — not a document. The
   /// work column is then exactly the screen's height and the page fills it edge to edge with no padding, so each of

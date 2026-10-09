@@ -25,7 +25,7 @@ app Fulcrum {
 ```
 
 ```osy
-[Page("/orders")]
+[Route("/orders")]
 component Orders() {
   live var orders = Order.Where(o => o.Total >= 0);
   render {
