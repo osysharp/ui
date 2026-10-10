@@ -2,26 +2,7 @@
   "platform": {
     "version": "0.9.0"
   },
-  "entries": [
-    {
-      "name": "Osysharp.Observability",
-      "kind": "package",
-      "version": "1.0.1",
-      "hash": "sha256:240f2b9d4a764186a4511669df519ad88399cc771ed87a643089a65ec25778f3",
-      "minPlatform": "0.9.0",
-      "shadow": "app-forkable",
-      "source": "workspace:Platform.Core/Dsl/OsySharp/Baseline/Capabilities/Observability"
-    },
-    {
-      "name": "Osysharp.Ui",
-      "kind": "package",
-      "version": "2.21.0",
-      "hash": "sha256:cd1eca6d15c47f8837d807dd0bf957bc0bb14f1d91efc6ec24f544cbc38e085a",
-      "minPlatform": "0.9.0",
-      "shadow": "app-forkable",
-      "source": "workspace:Platform.Core/Dsl/OsySharp/Baseline/Capabilities/Ui"
-    }
-  ],
+  "entries": [],
   "bridges": {
     "searched": [
       "workspace",

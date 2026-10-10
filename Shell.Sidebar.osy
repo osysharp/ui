@@ -246,7 +246,7 @@ component SidebarRail(
            TranslateX = "-100%";
            Tablet { Position = Position.Static; TranslateX = "0"; Z = "auto"; Shrink = 0; Shadow = "none"; } }
     // Closed, the drawer sits past the left edge and casts NO shadow: a deep shadow spills ~40px beyond its own edge, so
-    // a closed drawer shaded the left of every phone page (seen in the Inbox kit's phone shots, 2026-10-01).
+    // a closed drawer shaded the left of every phone page (seen in the WorkQueues kit's phone shots, 2026-10-01).
     drawer { Open { TranslateX = "0"; } Closed { Shadow = "none"; } }
   }
   render {
