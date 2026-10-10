@@ -1,0 +1,45 @@
+// Relay's archetype, the WORKBENCH, photographed — `osy test --pixels --theme Looks.Relay --file arch-relay.test.osy`.
+
+[TestFixture]
+void RelayDesk() {
+  new Draft { Key = "relay-incident", Owner = "Daniel Kim", Title = "Investigating",
+              Note = "Pool exhausted at 64 connections on invoice runs over 300 seats. Raising to 128 in eu-west-2 first." };
+}
+
+[Test(RelayDesk)]
+void relay_console_with_its_drawers() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/relay");
+  Assert.Visible("Invoice runs time out for accounts over 300 seats");
+  Assert.Visible("Live", within: "Status");
+  Ui.Shot("relay · console · wide · light");
+  Ui.Click("Invoice runs time out for accounts over 300 seats");
+  Assert.Visible("Working notes", within: "Incident INC-4821");
+  Ui.Fill("Owner", "Hannah Lowe");
+  Assert.Visible("Edited", within: "Incident INC-4821");
+  Ui.Shot("relay · console · inspector · wide · light");
+  Ui.Click("Save", within: "Incident INC-4821");
+  Assert.Hidden("Edited");
+  Assert.Equal("Hannah Lowe", Draft.Single(d => d.Key == "relay-incident").Owner);
+  Ui.Theme("dark");
+  Ui.Visit("/relay");
+  Ui.Click("Invoice runs time out for accounts over 300 seats");
+  Ui.Shot("relay · console · inspector · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/relay");
+  Ui.Shot("relay · console · phone · light");
+}
+
+[Test(RelayDesk)]
+void relay_selection_and_a_folded_explorer() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/relay");
+  Ui.Click("Select Invoice runs time out for accounts over 300 seats");
+  Ui.Click("Select Customs portal export stops at row 1,204");
+  Assert.Visible("2 selected");
+  Ui.Click("Assign to me", within: "Selection");
+  Assert.Visible("2 assigned to you.");
+  Ui.Click("Hide the explorer");
+  Ui.Shot("relay · console · explorer folded · wide · light");
+}

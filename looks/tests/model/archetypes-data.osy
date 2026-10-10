@@ -1,0 +1,121 @@
+// The rows the five ARCHETYPES are built over — each look's default arrangement of a whole app (round 2). Fixed and in
+// memory like the rest of the specimen, except one stored row per editing page: a save pattern is only honest over a
+// real unit of work, so what each page edits is a `Draft` the tests write first.
+
+using Osysharp.Ui;
+
+/// What an archetype's page EDITS — one stored row per page, keyed by the page, so its Save / Discard / Undo (or its
+/// auto-save) drive the route's real unit of work.
+entity Draft {
+  [Required, MaxLength(60)] string Key;
+  [MaxLength(200)] string? Title;
+  [MaxLength(200)] string? Owner;
+  [MaxLength(600)] string? Note;
+  int Days;
+  bool Flag;
+  security { allow read, create, update when IsAnonymous || IsAuthenticated; }
+}
+
+// ── Relay — an incident console ─────────────────────────────────────────────────────────────────────────────────────
+
+enum Severity {
+  [Label("SEV-1"), Tone(Tone.Danger)] Critical,
+  [Label("SEV-2"), Tone(Tone.Warning)] Major,
+  [Label("SEV-3"), Tone(Tone.Default)] Minor,
+}
+
+enum IncidentState {
+  [Tone(Tone.Danger)] Investigating,
+  [Tone(Tone.Warning)] Identified,
+  [Tone(Tone.Primary)] Monitoring,
+  [Tone(Tone.Success)] Resolved,
+}
+
+class IncidentRow {
+  public string Id;
+  public Severity Severity;
+  public string Service;
+  public string Title;
+  public IncidentState State;
+  public int Minutes;
+  public string Owner;
+  public string Region;
+}
+
+List<IncidentRow> Incidents() {
+  return [
+    new IncidentRow { Id = "INC-4821", Severity = Severity.Critical, Service = "billing-api", Title = "Invoice runs time out for accounts over 300 seats", State = IncidentState.Investigating, Minutes = 36, Owner = "Daniel Kim", Region = "eu-west-2" },
+    new IncidentRow { Id = "INC-4820", Severity = Severity.Major, Service = "exports", Title = "Customs portal export stops at row 1,204", State = IncidentState.Identified, Minutes = 94, Owner = "Hannah Lowe", Region = "eu-west-2" },
+    new IncidentRow { Id = "INC-4819", Severity = Severity.Major, Service = "mail-out", Title = "Payment reminders queued but not sent", State = IncidentState.Monitoring, Minutes = 132, Owner = "Priya Nair", Region = "us-east-1" },
+    new IncidentRow { Id = "INC-4817", Severity = Severity.Minor, Service = "search", Title = "Account search slow for names with accents", State = IncidentState.Investigating, Minutes = 241, Owner = "Jonas Berg", Region = "eu-west-2" },
+    new IncidentRow { Id = "INC-4816", Severity = Severity.Minor, Service = "web", Title = "Seat count wraps on the plan card in Safari", State = IncidentState.Identified, Minutes = 310, Owner = "Maya Okafor", Region = "global" },
+    new IncidentRow { Id = "INC-4812", Severity = Severity.Major, Service = "ledger-sync", Title = "Bank feed duplicates two September payments", State = IncidentState.Monitoring, Minutes = 525, Owner = "Tomás Reyes", Region = "eu-west-2" },
+    new IncidentRow { Id = "INC-4809", Severity = Severity.Minor, Service = "auth", Title = "Single sign-on certificate expires in 9 days", State = IncidentState.Identified, Minutes = 1440, Owner = "Ravi Shah", Region = "global" },
+    new IncidentRow { Id = "INC-4801", Severity = Severity.Critical, Service = "billing-api", Title = "Card payments declined for 11 minutes", State = IncidentState.Resolved, Minutes = 2880, Owner = "Daniel Kim", Region = "us-east-1" },
+  ];
+}
+
+string Age(int minutes) {
+  if (minutes < 60) { return minutes.ToString() + "m"; }
+  if (minutes < 1440) { return (minutes / 60).ToString() + "h " + (minutes % 60).ToString() + "m"; }
+  return (minutes / 1440).ToString() + "d";
+}
+
+class LogLine {
+  public string At;
+  public string Level;
+  public string Source;
+  public string Text;
+}
+
+List<LogLine> EventLog() {
+  return [
+    new LogLine { At = "10:24:07", Level = "ERROR", Source = "billing-api", Text = "invoice.run account=0042 seats=310 timed out after 30000ms" },
+    new LogLine { At = "10:24:05", Level = "WARN",  Source = "billing-api", Text = "pool exhausted (64/64) waiting for a connection" },
+    new LogLine { At = "10:23:58", Level = "INFO",  Source = "pager",       Text = "INC-4821 paged Daniel Kim (primary, billing)" },
+    new LogLine { At = "10:23:41", Level = "ERROR", Source = "billing-api", Text = "invoice.run account=0117 seats=486 timed out after 30000ms" },
+    new LogLine { At = "10:22:10", Level = "INFO",  Source = "deploys",     Text = "billing-api 4.12.0 rolled out to eu-west-2 (3/3)" },
+    new LogLine { At = "10:19:33", Level = "INFO",  Source = "exports",     Text = "customs.export batch 7 of 12 written (1,204 rows)" },
+  ];
+}
+
+// ── Studio — people and companies ───────────────────────────────────────────────────────────────────────────────────
+
+enum Relationship {
+  [Tone(Tone.Primary)] Customer,
+  [Tone(Tone.Success)] Champion,
+  [Tone(Tone.Warning)] Prospect,
+  [Label("At risk"), Tone(Tone.Danger)] AtRisk,
+}
+
+class PersonRow {
+  public string Name;
+  public string Initials;
+  public string Role;
+  public string Company;
+  public Relationship Relationship;
+  public string LastTouch;
+  public decimal Pipeline;
+  public string City;
+}
+
+List<PersonRow> People() {
+  return [
+    new PersonRow { Name = "Sofia Marin", Initials = "SM", Role = "Head of Operations", Company = "Brightwater Dental Group", Relationship = Relationship.Champion, LastTouch = "Today", Pipeline = 145800m, City = "Leeds" },
+    new PersonRow { Name = "Hannah Lowe", Initials = "HL", Role = "Logistics Director", Company = "Kestrel Freight", Relationship = Relationship.Customer, LastTouch = "Yesterday", Pipeline = 76000m, City = "Felixstowe" },
+    new PersonRow { Name = "Daniel Osei", Initials = "DO", Role = "Practice Manager", Company = "Pemberton Clinics", Relationship = Relationship.Customer, LastTouch = "2 days ago", Pipeline = 74000m, City = "Edinburgh" },
+    new PersonRow { Name = "Ravi Shah", Initials = "RS", Role = "IT Lead", Company = "Sable Logistics", Relationship = Relationship.Prospect, LastTouch = "4 days ago", Pipeline = 38500m, City = "Glasgow" },
+    new PersonRow { Name = "Ellen Price", Initials = "EP", Role = "Finance Manager", Company = "Northgate Property Services", Relationship = Relationship.AtRisk, LastTouch = "6 days ago", Pipeline = 6000m, City = "Manchester" },
+    new PersonRow { Name = "Aiko Tanaka", Initials = "AT", Role = "Owner", Company = "Linden Veterinary", Relationship = Relationship.Prospect, LastTouch = "1 week ago", Pipeline = 4800m, City = "York" },
+    new PersonRow { Name = "Marcus Webb", Initials = "MW", Role = "Studio Manager", Company = "Marlow Print Works", Relationship = Relationship.Champion, LastTouch = "2 weeks ago", Pipeline = 7200m, City = "Reading" },
+  ];
+}
+
+// ── Signal — the numbers ────────────────────────────────────────────────────────────────────────────────────────────
+
+string[] Hours() { return ["00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22"]; }
+double[] Requests() { return [6.1, 5.2, 4.8, 5.0, 8.9, 12.4, 13.1, 12.7, 12.9, 11.2, 9.4, 7.6]; }
+double[] Errors() { return [0.10, 0.12, 0.09, 0.11, 0.18, 0.31, 0.22, 0.19, 0.17, 0.16, 0.14, 0.12]; }
+double[] Signups() { return [12.0, 9.0, 6.0, 7.0, 18.0, 34.0, 41.0, 38.0, 36.0, 29.0, 22.0, 15.0]; }
+string[] Weeks() { return ["W34", "W35", "W36", "W37", "W38", "W39", "W40", "W41"]; }
+double[] Retention() { return [71.0, 72.5, 72.1, 73.8, 74.2, 75.9, 76.4, 77.1]; }

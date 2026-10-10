@@ -11,8 +11,10 @@
 
 namespace Osysharp.Ui.Looks;
 
-/// Studio — the workbench: Figtree, ink-black actions, soft grey chrome, round corners and pill tags, colour kept for
+/// Studio — the record desk: Figtree, ink-black actions, soft grey chrome, round corners and pill tags, colour kept for
 /// people and states. For CRM, agencies and project tools.
+/// Arranged as: the record desk — a labelled sidebar, a list with the opened record beside it as tabs, edits that keep
+/// themselves with an Undo while they wait, and an assistant a press away — `SidebarShell`, `Dock`, `AutoSave`, `AssistantPanel`.
 public abstract theme Studio {
   Colors {
     Bg            = Modes.Of(light: "#FFFFFF", dark: "#141416");

@@ -14,6 +14,8 @@ namespace Osysharp.Ui.Looks;
 
 /// Civic — plain and certain: large type in Atkinson Hyperlegible, controls you cannot miss, square corners, bold
 /// headings on a blue-grey page. For healthcare, public services and any app anyone may have to use.
+/// Arranged as: the flow — one plain question at a time, the steps beside it, "Save and continue" in words, and a check
+/// of every answer before it is sent — `FocusedShell`, `RadioGroup`, `ShellAside`.
 public abstract theme Civic {
   Colors {
     Bg            = Modes.Of(light: "#EEF2F4", dark: "#0E1418");

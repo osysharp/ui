@@ -13,6 +13,8 @@ namespace Osysharp.Ui.Looks;
 
 /// Relay — the control room: the densest look, graphite in light and dark, a mono for every time and id, signal
 /// orange. For support desks, operations and dispatch, and developer tools.
+/// Arranged as: the workbench — an activity bar and an explorer, a dense table with the opened row docked right and a
+/// live log below, edits kept in place, a status line along the foot — `WorkbenchShell`, `Dock`, `SaveActions`, `DataGrid`.
 public abstract theme Relay {
   Colors {
     Bg            = Modes.Of(light: "#F5F6F8", dark: "#0E1013");

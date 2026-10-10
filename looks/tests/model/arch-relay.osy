@@ -1,0 +1,179 @@
+// RELAY'S ARCHETYPE — THE WORKBENCH. An operator's console used all day at full density, built like a developer's
+// tool:
+//   · navigation SPLIT in two (`WorkbenchShell`) — an activity bar of section marks, and an explorer with the
+//     section's queues and the views the team saved;
+//   · the page is a dense table with DRAWERS (`Dock`): the incident a row opens docks on the right, and the live
+//     event log along the bottom — both resizable, both closable, the table never covered;
+//   · edits are made IN PLACE in the drawer and kept with its inline Save (`SaveActions`) — no bar, no modal;
+//   · picking rows turns the table's toolbar into the selection's (Assign · Acknowledge · Resolve);
+//   · and a status line along the foot says the console is live.
+
+using Osysharp.Ui;
+
+[Layout]
+[AllowAnonymous]
+component RelayFrame() {
+  action Search() { }
+  action OpenView() { Navigation.Go("/relay"); }
+  render {
+    WorkbenchShell(new AppChrome {
+      Product = "Halyard",
+      Tagline = "Operations",
+      Home = "/relay",
+      User = new ShellUser { Name = "Daniel Kim", Secondary = "On call · billing", Initials = "DK", Presence = ShellPresence.Online },
+      Nav = [
+        new NavItem { Label = "Incidents", Icon = Icons.Bolt, Badge = "5", Children = [
+          new NavItem { Label = "Open", To = "/relay", Icon = Icons.CircleDot, Exact = true, Badge = "7" },
+          new NavItem { Label = "Assigned to me", To = "/relay/mine", Icon = Icons.User, Badge = "2" },
+          new NavItem { Label = "Resolved", To = "/relay/resolved", Icon = Icons.CheckCircle },
+        ] },
+        new NavItem { Label = "Deploys", To = "/relay/deploys", Icon = Icons.Upload },
+        new NavItem { Label = "Services", To = "/relay/services", Icon = Icons.Apps },
+        new NavItem { Label = "Logs", To = "/relay/logs", Icon = Icons.File },
+      ],
+    }) {
+      Outlet(retain: 8);
+      slot search { ShellSearch("Search incidents, services, logs", onPress: Search); }
+      slot explorer {
+        SectionLabel("Saved views");
+        SubNavItem("SEV-1 and SEV-2", count: "4", onPress: OpenView);
+        SubNavItem("billing-api, this week", count: "6", onPress: OpenView);
+        SubNavItem("Waiting on a customer", count: "3", onPress: OpenView);
+      }
+      slot status {
+        Row(gap: 1, align: Align.Center) { Lamp(lit: true, live: true, tone: Tone.Success); Text("Live"); }
+        Text("eu-west-2 · us-east-1");
+        Text("3 on call");
+        Spacer();
+        Text("billing-api 4.12.0", fontFamily: Font.Mono);
+      }
+    }
+  }
+}
+
+[Route("/relay")] [Layout(RelayFrame)] [Title("Open incidents")] [Render(CSR)] [AllowAnonymous]
+component RelayIncidentsPage() {
+  string open = "";
+  bool log = true;
+  string said = "";
+  live var draft = Draft.FirstOrDefault(d => d.Key == "relay-incident");
+
+  action Open(IncidentRow i) { open = i.Id; }
+  action Close() { open = ""; }
+  action CloseLog() { log = false; }
+  action Assign(IncidentRow[] picked) { said = picked.Length.ToString() + " assigned to you."; }
+
+  render {
+    Dock(right: open != "", rightTitle: open == "" ? "Incident" : "Incident " + open, onCloseRight: Close, bottom: log, bottomTitle: "Event log", onCloseBottom: CloseLog) {
+      Stack(gap: 3, p: 4) {
+        Row(gap: 2, align: Align.Center, wrap: Wrapping.Wrap) {
+          // The top bar already names the page; the console's own line is what is true about it right now.
+          Row(gap: 3, grow: 1, align: Align.Center, wrap: Wrapping.Wrap) {
+            Badge("7 open", tone: Tone.Default);
+            Badge("2 critical", tone: Tone.Danger);
+            Text("longest open 1d · last page 10:23", fontSize: FontSize.Caption, color: Colors.TextMuted);
+          }
+          Switch("Event log", value: log);
+          Button("Declare incident", onPress: () => { }, tone: Tone.Primary, size: Size.Sm);
+        }
+        if (said != "") { Text(said, fontSize: FontSize.Caption, color: Colors.Success.Text, role: UiRole.Status); }
+        DataGrid(
+          label: "Incidents",
+          rows: Incidents().Where(i => i.State != IncidentState.Resolved).ToList(),
+          filterable: true,
+          selectable: true,
+          rowSelected: Open,
+          sortColumn: "Age",
+          columns: [
+            new GridColumn<IncidentRow> { Name = "Id", Label = "ID", Value = i => i.Id, Width = 96 },
+            new GridColumn<IncidentRow> { Name = "Severity", Label = "Sev", Value = i => i.Severity.Label, Width = 76 },
+            new GridColumn<IncidentRow> { Name = "Title", Label = "Title", Value = i => i.Title, Title = true, Fill = true, Width = 260 },
+            new GridColumn<IncidentRow> { Name = "Service", Label = "Service", Value = i => i.Service, Width = 120 },
+            new GridColumn<IncidentRow> { Name = "State", Label = "State", Value = i => i.State.Label, Width = 120 },
+            new GridColumn<IncidentRow> { Name = "Age", Label = "Age", Kind = GridColumnKind.Number, Value = i => Age(i.Minutes),
+                                          Number = i => i.Minutes, Align = "right", Width = 76 },
+            new GridColumn<IncidentRow> { Name = "Owner", Label = "Owner", Value = i => i.Owner, Width = 120 },
+          ]
+        ) {
+          slot Id { i => Text(i.Id, fontFamily: Font.Mono, color: Colors.TextSecondary); }
+          slot Severity { i => Badge(i.Severity.Label, tone: i.Severity); }
+          slot State { i => Row(gap: 1, align: Align.Center) { Lamp(lit: true, live: i.State == IncidentState.Investigating, tone: i.State); Text(i.State.Label); } }
+          slot selection { picked =>
+            Button("Assign to me", onPress: () => Assign(picked), size: Size.Sm);
+            Button("Acknowledge", onPress: () => { }, size: Size.Sm, tone: Tone.Ghost);
+            Button("Resolve", onPress: () => { }, size: Size.Sm, tone: Tone.Ghost);
+          }
+        }
+      }
+      slot right {
+        if (open != "" && draft != null) {
+          RelayInspector(Incidents().First(i => i.Id == open), draft);
+        }
+      }
+      slot bottom {
+        Stack(gap: 0, px: 3, py: 2, fontFamily: Font.Mono, fontSize: FontSize.Code) {
+          foreach (var l in EventLog()) {
+            Row(gap: 3, py: "2px", align: Align.Start) {
+              Text(l.At, color: Colors.TextMuted, shrink: 0);
+              Text(l.Level, w: "3.5rem", shrink: 0, color: l.Level == "ERROR" ? Colors.Danger.Text : (l.Level == "WARN" ? Colors.Warning.Text : Colors.TextMuted));
+              Text(l.Source, w: "6.5rem", shrink: 0, color: Colors.TextSecondary);
+              Text(l.Text, grow: 1, minW: "0");
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// One incident, docked: what it is, who has it, and its state — changed in place and kept with the inline Save.
+[Composable]
+component RelayInspector(IncidentRow incident, Draft draft) {
+  render {
+    Stack(gap: 4, p: 4) {
+      Row(gap: 2, align: Align.Center, wrap: Wrapping.Wrap) {
+        Badge(incident.Severity.Label, tone: incident.Severity);
+        Text(incident.Service, fontFamily: Font.Mono, fontSize: FontSize.Caption, color: Colors.TextMuted);
+        Spacer();
+        SaveActions(saved: "Saved");
+      }
+      Text(incident.Title, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
+      Box(display: Display.Grid, cols: "repeat(2, minmax(0, 1fr))", gap: 3) {
+        Field("Owner", value: draft.Owner);
+        Field("State", value: draft.Title);
+      }
+      TextAreaField("Working notes", value: draft.Note, rows: 4);
+      Stack(gap: 2) {
+        SectionLabel("Timeline");
+        RelayEvent("10:24", "Timeouts on invoice runs for accounts over 300 seats");
+        RelayEvent("10:23", "Paged Daniel Kim (primary, billing)");
+        RelayEvent("10:22", "billing-api 4.12.0 finished rolling out to eu-west-2");
+      }
+    }
+  }
+}
+
+[Composable]
+component RelayEvent(string at, string what) {
+  render {
+    Row(gap: 3, align: Align.Start) {
+      Text(at, fontFamily: Font.Mono, fontSize: FontSize.Caption, color: Colors.TextMuted, shrink: 0);
+      Text(what, fontSize: FontSize.Label);
+    }
+  }
+}
+
+[Route("/relay/mine")] [Layout(RelayFrame)] [Title("Assigned to me")] [Render(CSR)] [AllowAnonymous]
+component RelayMinePage() { render { Stack(p: 4) { EmptyState("Nothing assigned to you", body: "Incidents you own appear here."); } } }
+
+[Route("/relay/resolved")] [Layout(RelayFrame)] [Title("Resolved")] [Render(CSR)] [AllowAnonymous]
+component RelayResolvedPage() { render { Stack(p: 4) { EmptyState("Resolved incidents", body: "The last ninety days."); } } }
+
+[Route("/relay/deploys")] [Layout(RelayFrame)] [Title("Deploys")] [Render(CSR)] [AllowAnonymous]
+component RelayDeploysPage() { render { Stack(p: 4) { EmptyState("Deploys", body: "Every rollout, region by region."); } } }
+
+[Route("/relay/services")] [Layout(RelayFrame)] [Title("Services")] [Render(CSR)] [AllowAnonymous]
+component RelayServicesPage() { render { Stack(p: 4) { EmptyState("Services", body: "What runs, where, and who owns it."); } } }
+
+[Route("/relay/logs")] [Layout(RelayFrame)] [Title("Logs")] [Render(CSR)] [AllowAnonymous]
+component RelayLogsPage() { render { Stack(p: 4) { EmptyState("Logs", body: "Search every line from every service."); } } }

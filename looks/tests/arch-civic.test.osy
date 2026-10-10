@@ -1,0 +1,41 @@
+// Civic's archetype, the FLOW, photographed — `osy test --pixels --theme Looks.Civic --file arch-civic.test.osy`.
+
+[TestFixture]
+void CivicApplication() {
+  new Draft { Key = "civic-practice", Days = 14 };
+}
+
+[Test(CivicApplication)]
+void civic_a_question_page_and_its_save() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/civic/practice");
+  Assert.Visible("Tell us about your practice");
+  Ui.Shot("civic · question · wide · light");
+  // Continuing without the one required answer says what is wrong, at the top and at the field.
+  Ui.Click("Save and continue");
+  Assert.Visible("There is a problem");
+  Ui.Shot("civic · question · error · wide · light");
+  Ui.Fill("Practice name", "Harbourside Surgery");
+  Ui.Click("Dental practice");
+  Assert.Checked("Dental practice");
+  Ui.Click("Save and continue");
+  Assert.OnPage("/civic/hours");
+  Assert.Equal("Harbourside Surgery", Draft.Single(d => d.Key == "civic-practice").Title);
+  Ui.Theme("dark");
+  Ui.Visit("/civic/practice");
+  Ui.Shot("civic · question · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/civic/practice");
+  Ui.Shot("civic · question · phone · light");
+}
+
+[Test(CivicApplication)]
+void civic_check_your_answers() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/civic/check");
+  Assert.Visible("Check your answers before sending");
+  Ui.Shot("civic · check · wide · light");
+  Ui.Click("Change practice name");
+  Assert.OnPage("/civic/practice");
+}

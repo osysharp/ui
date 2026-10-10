@@ -1,0 +1,160 @@
+// SIGNAL'S ARCHETYPE — THE COMMAND CENTRE. A place people open to KNOW something, not to edit it, so the numbers are
+// the page and everything else steps back:
+//   · an ink RAIL of marks (`RailShell`) — the narrowest navigation there is, opening to labels on demand;
+//   · the time range and the scope ABOVE the numbers, as one strip, because they change what every card says;
+//   · a WORKSPACE of cards (`WidgetGrid`) — figures set tall, charts without frames — that a person arranges for
+//     themselves: Customise shows each card's tools, and the arrangement is kept or dropped with an inline
+//     Save / Discard (`SaveActions`), because it is a change to something stored;
+//   · an assistant to ask about the numbers on screen (`AssistantPanel`).
+
+using Osysharp.Ui;
+using Osysharp.Charts;
+
+[Layout]
+[AllowAnonymous]
+component SignalFrame() {
+  action Search() { }
+  render {
+    RailShell(new AppChrome {
+      Product = "Halyard",
+      Tagline = "Insights",
+      Home = "/signal",
+      User = new ShellUser { Name = "Priya Nair", Secondary = "Growth", Initials = "PN" },
+      Nav = [
+        new NavItem { Label = "Live", To = "/signal", Icon = Icons.Bolt, Exact = true },
+        new NavItem { Label = "Revenue", To = "/signal/revenue", Icon = Icons.Chart },
+        new NavItem { Label = "Cohorts", To = "/signal/cohorts", Icon = Icons.Users },
+        new NavItem { Label = "Product", To = "/signal/product", Icon = Icons.Apps },
+        new NavItem { Label = "Alerts", To = "/signal/alerts", Icon = Icons.Bell, Badge = "2" },
+      ],
+    }) {
+      Outlet(retain: 8);
+      slot search { ShellSearch("Search metrics and reports", onPress: Search); }
+    }
+  }
+}
+
+enum Range { [Label("24 hours")] Day, [Label("7 days")] Week, [Label("30 days")] Month, [Label("Quarter")] Quarter }
+
+[Route("/signal")] [Layout(SignalFrame)] [Title("Live")] [Render(CSR)] [AllowAnonymous]
+component SignalLivePage() {
+  Range range = Range.Day;
+  bool editing = false;
+  bool asking = false;
+  string question = "";
+  List<AssistantTurn> turns = [];
+  live var layout = Draft.FirstOrDefault(d => d.Key == "signal-layout");
+
+  action Pick(Range r) { range = r; }
+  action Hide(string key) { layout.Note = (layout.Note ?? "") + "|" + key; }
+  action Ask() { asking = !asking; }
+  action Close() { asking = false; }
+  action Send() {
+    var next = new List<AssistantTurn>();
+    foreach (var t in turns) { next.Add(t); }
+    next.Add(new AssistantTurn { From = AssistantVoice.Person, Text = question });
+    next.Add(new AssistantTurn { From = AssistantVoice.Assistant,
+      Text = "Errors peaked at 0.31% at 10:00, when billing-api 4.12.0 reached eu-west-2. They have fallen back to 0.12% since the connection pool was raised.",
+      Cites = "Error rate · Deploys · INC-4821" });
+    turns = next;
+    question = "";
+  }
+  action Suggest(string s) { question = s; Send(); }
+
+  bool Shown(string key) { return layout == null || !(layout.Note ?? "").Contains("|" + key); }
+
+  render {
+    Stack(gap: 5) {
+      Row(gap: 3, align: Align.Center, wrap: Wrapping.Wrap) {
+        Stack(gap: 0, grow: 1) {
+          Text("Live", fontSize: FontSize.Title, fontWeight: FontWeight.Headings, fontFamily: Font.Display);
+          Text("All regions · updated 12 seconds ago", fontSize: FontSize.Caption, color: Colors.TextMuted);
+        }
+        if (editing) { SaveActions(saved: "Layout saved"); }
+        Switch("Customise", value: editing);
+        Button("Ask about this", onPress: Ask, size: Size.Sm);
+      }
+      Tabs {
+        foreach (var r in Range.Members) { Tab(r.Label, selected: range == r, onPress: () => Pick(r)); }
+      }
+      WidgetGrid {
+        if (Shown("requests")) {
+          Widget("Requests a minute", subtitle: "all services", editing: editing, onRemove: () => Hide("requests")) {
+            SignalFigure("12,430", "+18% on yesterday", true);
+            Chart(labels: Hours(), height: 70, chrome: ChartChrome.Bare) { Area(label: "Requests", values: Requests()); }
+          }
+        }
+        if (Shown("errors")) {
+          Widget("Error rate", subtitle: "5xx, all services", editing: editing, onRemove: () => Hide("errors")) {
+            SignalFigure("0.12%", "down from 0.31% at 10:00", true);
+            Chart(labels: Hours(), height: 70, chrome: ChartChrome.Bare) { Line(label: "Errors", values: Errors()); }
+          }
+        }
+        if (Shown("signups")) {
+          Widget("Sign-ups", subtitle: "today", editing: editing, onRemove: () => Hide("signups")) {
+            SignalFigure("307", "+9% on last Thursday", true);
+            Chart(labels: Hours(), height: 70, chrome: ChartChrome.Bare) { Column(label: "Sign-ups", values: Signups()); }
+          }
+        }
+        if (Shown("latency")) {
+          Widget("Median latency", subtitle: "p50, eu-west-2", editing: editing, onRemove: () => Hide("latency")) {
+            SignalFigure("89 ms", "+12 ms since the deploy", false);
+          }
+        }
+        if (Shown("retention")) {
+          Widget("Week-four retention", subtitle: "by signup week", span: WidgetSpan.Two, editing: editing, onRemove: () => Hide("retention")) {
+            SignalFigure("77.1%", "+5.4 points since W34", true);
+            Chart(labels: Weeks(), height: 120, chrome: ChartChrome.Bare) { Area(label: "Retained", values: Retention()); }
+          }
+        }
+        if (Shown("regions")) {
+          Widget("Regions", subtitle: "right now", span: WidgetSpan.Two, editing: editing, onRemove: () => Hide("regions")) {
+            SignalRegion("eu-west-2", "Degraded", "28 apps · 0.21% errors", Tone.Warning);
+            SignalRegion("us-east-1", "Healthy", "12 apps · 0.04% errors", Tone.Success);
+            SignalRegion("ap-southeast-2", "Healthy", "8 apps · 0.02% errors", Tone.Success);
+          }
+        }
+      }
+    }
+    if (asking) {
+      AssistantPanel("Ask about this", turns.ToArray(), value: question, onSend: Send, onClose: Close,
+                     suggestions: ["Why did errors rise this morning?", "Which region is slowest?", "Compare sign-ups with last week"],
+                     onSuggest: Suggest);
+    }
+  }
+}
+
+/// A figure set tall, with what it means beside it.
+[Composable]
+component SignalFigure(string value, string change, bool good) {
+  render {
+    Stack(gap: 0) {
+      Text(value, fontFamily: Font.Figure, fontSize: FontSize.Title, fontWeight: FontWeight.Semibold, lineHeight: 1.1);
+      Text(change, fontSize: FontSize.Caption, color: good ? Colors.Success.Text : Colors.Warning.Text);
+    }
+  }
+}
+
+[Composable]
+component SignalRegion(string name, string state, string detail, Tone tone) {
+  render {
+    Row(gap: 3, align: Align.Center, py: 2, borderBW: 1, border: Colors.Border) {
+      Lamp(lit: true, live: tone == Tone.Warning, tone: tone);
+      Text(name, fontFamily: Font.Mono, grow: 1);
+      Text(detail, fontSize: FontSize.Caption, color: Colors.TextMuted);
+      Badge(state, tone: tone);
+    }
+  }
+}
+
+[Route("/signal/revenue")] [Layout(SignalFrame)] [Title("Revenue")] [Render(CSR)] [AllowAnonymous]
+component SignalRevenuePage() { render { EmptyState("Revenue", body: "Recurring revenue, by plan and month."); } }
+
+[Route("/signal/cohorts")] [Layout(SignalFrame)] [Title("Cohorts")] [Render(CSR)] [AllowAnonymous]
+component SignalCohortsPage() { render { EmptyState("Cohorts", body: "Who signs up, who stays, who leaves."); } }
+
+[Route("/signal/product")] [Layout(SignalFrame)] [Title("Product")] [Render(CSR)] [AllowAnonymous]
+component SignalProductPage() { render { EmptyState("Product", body: "What people use, and how often."); } }
+
+[Route("/signal/alerts")] [Layout(SignalFrame)] [Title("Alerts")] [Render(CSR)] [AllowAnonymous]
+component SignalAlertsPage() { render { EmptyState("Alerts", body: "The thresholds that page someone."); } }

@@ -1,0 +1,56 @@
+// Ledger's archetype, the DOCUMENT DESK, photographed — run it in Ledger (`osy test --pixels --theme Looks.Ledger
+// --file arch-ledger.test.osy`), or in any other look to see the arrangement wear it.
+
+[TestFixture]
+void LedgerBooks() {
+  new Draft { Key = "ledger-terms", Days = 30, Flag = true, Note = "Please quote the invoice number with every payment." };
+}
+
+[Test(LedgerBooks)]
+void ledger_accounts_read_calmly_and_select_into_a_toolbar() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/ledger");
+  Assert.Visible("Brightwater Dental Group");
+  Assert.Expanded("Filter", false);
+  Ui.Shot("ledger · accounts · wide · light");
+  Ui.Click("Select Kestrel Freight");
+  Ui.Click("Select Northgate Property Services");
+  Assert.Visible("2 selected");
+  Ui.Shot("ledger · accounts · selected · wide · light");
+  Ui.Click("Clear selection");
+  Ui.Click("Filter");
+  Ui.Fill("Filter Annual value", ">40000");
+  Ui.Click("Filter · 1");
+  Assert.Visible("Annual value over 40000");
+  Ui.Shot("ledger · accounts · filtered · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/ledger");
+  Ui.Shot("ledger · accounts · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/ledger");
+  Ui.Shot("ledger · accounts · phone · light");
+}
+
+[Test(LedgerBooks)]
+void ledger_record_is_tabs_with_a_document_inside_and_a_save_bar() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/ledger/kestrel");
+  Assert.Visible("Total due", within: "Invoice INV-20418");
+  Ui.Shot("ledger · record · wide · light");
+  Ui.Click("INV-20307", within: "Account invoices");
+  Assert.Visible("INV-20307", within: "Invoice INV-20307");
+  Ui.Fill("Days to pay", "45");
+  Assert.Visible("Unsaved changes");
+  Ui.Shot("ledger · record · unsaved · wide · light");
+  Ui.Click("Save");
+  Assert.Visible("Terms saved.");
+  Ui.Theme("dark");
+  Ui.Visit("/ledger/kestrel");
+  Ui.Shot("ledger · record · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/ledger/kestrel");
+  Ui.Shot("ledger · record · phone · light");
+  Assert.Equal(45, Draft.Single(d => d.Key == "ledger-terms").Days);
+}

@@ -1,0 +1,48 @@
+// Studio's archetype, the RECORD DESK, photographed — `osy test --pixels --theme Looks.Studio --file arch-studio.test.osy`.
+
+[TestFixture]
+void StudioBook() {
+  new Draft { Key = "studio-person", Note = "Prefers a call to email. Legal has two questions on clause 7 of the renewal." };
+}
+
+[Test(StudioBook)]
+void studio_list_with_the_record_beside_it() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/studio");
+  Assert.Visible("Sofia Marin");
+  Ui.Shot("studio · people · wide · light");
+  Ui.Click("Sofia Marin");
+  Assert.Visible("Head of Operations · Brightwater Dental Group");
+  Ui.Fill("Notes", "Call on Thursday about clause 7.");
+  Assert.Visible("Saving in");
+  Ui.Shot("studio · people · record · saving · wide · light");
+  Ui.Tick();
+  Ui.Tick();
+  Assert.Visible("All changes saved");
+  Assert.Equal("Call on Thursday about clause 7.", Draft.Single(d => d.Key == "studio-person").Note);
+  Ui.Click("Activity");
+  Ui.Shot("studio · people · record · activity · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/studio");
+  Ui.Click("Sofia Marin");
+  Ui.Shot("studio · people · record · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/studio");
+  Ui.Shot("studio · people · phone · light");
+}
+
+[Test(StudioBook)]
+void studio_the_assistant_over_the_page() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/studio");
+  Ui.Click("Ask");
+  Assert.Visible("Who should I call this week?");
+  Ui.Shot("studio · assistant · empty · wide · light");
+  Ui.Fill("Ask", "Summarise Sofia Marin's renewal");
+  Ui.Click("Ask it");
+  Assert.Visible("clause 7", within: "Assistant");
+  Ui.Shot("studio · assistant · answered · wide · light");
+  Ui.Viewport(390, 844);
+  Ui.Shot("studio · assistant · phone · light");
+}

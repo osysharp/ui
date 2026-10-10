@@ -1,0 +1,206 @@
+// LEDGER'S ARCHETYPE — THE DOCUMENT DESK. Finance reads records as documents and keeps nothing until a person says
+// so, so the app is built that way:
+//   · navigation along the TOP (`TabbedShell`) — a handful of peer areas, and the whole width left for the page;
+//   · a record is TABS, and a tab can go deeper — the Invoices tab lists the account's invoices down its side
+//     (`SubNav`) and shows the chosen one as the paper it is (`Paper`);
+//   · edits are explicit: the terms beside the invoice change in place, and a bar rises at the foot to keep or drop
+//     them (`SaveBar`: Undo · Discard · Save).
+
+using Osysharp.Ui;
+
+[Layout]
+[AllowAnonymous]
+component LedgerFrame() {
+  action Search() { }
+  render {
+    TabbedShell(new AppChrome {
+      Product = "Halyard",
+      Tagline = "Billing",
+      Home = "/ledger",
+      User = new ShellUser { Name = "Maya Okafor", Secondary = "Account manager", Initials = "MO" },
+      Nav = [
+        new NavItem { Label = "Accounts", To = "/ledger", Icon = Icons.Building },
+        new NavItem { Label = "Invoices", To = "/ledger/invoices", Icon = Icons.File },
+        new NavItem { Label = "Payments", To = "/ledger/payments", Icon = Icons.Download },
+        new NavItem { Label = "Reports", To = "/ledger/reports", Icon = Icons.Chart },
+      ],
+    }) {
+      Outlet(retain: 8);
+      slot search { ShellSearch("Search accounts and invoices", onPress: Search); }
+    }
+  }
+}
+
+[Route("/ledger")] [Layout(LedgerFrame)] [Title("Accounts")] [Render(CSR)] [AllowAnonymous]
+component LedgerAccountsPage() {
+  string said = "";
+  action Open(AccountRow a) { Navigation.Go("/ledger/kestrel"); }
+  action Remind(AccountRow[] picked) { said = "Reminders queued for " + picked.Length.ToString() + " accounts."; }
+  action Statements(AccountRow[] picked) { }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Accounts", subtitle: "10 customers · £493,860 a year · £13,940 outstanding") {
+        Button("Import", onPress: () => { });
+        Button("New account", onPress: () => { }, tone: Tone.Primary);
+      }
+      if (said != "") { Alert(said, tone: Tone.Success); }
+      Card {
+        DataGrid(
+          label: "Accounts",
+          rows: Accounts(),
+          filterable: true,
+          selectable: true,
+          rowSelected: Open,
+          columns: [
+            new GridColumn<AccountRow> { Name = "Name", Label = "Account", Value = a => a.Name, Title = true, Fill = true, Width = 240 },
+            new GridColumn<AccountRow> { Name = "Owner", Label = "Owner", Value = a => a.Owner, Width = 140 },
+            new GridColumn<AccountRow> { Name = "Plan", Label = "Plan", Value = a => a.Plan.Label, Width = 110 },
+            new GridColumn<AccountRow> { Name = "Annual", Label = "Annual value", Kind = GridColumnKind.Number,
+                                         Value = a => a.Annual.ToString("C2"), Number = a => a.Annual, Align = "right", Width = 140 },
+            new GridColumn<AccountRow> { Name = "Balance", Label = "Balance", Kind = GridColumnKind.Number,
+                                         Value = a => a.Balance == 0m ? "—" : a.Balance.ToString("C2"), Number = a => a.Balance, Align = "right", Width = 120 },
+            new GridColumn<AccountRow> { Name = "Status", Label = "Status", Value = a => a.Status.Label, Width = 120 },
+          ]
+        ) {
+          slot Status { a => Badge(a.Status.Label, tone: a.Status); }
+          slot selection { picked =>
+            Button("Send reminders", onPress: () => Remind(picked), size: Size.Sm);
+            Button("Statements", onPress: () => Statements(picked), size: Size.Sm, tone: Tone.Ghost);
+          }
+        }
+      }
+    }
+  }
+}
+
+enum LedgerTab { Overview, Invoices, Contacts, History }
+
+[Route("/ledger/kestrel")] [Layout(LedgerFrame)] [Title("Kestrel Freight")] [Render(CSR)] [AllowAnonymous]
+component LedgerAccountPage() {
+  LedgerTab tab = LedgerTab.Invoices;
+  string open = "INV-20418";
+  live var terms = Draft.FirstOrDefault(d => d.Key == "ledger-terms");
+  action Show(LedgerTab t) { tab = t; }
+  action OpenInvoice(string number) { open = number; }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Kestrel Freight", subtitle: "Enterprise · Felixstowe · customer since March 2021") {
+        Button("Statement", onPress: () => { });
+        Button("New invoice", onPress: () => { }, tone: Tone.Primary);
+      }
+      Tabs {
+        foreach (var t in LedgerTab.Members) { Tab(t.Label, selected: tab == t, onPress: () => Show(t)); }
+      }
+      Box(display: Display.Grid, gap: 5,
+          cols: Layout.AtLeast(Laptop) ? "auto minmax(0, 1fr) 18rem" : (Layout.AtLeast(Tablet) ? "auto minmax(0, 1fr)" : "minmax(0, 1fr)")) {
+        SubNav("Account invoices") {
+          foreach (var i in Invoices()) {
+            SubNavItem(i.Number, selected: open == i.Number, onPress: () => OpenInvoice(i.Number),
+                       hint: i.Issued + " · " + i.Amount.ToString("C0"), count: i.Status == AccountStatus.Trial ? "Due" : "Paid");
+          }
+        }
+        LedgerInvoice(Invoices().First(i => i.Number == open));
+        if (terms != null) {
+          Stack(gap: 4) {
+            Card("Terms", subtitle: "What every invoice to this account says") {
+              NumberField("Days to pay", value: terms.Days, min: 7, max: 90);
+              Checkbox("Send payment reminders", value: terms.Flag);
+              TextAreaField("Note on every invoice", value: terms.Note, rows: 3);
+            }
+            Card("Billing contact") {
+              Text("Hannah Lowe", fontWeight: FontWeight.Medium);
+              Text("accounts@kestrel-freight.example", color: Colors.TextMuted, fontSize: FontSize.Caption);
+            }
+          }
+        }
+      }
+      SaveBar(saved: "Terms saved.");
+    }
+  }
+}
+
+/// The invoice as the paper it is.
+[Composable]
+component LedgerInvoice(InvoiceRow invoice) {
+  render {
+    Paper("Invoice " + invoice.Number) {
+      Row(gap: 4, align: Align.Start, wrap: Wrapping.Wrap) {
+        Stack(gap: 1, grow: 1) {
+          Text("Halyard Ltd", fontWeight: FontWeight.Semibold, fontSize: FontSize.Subhead);
+          Text("14 Wharf Street, London SE1 2BX", fontSize: FontSize.Caption, color: Colors.TextMuted);
+          Text("VAT GB 284 1192 07", fontSize: FontSize.Caption, color: Colors.TextMuted);
+        }
+        Stack(gap: 1) {
+          Text("Invoice", fontFamily: Font.Display, fontSize: FontSize.Title, fontWeight: FontWeight.Headings);
+          Text(invoice.Number, fontFamily: Font.Figure, color: Colors.TextSecondary);
+        }
+      }
+      Divider();
+      Box(display: Display.Grid, cols: "repeat(auto-fit, minmax(10rem, 1fr))", gap: 4) {
+        LedgerFact("Billed to", "Kestrel Freight Ltd\nDock Road, Felixstowe IP11 3SY");
+        LedgerFact("Issued", invoice.Issued);
+        LedgerFact("Due", invoice.Due);
+        LedgerFact("Account", "0042 · Enterprise, annual");
+      }
+      Stack(gap: 0) {
+        LedgerLine("Description", "Qty", "Line total", true);
+        LedgerLine("Enterprise plan — October 2026", "310", "£13,950.00", false);
+        LedgerLine("Customs module", "1", "£1,200.00", false);
+        LedgerLine("Priority support", "1", "£350.00", false);
+      }
+      Stack(gap: 1, align: Align.End) {
+        LedgerTotal("Subtotal", "£15,500.00", false);
+        LedgerTotal("VAT at 20%", "£3,100.00", false);
+        LedgerTotal("Total due", "£18,600.00", true);
+      }
+      Text("Payment within 30 days to Halyard Ltd, sort code 20-45-77, account 41930276. Please quote " + invoice.Number + ".",
+           fontSize: FontSize.Caption, color: Colors.TextMuted);
+    }
+  }
+}
+
+[Composable]
+component LedgerFact(string label, string value) {
+  render {
+    Stack(gap: 1) {
+      Text(label, fontSize: FontSize.Caption, color: Colors.TextMuted, textTransform: TextTransform.Uppercase, letterSpacing: "0.06em");
+      Text(value, whiteSpace: WhiteSpace.PreLine);
+    }
+  }
+}
+
+[Composable]
+component LedgerLine(string what, string qty, string amount, bool head) {
+  render {
+    Row(gap: 3, py: 2, borderBW: 1, border: Colors.Border, align: Align.Center) {
+      Text(what, grow: 1, fontSize: head ? FontSize.Caption : FontSize.Body, color: head ? Colors.TextMuted : Colors.OnSurface);
+      Text(qty, w: "4rem", textAlign: TextAlign.Right, fontFamily: Font.Figure, fontSize: head ? FontSize.Caption : FontSize.Body,
+           color: head ? Colors.TextMuted : Colors.OnSurface);
+      Text(amount, w: "8rem", textAlign: TextAlign.Right, fontFamily: Font.Figure, fontSize: head ? FontSize.Caption : FontSize.Body,
+           color: head ? Colors.TextMuted : Colors.OnSurface);
+    }
+  }
+}
+
+[Composable]
+component LedgerTotal(string label, string amount, bool strong) {
+  render {
+    Row(gap: 6, align: Align.Center) {
+      Text(label, color: strong ? Colors.OnSurface : Colors.TextMuted, fontWeight: strong ? FontWeight.Semibold : FontWeight.Regular);
+      Text(amount, w: "8rem", textAlign: TextAlign.Right, fontFamily: Font.Figure,
+           fontWeight: strong ? FontWeight.Semibold : FontWeight.Regular, fontSize: strong ? FontSize.Subhead : FontSize.Body);
+    }
+  }
+}
+
+/// The areas this specimen does not draw — present so the navigation is the real one.
+[Route("/ledger/invoices")] [Layout(LedgerFrame)] [Title("Invoices")] [Render(CSR)] [AllowAnonymous]
+component LedgerInvoicesPage() { render { EmptyState("Invoices", body: "Every invoice, across every account."); } }
+
+[Route("/ledger/payments")] [Layout(LedgerFrame)] [Title("Payments")] [Render(CSR)] [AllowAnonymous]
+component LedgerPaymentsPage() { render { EmptyState("Payments", body: "What came in, and what it was for."); } }
+
+[Route("/ledger/reports")] [Layout(LedgerFrame)] [Title("Reports")] [Render(CSR)] [AllowAnonymous]
+component LedgerReportsPage() { render { EmptyState("Reports", body: "Ageing, revenue and tax, by month."); } }

@@ -1,0 +1,39 @@
+// Signal's archetype, the COMMAND CENTRE, photographed — `osy test --pixels --theme Looks.Signal --file arch-signal.test.osy`.
+
+[TestFixture]
+void SignalBoard() {
+  new Draft { Key = "signal-layout", Note = "" };
+}
+
+[Test(SignalBoard)]
+void signal_a_workspace_of_cards() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/signal");
+  Assert.Visible("12,430", within: "Requests a minute");
+  Ui.Shot("signal · live · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/signal");
+  Ui.Shot("signal · live · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/signal");
+  Ui.Shot("signal · live · phone · light");
+}
+
+[Test(SignalBoard)]
+void signal_customising_is_kept_or_dropped() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/signal");
+  Ui.Click("Customise");
+  Ui.Click("Remove Median latency");
+  Assert.Hidden("89 ms");
+  Assert.Visible("Edited");
+  Ui.Shot("signal · live · customising · wide · light");
+  Ui.Click("Save");
+  Assert.Contains("|latency", Draft.Single(d => d.Key == "signal-layout").Note);
+  Ui.Click("Ask about this");
+  Ui.Fill("Ask", "Why did errors rise this morning?");
+  Ui.Click("Ask it");
+  Assert.Visible("connection pool", within: "Assistant");
+  Ui.Shot("signal · assistant · wide · light");
+}

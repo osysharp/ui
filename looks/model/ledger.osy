@@ -13,6 +13,8 @@ namespace Osysharp.Ui.Looks;
 
 /// Ledger — white paper, hairline rules, figures in a mono that lines up, a Prussian-navy accent. For finance,
 /// billing and accounting, and anything read in columns of numbers.
+/// Arranged as: the document desk — areas along the top, a record as tabs that go deeper (a list down a tab's side, the
+/// chosen invoice as paper), and nothing kept until a bar at the foot says Save — `TabbedShell`, `SubNav`, `Paper`, `SaveBar`.
 public abstract theme Ledger {
   Colors {
     Bg            = Modes.Of(light: "#FFFFFF", dark: "#0D1015");

@@ -13,6 +13,8 @@ namespace Osysharp.Ui.Looks;
 
 /// Signal — the instrument panel: an ink rail beside a light page, figures set tall in Sofia Sans Condensed, cards
 /// without an outline, an ultraviolet accent. For analytics, reporting and dashboards.
+/// Arranged as: the command centre — an ink rail of marks, the time range above the numbers, a workspace of cards a
+/// person arranges for themselves, and an assistant to ask about them — `RailShell`, `WidgetGrid`, `Widget`, `AssistantPanel`.
 public abstract theme Signal {
   Colors {
     Bg            = Modes.Of(light: "#F2F3F7", dark: "#0C0D12");

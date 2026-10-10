@@ -1,0 +1,192 @@
+// STUDIO'S ARCHETYPE — THE RECORD DESK. A relationship tool used in passing, between calls, so it never makes anyone
+// leave the list they are working through:
+//   · a labelled SIDEBAR (`SidebarShell`) on soft grey — the app's few areas, always named;
+//   · a list with the record beside it (`Dock`'s right drawer): open a person and the list stays, narrower, on the
+//     left; the record is TABS (Overview · Activity · Deals · Files);
+//   · nothing to save — edits keep themselves a moment later, with an Undo while they wait (`AutoSave`);
+//   · an ASSISTANT a press away (`AssistantPanel`), floating over the page and asked about what is on it.
+
+using Osysharp.Ui;
+
+[Layout]
+[AllowAnonymous]
+component StudioFrame() {
+  bool asking = false;
+  string draft = "";
+  bool working = false;
+  List<AssistantTurn> turns = [];
+
+  action Ask() { asking = !asking; }
+  action Close() { asking = false; }
+  action Send() {
+    if (draft.Trim() == "") { return; }
+    var next = new List<AssistantTurn>();
+    foreach (var t in turns) { next.Add(t); }
+    next.Add(new AssistantTurn { From = AssistantVoice.Person, Text = draft });
+    next.Add(new AssistantTurn { From = AssistantVoice.Assistant,
+      Text = "Sofia has opened the renewal proposal three times since Monday and asked legal about clause 7. The deal is worth £145,800 over three years; a short call this week to walk through clause 7 is the likeliest next step.",
+      Cites = "Renewal, three years · 4 emails · 1 call note" });
+    turns = next;
+    draft = "";
+  }
+  action Suggest(string s) { draft = s; Send(); }
+  action Search() { }
+
+  render {
+    SidebarShell(new AppChrome {
+      Product = "Halyard",
+      Tagline = "Relationships",
+      Home = "/studio",
+      User = new ShellUser { Name = "Maya Okafor", Secondary = "Account manager", Initials = "MO", Presence = ShellPresence.Online },
+      Nav = [
+        new NavItem { Label = "People", To = "/studio", Icon = Icons.Users, Exact = true },
+        new NavItem { Label = "Companies", To = "/studio/companies", Icon = Icons.Building },
+        new NavItem { Label = "Deals", To = "/studio/deals", Icon = Icons.Star, Badge = "12" },
+        new NavItem { Label = "Inbox", To = "/studio/inbox", Icon = Icons.Inbox, Badge = "3", BadgeTone = Tone.Primary },
+        new NavItem { Kind = NavKind.Section, Label = "Lists", Children = [
+          new NavItem { Label = "Renewals this quarter", To = "/studio/renewals", Icon = Icons.Calendar },
+          new NavItem { Label = "Champions", To = "/studio/champions", Icon = Icons.Heart },
+        ] },
+      ],
+    }) {
+      Outlet(retain: 8);
+      slot search { ShellSearch("Search people, companies and deals", onPress: Search); }
+      slot actions { Button("Ask", onPress: Ask, tone: Tone.Ghost, size: Size.Sm); }
+    }
+    if (asking) {
+      AssistantPanel("Assistant", turns.ToArray(), value: draft, onSend: Send, onClose: Close, working: working,
+                     suggestions: ["Who should I call this week?", "Summarise Sofia Marin's renewal", "Which deals are slipping?"],
+                     onSuggest: Suggest);
+    }
+  }
+}
+
+enum StudioTab { Overview, Activity, Deals, Files }
+
+[Route("/studio")] [Layout(StudioFrame)] [Title("People")] [Render(CSR)] [AllowAnonymous]
+component StudioPeoplePage() {
+  string open = "";
+  StudioTab tab = StudioTab.Overview;
+  live var note = Draft.FirstOrDefault(d => d.Key == "studio-person");
+
+  action Open(PersonRow p) { open = p.Name; tab = StudioTab.Overview; }
+  action Close() { open = ""; }
+  action Show(StudioTab t) { tab = t; }
+
+  render {
+    Dock(right: open != "", rightTitle: "Contact", onCloseRight: Close) {
+      Stack(gap: 4, p: 1) {
+        PageHead("People", subtitle: "248 people at 61 companies") {
+          Button("Import", onPress: () => { }, tone: Tone.Ghost);
+          Button("New contact", onPress: () => { }, tone: Tone.Primary);
+        }
+        DataGrid(
+          label: "People",
+          rows: People(),
+          filterable: true,
+          selectable: true,
+          rowSelected: Open,
+          columns: [
+            new GridColumn<PersonRow> { Name = "Name", Label = "Name", Value = p => p.Name, Title = true, Fill = true, Width = 220 },
+            new GridColumn<PersonRow> { Name = "Company", Label = "Company", Value = p => p.Company, Width = 220 },
+            new GridColumn<PersonRow> { Name = "Relationship", Label = "Relationship", Value = p => p.Relationship.Label, Width = 130 },
+            new GridColumn<PersonRow> { Name = "LastTouch", Label = "Last touch", Value = p => p.LastTouch, Width = 120 },
+            new GridColumn<PersonRow> { Name = "Pipeline", Label = "Open deals", Kind = GridColumnKind.Number,
+                                        Value = p => p.Pipeline.ToString("C0"), Number = p => p.Pipeline, Align = "right", Width = 120 },
+          ]
+        ) {
+          slot Name { p => Row(gap: 2, align: Align.Center) { Avatar(p.Initials, size: Size.Sm); Text(p.Name, fontWeight: FontWeight.Medium); } }
+          slot Relationship { p => Badge(p.Relationship.Label, tone: p.Relationship); }
+          slot selection { picked =>
+            Button("Add to list", onPress: () => { }, size: Size.Sm);
+            Button("Email", onPress: () => { }, size: Size.Sm, tone: Tone.Ghost);
+          }
+        }
+      }
+      slot right {
+        if (open != "" && note != null) {
+          StudioRecord(People().First(p => p.Name == open), note, tab, Show);
+        }
+      }
+    }
+  }
+}
+
+/// One person, beside the list: who they are, the tabs of their record, and a note that keeps itself.
+[Composable]
+component StudioRecord(PersonRow person, Draft note, StudioTab tab, Action<StudioTab> onTab) {
+  render {
+    Stack(gap: 4, p: 5) {
+      Row(gap: 3, align: Align.Center) {
+        Avatar(person.Initials, size: Size.Lg);
+        Stack(gap: 0, grow: 1, minW: "0") {
+          Text(person.Name, fontSize: FontSize.Heading, fontWeight: FontWeight.Headings);
+          Text(person.Role + " · " + person.Company, color: Colors.TextMuted);
+        }
+      }
+      Row(gap: 2, wrap: Wrapping.Wrap) {
+        Badge(person.Relationship.Label, tone: person.Relationship);
+        Badge(person.City, tone: Tone.Ghost);
+      }
+      Tabs {
+        foreach (var t in StudioTab.Members) { Tab(t.Label, selected: tab == t, onPress: () => onTab(t)); }
+      }
+      if (tab == StudioTab.Overview) {
+        Stack(gap: 3) {
+          Box(display: Display.Grid, cols: "repeat(2, minmax(0, 1fr))", gap: 3) {
+            StudioFact("Open deals", person.Pipeline.ToString("C0"));
+            StudioFact("Last touch", person.LastTouch);
+            StudioFact("Owner", "Maya Okafor");
+            StudioFact("Since", "March 2021");
+          }
+          Row(gap: 2, align: Align.Center) {
+            SectionLabel("Notes");
+            Spacer();
+            AutoSave(after: 2);
+          }
+          TextAreaField("Notes", value: note.Note, rows: 5);
+        }
+      }
+      if (tab == StudioTab.Activity) {
+        Stack(gap: 3) {
+          foreach (var a in AccountActivity()) {
+            Row(gap: 3, align: Align.Start) {
+              Avatar(a.Initials, size: Size.Sm);
+              Stack(gap: 0) {
+                Text($"{a.Who} {a.What}");
+                Text(a.When, fontSize: FontSize.Caption, color: Colors.TextMuted);
+              }
+            }
+          }
+        }
+      }
+      if (tab == StudioTab.Deals) { Text("Renewal, three years — £145,800, proposal sent.", color: Colors.TextSecondary); }
+      if (tab == StudioTab.Files) { EmptyState("No files yet", body: "Drop a proposal or a contract here."); }
+    }
+  }
+}
+
+[Composable]
+component StudioFact(string label, string value) {
+  render {
+    Stack(gap: 0, p: 3, bg: Colors.Sunken, rounded: Radius.Md) {
+      Text(label, fontSize: FontSize.Caption, color: Colors.TextMuted);
+      Text(value, fontWeight: FontWeight.Semibold);
+    }
+  }
+}
+
+[Route("/studio/companies")] [Layout(StudioFrame)] [Title("Companies")] [Render(CSR)] [AllowAnonymous]
+component StudioCompaniesPage() { render { EmptyState("Companies", body: "Every company you work with."); } }
+
+[Route("/studio/deals")] [Layout(StudioFrame)] [Title("Deals")] [Render(CSR)] [AllowAnonymous]
+component StudioDealsPage() { render { EmptyState("Deals", body: "Every open deal, by stage."); } }
+
+[Route("/studio/inbox")] [Layout(StudioFrame)] [Title("Inbox")] [Render(CSR)] [AllowAnonymous]
+component StudioInboxPage() { render { EmptyState("Inbox", body: "Mail from the people you work with."); } }
+
+[Route("/studio/renewals")] [Layout(StudioFrame)] [Title("Renewals this quarter")] [Render(CSR)] [AllowAnonymous]
+component StudioRenewalsPage() { render { EmptyState("Renewals this quarter", body: "Contracts ending before December."); } }
+
+[Route("/studio/champions")] [Layout(StudioFrame)] [Title("Champions")] [Render(CSR)] [AllowAnonymous]
+component StudioChampionsPage() { render { EmptyState("Champions", body: "The people who speak for you."); } }

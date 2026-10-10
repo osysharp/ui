@@ -38,6 +38,24 @@ face. Everything you do not override stays as the look designed it, contrast-che
 
 ![The five looks on a phone](docs/phones.jpg)
 
+## Each look comes with an arrangement
+
+A look decides how the app reads; an ARRANGEMENT decides how it is built — where navigation lives, how a record opens,
+how a change is kept, where a person acts on a selection, where an assistant appears. Each look pairs with one by
+default (`osy kit looks` prints it), built only from the UI kit's own components, so any app can take any of them:
+
+| look | arrangement | built from |
+|---|---|---|
+| **Ledger** | the document desk — areas along the top, a record as tabs that go deeper, the invoice as paper, a save bar | `TabbedShell` · `SubNav` · `Paper` · `SaveBar` |
+| **Relay** | the workbench — an activity bar and an explorer, the opened row docked right, a live log below, a status line | `WorkbenchShell` · `Dock` · `SaveActions` · `DataGrid` |
+| **Civic** | the flow — one plain question at a time, "Save and continue", a check of every answer | `FocusedShell` · `RadioGroup` · `ShellAside` |
+| **Studio** | the record desk — the record beside the list as tabs, kept by itself, an assistant a press away | `SidebarShell` · `Dock` · `AutoSave` · `AssistantPanel` |
+| **Signal** | the command centre — a workspace of cards a person arranges, an assistant to ask about the numbers | `RailShell` · `WidgetGrid` · `AssistantPanel` |
+
+![The five looks, each in the arrangement it pairs with](docs/arrangements.jpg)
+
+`osy docs ui-arrangements` has a compiled example of each.
+
 ## Install
 
 ```osy

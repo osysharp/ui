@@ -6,8 +6,8 @@
     {
       "name": "Osysharp.Charts",
       "kind": "package",
-      "version": "1.1.2",
-      "hash": "sha256:ceaec472d30d647b2d0fa091a3f009d4d7537bc9099e5b0e73c27eacdc574d18",
+      "version": "1.2.0",
+      "hash": "sha256:44fbf3d02d4829d4bd99d6429818bba72ab9ce3d010e5df048c107bb226d1858",
       "minPlatform": "0.9.0",
       "shadow": "app-forkable",
       "source": "workspace:kits/chart",
@@ -16,8 +16,8 @@
     {
       "name": "Osysharp.Ui",
       "kind": "package",
-      "version": "2.19.0",
-      "hash": "sha256:e6bd3827545a764c5de31da34609c317c76778531a4de4864b670ca3530b5ca4",
+      "version": "2.20.0",
+      "hash": "sha256:99ac01620eff0ad8c46fc57e2d4c43eb320145b90af1c8556cab4cf6288dc98e",
       "minPlatform": "0.9.0",
       "shadow": "app-forkable",
       "source": "workspace:Platform.Core/Dsl/OsySharp/Baseline/Capabilities/Ui"
@@ -25,8 +25,8 @@
     {
       "name": "Osysharp.Ui.Looks",
       "kind": "package",
-      "version": "0.1.0",
-      "hash": "sha256:dac70594471fb49bb8c6d647b946bc60757d71467eb8a28d65d02dd38baea454",
+      "version": "0.2.0",
+      "hash": "sha256:4eee08ea52c992398d29abb9c66cfcf4d53a8cd6714fdba93c9d5c20ea3e077b",
       "minPlatform": "0.9.0",
       "shadow": "app-forkable",
       "source": "workspace:kits/ui-looks",
@@ -37,7 +37,7 @@
     "searched": [
       "workspace",
       "platform",
-      "github"
+      "github (the published index, built 2026-10-10 (GitHub\u0027s search answered 403 Forbidden))"
     ]
   }
 }

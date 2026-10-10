@@ -1,0 +1,153 @@
+// CIVIC'S ARCHETYPE — THE FLOW. A service anyone may have to use, once, without training — so the app is a sequence of
+// plain questions rather than a map to find your way around:
+//   · NO navigation to speak of (`FocusedShell`): the steps down the side say where you are and how far is left, and
+//     the only way out is a clearly marked Exit that asks before it drops anything;
+//   · ONE question group per page, in large type, with its answer's rules said before it is typed;
+//   · saving is a sentence a person understands — "Save and continue", or "Save and come back later" — and each
+//     keeps the step for real (the page's unit of work), so closing the tab loses nothing that was saved;
+//   · the last step is "Check your answers", each with a Change link back to the step that asked it.
+
+using Osysharp.Ui;
+
+[Layout]
+[AllowAnonymous]
+component CivicFrame() {
+  render {
+    FocusedShell(new AppChrome {
+      Product = "Register a practice",
+      Tagline = "Health services register",
+      Home = "/civic",
+      Nav = [
+        new NavItem { Label = "Your organisation", To = "/civic", Exact = true },
+        new NavItem { Label = "Your practice", To = "/civic/practice" },
+        new NavItem { Label = "Opening hours", To = "/civic/hours" },
+        new NavItem { Label = "Check and send", To = "/civic/check" },
+      ],
+    }) {
+      Outlet(retain: 8);
+      slot aside {
+        ShellAside("Your application") {
+          Stack(gap: 1) {
+            Text("Application reference", fontSize: FontSize.Caption, color: Colors.TextMuted);
+            Text("HSR-2026-04417", fontFamily: Font.Figure, fontWeight: FontWeight.Semibold);
+          }
+          Stack(gap: 1) {
+            Text("Saved", fontSize: FontSize.Caption, color: Colors.TextMuted);
+            Text("Today at 10:24 — you can leave and come back to it at any time.");
+          }
+          Alert("Have your practice's CQC number to hand. It is on your registration certificate.", title: "Before you start");
+        }
+      }
+    }
+  }
+}
+
+[Route("/civic")] [Layout(CivicFrame)] [Title("Your organisation")] [Render(CSR)] [AllowAnonymous]
+component CivicOrganisationPage() {
+  render {
+    Stack(gap: 5) {
+      PageTitle("Your organisation");
+      Text("Done — Harbourside Health Partnership, company number 08812345.");
+    }
+  }
+}
+
+enum PracticeKind {
+  [Label("GP surgery")] Surgery,
+  [Label("Dental practice")] Dental,
+  [Label("Community pharmacy")] Pharmacy,
+  [Label("Physiotherapy clinic")] Physio,
+}
+
+[Route("/civic/practice")] [Layout(CivicFrame)] [Title("Your practice")] [Render(CSR)] [AllowAnonymous]
+component CivicPracticePage() {
+  live var draft = Draft.FirstOrDefault(d => d.Key == "civic-practice");
+  PracticeKind kind = PracticeKind.Surgery;
+  string problem = "";
+
+  action Continue() {
+    problem = "";
+    if (draft.Title == null || draft.Title.Trim() == "") { problem = "Enter the practice's name, as patients know it"; return; }
+    UnitOfWork.Commit();
+    Navigation.Go("/civic/hours");
+  }
+  action Later() { UnitOfWork.Commit(); Navigation.Go("/civic"); }
+
+  render {
+    if (draft != null) {
+      Stack(gap: 6) {
+        Stack(gap: 2) {
+          Text("Step 2 of 4", color: Colors.TextMuted);
+          PageTitle("Tell us about your practice");
+        }
+        if (problem != "") {
+          Alert(problem, title: "There is a problem", tone: Tone.Danger);
+        }
+        Field("Practice name", value: draft.Title, hint: "As it appears on your sign and to patients.",
+              error: problem != "" ? problem : "");
+        RadioGroup("What kind of practice is it?", value: kind);
+        NumberField("How many clinicians work there?", value: draft.Days, min: 1, max: 400,
+                    hint: "Count everyone who sees patients, full or part time.");
+        TextAreaField("Anything we should know about access to the building?", value: draft.Note, rows: 4,
+                      hint: "For example, step-free access or a hearing loop. Optional.");
+        CivicSaveButtons(Continue, Later);
+      }
+    }
+  }
+}
+
+[Route("/civic/hours")] [Layout(CivicFrame)] [Title("Opening hours")] [Render(CSR)] [AllowAnonymous]
+component CivicHoursPage() {
+  render { Stack(gap: 5) { PageTitle("Opening hours"); Text("When patients can come in, day by day."); } }
+}
+
+[Route("/civic/check")] [Layout(CivicFrame)] [Title("Check and send")] [Render(CSR)] [AllowAnonymous]
+component CivicCheckPage() {
+  action Change() { Navigation.Go("/civic/practice"); }
+  render {
+    Stack(gap: 6) {
+      Stack(gap: 2) {
+        Text("Step 4 of 4", color: Colors.TextMuted);
+        PageTitle("Check your answers before sending");
+      }
+      Stack(gap: 0, label: "Your answers") {
+        CivicAnswer("Organisation", "Harbourside Health Partnership", Change);
+        CivicAnswer("Practice name", "Harbourside Surgery", Change);
+        CivicAnswer("Kind of practice", "GP surgery", Change);
+        CivicAnswer("Clinicians", "14", Change);
+        CivicAnswer("Opening hours", "Monday to Friday, 8am to 6:30pm", Change);
+      }
+      Stack(gap: 3) {
+        Text("Now send your application", fontSize: FontSize.Heading, fontWeight: FontWeight.Headings);
+        Text("By sending it you confirm that, to the best of your knowledge, the answers are correct.");
+        Row { Button("Accept and send", onPress: () => { }, tone: Tone.Primary, size: Size.Lg); }
+      }
+    }
+  }
+}
+
+/// One answer on the check page — the question, what was answered, and a Change link back to the step that asked it.
+[Composable]
+component CivicAnswer(string question, string answer, Action onChange) {
+  render {
+    Box(display: Display.Grid, cols: Layout.AtLeast(Tablet) ? "14rem minmax(0, 1fr) auto" : "minmax(0, 1fr) auto", gap: 3,
+        py: 3, borderBW: 1, border: Colors.Border, label: question) {
+      Text(question, fontWeight: FontWeight.Semibold);
+      Text(answer);
+      Pressable(onClick: onChange, label: "Change " + question.ToLower()) {
+        Text("Change", color: Colors.Primary.Text, textDecoration: TextDecoration.Underline);
+      }
+    }
+  }
+}
+
+/// The practice step's commit bar — what saving means here, in words.
+[Composable]
+component CivicSaveButtons(Action onContinue, Action onLater) {
+  render {
+    Row(gap: 3, align: Align.Center, wrap: Wrapping.Wrap) {
+      Button("Save and continue", onPress: onContinue, tone: Tone.Primary, size: Size.Lg);
+      Button("Save and come back later", onPress: onLater, tone: Tone.Ghost, size: Size.Lg);
+    }
+  }
+}
