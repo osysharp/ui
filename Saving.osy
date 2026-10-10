@@ -1,0 +1,132 @@
+// Ui — how a page's UNIT OF WORK is shown: the three ways an app says "you have changes; keep them or not"
+// (`using Osysharp.Ui;`). All three read and drive the SAME unit of work — the route's, which every edit on the page
+// already joins — so switching from one to another is one line, never a change to how the page edits.
+//
+//   SaveBar      (Settings.osy) a bar that rises at the foot of the page while there are changes: Undo, Discard, Save.
+//                For a page of many edits a person reviews before keeping — settings, a ledger, a long form.
+//   SaveActions  the same three, INLINE — beside a record's title or in a drawer's head, where the eye already is.
+//                For a record edited in place, a panel, a dense console.
+//   AutoSave     no Save at all: the changes are kept by themselves a moment after the last one, and until then the
+//                person can take them back. For notes, a CRM record, anything edited in passing.
+
+namespace Osysharp.Ui;
+
+/// Save and discard INLINE — "● Edited · Undo · Discard · Save", for a record's head (`PageHead`'s slot) or a drawer's,
+/// shown only while the page holds unsaved changes (`Navigation.IsDirty`); once a save lands it says `saved` quietly in
+/// the same place. Undo steps back to the last savepoint (`UnitOfWork.Mark("…")` before an edit makes one, and names the
+/// button), Discard drops every unsaved change, Save commits them. Mod+S saves and Mod+Z undoes, from anywhere on the page.
+/// `blockedBy` holds a save back with the sentence saying why, exactly as `SaveBar`'s; `onSaved` runs once a save lands.
+/// A refused save says why ("Not saved — …") in the same place.
+/// In a test: `Ui.Click("Save")`, `Ui.Click("Discard")`, and `Assert.Visible("Edited")` while there are changes.
+/// need: save and cancel buttons beside the title, inline save, a dirty marker on a record, save in a side panel, discard changes in place
+/// e.g. `PageHead(account.Name) { SaveActions(saved: "Saved."); }`
+[Composable]
+component SaveActions(string saved = "Saved", string blockedBy = "", Action onSaved = null) {
+  string problem = "";
+  bool justSaved = false;
+  live var dirty = Navigation.IsDirty;
+  live var canUndo = UnitOfWork.CanUndo();
+  live var undoLabel = UnitOfWork.UndoLabel();
+
+  action Save() {
+    problem = "";
+    justSaved = false;
+    if (blockedBy != "") { return; }
+    try {
+      UnitOfWork.Commit();
+      justSaved = true;
+      if (onSaved != null) { onSaved(); }
+    }
+    catch (Exception ex) { problem = ex.Message; }
+  }
+  action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }
+  action Undo() { problem = ""; UnitOfWork.Undo(); }
+
+  render {
+    Row(gap: 2, align: Align.Center, wrap: Wrapping.Wrap, label: "Changes") {
+      if (dirty) {
+        Row(gap: 1, align: Align.Center) {
+          Lamp(lit: true, tone: Tone.Warning);
+          Text("Edited", fontSize: FontSize.Caption, fontWeight: FontWeight.Medium, color: Colors.TextSecondary,
+               role: UiRole.Status);
+        }
+        if (blockedBy != "") { Text(blockedBy, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
+        else if (problem != "") { Text(problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
+        if (canUndo) {
+          IconButton(undoLabel != "" ? "Undo " + undoLabel.ToLower() : "Undo", Undo, size: Size.Sm, shortcut: "Mod+Z") {
+            Icon(Icons.History, size: 15);
+          }
+        }
+        Button("Discard", onPress: Discard, tone: Tone.Ghost, size: Size.Sm);
+        Button("Save", onPress: Save, tone: Tone.Primary, size: Size.Sm, shortcut: "Mod+S", disabled: blockedBy != "");
+      } else if (problem != "") {
+        Text("Not saved — " + problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
+      } else if (justSaved && saved != "") {
+        Row(gap: 1, align: Align.Center) {
+          Icon(Icons.Check, size: 14, color: Colors.Success);
+          Text(saved, color: Colors.TextMuted, fontSize: FontSize.Caption, role: UiRole.Status);
+        }
+      }
+    }
+  }
+}
+
+/// NO SAVE BUTTON — the page's changes are kept by themselves `after` seconds after they were made, and until then
+/// the person can take them back: "Saving in 2 s · Undo", then "All changes saved". Undo steps back to the last savepoint
+/// when there is one (`UnitOfWork.Mark`) and otherwise drops the changes not yet kept — an undo that is TRUE: what has
+/// been kept is kept, and the window to change your mind is the one before it is. A refused save keeps the changes and
+/// says why, with Retry.
+/// Put it where a person glances to know their work is safe — a record's head, a panel's foot.
+/// In a test: make an edit, `Assert.Visible("Saving in")`, then `Ui.Tick()` once per second of `after` and
+/// `Assert.Visible("All changes saved")`; or `Ui.Click("Undo")` inside the window.
+/// need: auto-save, save as you type, keep changes without a save button, undo an automatic save, saved indicator
+/// e.g. `PageHead(contact.Name) { AutoSave(after: 2); }`
+[Composable]
+component AutoSave(int after = 2, string saved = "All changes saved") {
+  string problem = "";
+  bool everSaved = false;
+  int waited = 0;
+  live var dirty = Navigation.IsDirty;
+  live var canUndo = UnitOfWork.CanUndo();
+
+  action Keep() {
+    problem = "";
+    try {
+      UnitOfWork.Commit();
+      everSaved = true;
+      waited = 0;
+    }
+    catch (Exception ex) { problem = ex.Message; waited = 0; }
+  }
+  action TakeBack() {
+    problem = "";
+    waited = 0;
+    if (UnitOfWork.CanUndo()) { UnitOfWork.Undo(); } else { UnitOfWork.Discard(); }
+  }
+
+  // One tick a second: while there are changes (and the last attempt was not refused), count; at `after`, keep them.
+  on every (TimeSpan.FromSeconds(1)) {
+    if (dirty && problem == "") {
+      waited = waited + 1;
+      if (waited >= after) { Keep(); }
+    } else if (!dirty) { waited = 0; }
+  }
+
+  render {
+    Row(gap: 2, align: Align.Center, label: "Saving") {
+      if (problem != "") {
+        Icon(Icons.Warning, size: 14, color: Colors.Danger);
+        Text("Not saved — " + problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
+        Button("Retry", onPress: Keep, tone: Tone.Ghost, size: Size.Sm);
+      } else if (dirty) {
+        Lamp(lit: true, live: true, tone: Tone.Primary);
+        Text("Saving in " + (after - waited < 1 ? 1 : after - waited).ToString() + " s", fontSize: FontSize.Caption,
+             color: Colors.TextSecondary, role: UiRole.Status);
+        Button("Undo", onPress: TakeBack, tone: Tone.Ghost, size: Size.Sm, shortcut: "Mod+Z");
+      } else if (everSaved) {
+        Icon(Icons.Check, size: 14, color: Colors.Success);
+        Text(saved, color: Colors.TextMuted, fontSize: FontSize.Caption, role: UiRole.Status);
+      }
+    }
+  }
+}

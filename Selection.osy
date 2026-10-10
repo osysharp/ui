@@ -1,0 +1,72 @@
+// Ui — acting on DATA: a search box, the chip a set filter leaves behind, and the toolbar a selection turns into
+// (`using Osysharp.Ui;`). The DataGrid is built from these; a board, a card list or an inbox uses the same three.
+
+namespace Osysharp.Ui;
+
+/// A compact search box — a magnifier and one line, the label as its name and its placeholder, so a toolbar does not
+/// carry a caption above it. `SearchField("Search accounts", value: query)` — `value` is a two-way binding, exactly as
+/// `Field`'s. Esc clears it.
+/// In a test it is filled by its label: `Ui.Fill("Search accounts", "Kestrel")`.
+/// need: a search box in a toolbar, filter a list as you type, find a row, a quick search
+/// e.g. `Toolbar("Accounts") { SearchField("Search accounts", value: query); Spacer(); Button("New", onPress: Add); }`
+[Composable]
+component SearchField(string label, Binding<string> value) {
+  action Clear() { value = ""; }
+  variants { base { Position = Position.Relative; W = "100%"; MinW = 0; } }
+  render {
+    // THE INPUT IS THE BOX — its own border, focus ring and padding, the same as every field in the kit — and the
+    // magnifier sits over its leading padding, so there is one outline and not a box drawn around a box.
+    Box(role: UiRole.Search, label: label) {
+      Box(position: Position.Absolute, left: "10px", top: "50%", translateY: "-50%", pointerEvents: PointerEvents.None,
+          color: Colors.TextMuted, decorative: true, display: Display.Flex) { Icon(Icons.Search, size: 14); }
+      Input(value: value, label: label, placeholder: label, w: "100%", h: Length.ControlSm, pl: "30px", type: "search",
+            onEscape: Clear, textOverflow: TextOverflow.Ellipsis);
+    }
+  }
+}
+
+/// A filter that is SET, said in words, with a × that removes it — "Annual value over 100000 ×". What keeps a
+/// constraint visible after the controls that set it are put away, so nobody wonders where half their rows went.
+/// `removeLabel` names the × for a screen reader and a test ("Remove filter Annual value").
+/// In a test press its ×: `Ui.Click("Remove filter Annual value")`, and read it as text: `Assert.Visible("Annual value over 100000")`.
+/// need: show which filters are on, a removable chip, a filter pill with a close button, active filters
+/// e.g. `FilterChip("Status is Overdue", "Remove filter Status", ClearStatus)`
+[Composable]
+component FilterChip(string label, string removeLabel, Action onRemove) {
+  variants {
+    base { Display = Display.InlineFlex; Gap = Space.Gutter; H = "24px"; Pl = 2; Pr = 1;
+           Rounded = Radius.Tag; Bg = Primary.Subtle; Color = Primary.Strong; FontSize = FontSize.Caption;
+           FontWeight = FontWeight.Medium; WhiteSpace = WhiteSpace.Nowrap; }
+  }
+  render {
+    Row(gap: 1, align: Align.Center) {
+      Text(label);
+      Pressable(onClick: onRemove, label: removeLabel, w: 18, h: 18, align: Align.Center, justify: Justify.Center,
+                rounded: Radius.Pill) {
+        Icon(Icons.Close, size: 11);
+      }
+    }
+  }
+}
+
+/// THE TOOLBAR OF A SELECTION — how many are picked, the verbs that act on them (the slot), and Clear. Put it where
+/// the reading toolbar was, so picking rows turns the toolbar into the selection's rather than opening a second one;
+/// `DataGrid(selectable: true)` does exactly that with its `slot selection { picked => … }`.
+/// In a test it is a named region: `Assert.Visible("3 selected")`, then `Ui.Click("Archive", within: "Selection")`.
+/// need: bulk actions on selected rows, act on several items at once, a toolbar that appears when rows are checked, select and archive
+/// e.g. `SelectionBar(picked.Count, ClearPick) { Button("Archive", onPress: ArchivePicked, size: Size.Sm); }`
+[Composable]
+component SelectionBar(int count, Action onClear) {
+  variants {
+    base { Display = Display.Flex; Gap = Space.Gutter;
+           MinH = Length.ControlMd; Px = 3; Py = 1; Bg = Primary.Subtle; Rounded = Radius.Md; }
+  }
+  render {
+    Row(gap: 2, align: Align.Center, role: UiRole.Toolbar, label: "Selection", wrap: Wrapping.Wrap) {
+      Text(count.ToString() + " selected", fontWeight: FontWeight.Semibold, color: Colors.Primary.Strong, role: UiRole.Status);
+      Row(gap: 1, align: Align.Center, wrap: Wrapping.Wrap) { Slot; }
+      Spacer();
+      Button("Clear selection", onPress: onClear, tone: Tone.Ghost, size: Size.Sm);
+    }
+  }
+}

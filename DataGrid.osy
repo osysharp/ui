@@ -108,7 +108,9 @@ public sealed class GridBand<T> {
                                    Action<T>? rowSelected = null,
                                    bool filterable = false, GridFilter[] filters = [],
                                    Action<string>? onExport = null,
-                                   string view = "", Action<string>? onViewChange = null) {
+                                   string view = "", Action<string>? onViewChange = null,
+                                   bool selectable = false, Action<T[]>? onSelectionChange = null,
+                                   string sortColumn = "", bool sortDescending = false) {
   // `label:` NAMES THE GRID — for a screen reader, and for a test.
   //
   // ⚠ ADDED BECAUSE THE CONTROL'S OWN DOCUMENTATION WAS FALSE. Its summary says "in a test … count rows with
@@ -119,8 +121,16 @@ public sealed class GridBand<T> {
   //
   //   Empty by default, so nothing about an existing call changes; a grid with two of it on one page is exactly
   //   when you need the name anyway.
-  GridColumn<T> sortBy = columns[0];
-  bool descending = false;
+  // THE ORDER THE ROWS ARRIVE IN — `sortColumn:` names the column (by its `Name`) and `sortDescending:` the direction,
+  // so an incident list opens newest first and a ledger by amount. The reader re-sorts from there; a name that matches
+  // no column falls back to the first, as a saved view naming a renamed column does.
+  GridColumn<T> sortBy = InitialSort();
+  bool descending = sortDescending;
+
+  GridColumn<T> InitialSort() {
+    foreach (var c in columns) { if (c.Name == sortColumn) { return c; } }
+    return columns[0];
+  }
 
   // ── THE READER'S VIEW ───────────────────────────────────────────────────────────────────────
   //
@@ -169,7 +179,7 @@ public sealed class GridBand<T> {
   ///   minimum is not binding and the fill column still absorbs), and a grid too wide for its container scrolls
   ///   to exactly the width its author asked for rather than to the length of its longest string.
   int TableW() {
-    var total = 24;
+    var total = selectable ? 60 : 24;   // the pick column is 36px
     foreach (var c in columns) { if (Shown(c.Name)) { total = total + c.Width; } }
     return total;
   }
@@ -371,6 +381,86 @@ public sealed class GridBand<T> {
   /// Clears what THIS grid owns — the quick search and the filter row. A `filters:` entry belongs to the page and
   /// is deliberately untouched; the empty state only offers this button when there is something here to clear.
   action ClearFilters() { search = ""; typed = Blanks(); }
+
+  // ── A CALM HEADER — the filter row is ASKED FOR, not standing ───────────────────────────────
+  //
+  // ⚑ READING IS THE COMMON CASE, so the per-column boxes (and their `contains…` / `= > <` hints) are not drawn until
+  //   somebody asks to filter: the toolbar's `Filter` toggle opens the whole row, and each column header's funnel opens
+  //   it with that column's box already focused. A filter that is SET stays in view while the row is shut — as a chip
+  //   saying what it is, with a × that removes it — because a constraint you can no longer see is a page that looks
+  //   broken ("where did half my accounts go?").
+  bool filtersOpen = false;
+  /// The column whose box takes the keyboard when the row opens from its header ("" = none, the toolbar's toggle).
+  string focusFilter = "";
+
+  action ToggleFilters() { filtersOpen = !filtersOpen; focusFilter = ""; }
+  action FilterColumn(string name) { filtersOpen = true; focusFilter = name; }
+  /// One chip's ×: that column's filter, gone. A whole new list — see `typed`.
+  action ClearColumnFilter(string name) {
+    var next = new List<string>();
+    foreach (var c in columns) { next.Add(c.Name == name ? "" : typed[columns.IndexOf(c)]); }
+    typed = next;
+  }
+
+  int ColumnFilterCount() {
+    var n = 0;
+    foreach (var t in typed) { if (WantOf(t) != "") { n = n + 1; } }
+    return n;
+  }
+
+  /// What a chip says: the column, the comparison in words, the value — `Annual value over 100000`, never `> 100000`.
+  string ChipText(GridColumn<T> c, string raw) {
+    var op = OpOf(raw, DefaultOp(c.Kind));
+    var want = WantOf(raw);
+    if (op == GridOp.GreaterThan) { return c.Label + " over " + want; }
+    if (op == GridOp.LessThan) { return c.Label + " under " + want; }
+    if (op == GridOp.StartsWith) { return c.Label + " starts with " + want; }
+    if (op == GridOp.Equals) { return c.Label + " is " + want; }
+    return c.Label + " contains " + want;
+  }
+
+  // ── SELECTION — a toolbar that knows what is picked ─────────────────────────────────────────
+  //
+  // ⚑ THE GRID HOLDS THE PICK, THE APP HOLDS THE VERBS. `selectable: true` puts a check at the head of every row; while
+  //   anything is picked the toolbar BECOMES the selection's — "3 selected", the app's `slot selection { picked => … }`
+  //   buttons, and Clear — so the actions a reader can take are the ones that apply to what they picked, where they
+  //   are looking. `onSelectionChange` hands the pick to a page that wants it outside the grid as well.
+  // ⚠ ROWS, NOT KEYS: a row is compared by identity, so a pick survives sorting and filtering (a row filtered out of
+  //   view stays picked — the count says so, which is the honest answer to "what will Archive act on?").
+  List<T> picked = [];
+
+  bool IsPicked(T r) { return picked.Contains(r); }
+  /// What a row's check is called — "Select Kestrel Freight": the row's TITLE column (the first, when none claims it),
+  /// so a screen reader hears which row, and a test presses `Ui.Click("Select Kestrel Freight")`.
+  string PickName(T r) {
+    foreach (var c in columns) { if (c.Title) { return c.Value(r); } }
+    return columns[0].Value(r);
+  }
+  bool AllVisiblePicked() {
+    if (visible.Count == 0) { return false; }
+    foreach (var r in visible) { if (!picked.Contains(r)) { return false; } }
+    return true;
+  }
+
+  action TogglePick(T r) {
+    var next = new List<T>();
+    foreach (var p in picked) { if (p != r) { next.Add(p); } }
+    if (!picked.Contains(r)) { next.Add(r); }
+    picked = next;
+    Picked();
+  }
+  /// The head check: everything in view, or — when everything in view is already picked — nothing.
+  action TogglePickAll() {
+    var next = new List<T>();
+    if (!AllVisiblePicked()) {
+      foreach (var p in picked) { next.Add(p); }
+      foreach (var r in visible) { if (!next.Contains(r)) { next.Add(r); } }
+    }
+    picked = next;
+    Picked();
+  }
+  action ClearPick() { picked = []; Picked(); }
+  action Picked() { if (onSelectionChange != null) { onSelectionChange(picked.ToArray()); } }
 
   // ── P-07 · GROUPING ─────────────────────────────────────────────────────────────────────────
   // One BAND per distinct value of the grouping column, and a band HOLDS ITS ROWS.
@@ -580,14 +670,19 @@ public sealed class GridBand<T> {
   slots from columns.Name
 
   render {
-    if (Layout.AtLeast(Tablet)) {
+    // ⚑ THE TABLE FROM `Phone` UP, NOT `Tablet`. `Layout.AtLeast` measures the grid's CONTAINER, and a grid beside a
+    //   docked drawer or an explorer lives in a 600-760px column on a wide screen — measured on the workbench
+    //   archetype (looks round 2): a 1440px console with its inspector open turned its incident table into cards,
+    //   which is a phone's answer given to a desk. A table that scrolls sideways is right for any column a table fits
+    //   in; the card list is for a phone's width, and a phone in portrait is below `Phone`.
+    if (Layout.AtLeast(Phone)) {
       // ⚑ THREE BOXES, AND EACH ONE IS DOING A JOB THE OTHER TWO CANNOT.
       //
-      //  1. THE OUTER STACK holds the toolbar and the column chooser — the controls that operate ON the table.
-      //     They are deliberately OUTSIDE the scroll region below: a search box that slid off to the left as you
-      //     scrolled to the seventh column would be a control you have to scroll back to find, and the reader who
-      //     needs it most is the one who has just scrolled. It is also why they are no longer inside `role=grid`,
-      //     where a screen reader counted a text field among the table's rows.
+      //  1. THE OUTER STACK holds the toolbar, the filter chips and the column chooser — the controls that operate ON
+      //     the table. They are deliberately OUTSIDE the scroll region below: a search box that slid off to the left as
+      //     you scrolled to the seventh column would be a control you have to scroll back to find, and the reader who
+      //     needs it most is the one who has just scrolled. It is also why they are not inside `role=grid`, where a
+      //     screen reader counted a text field among the table's rows.
       //  2. THE SCROLL CONTAINER (`overflowX: Auto`) is the only thing that makes a table wider than its column
       //     REACHABLE. `Hidden` would tidy the ragged edge and lose the columns; `Auto` gives them back.
       //     ⚠ `overflowX` alone would not be enough — a scroll container whose child is capped at its own width
@@ -596,11 +691,34 @@ public sealed class GridBand<T> {
       //     share ONE horizontal offset by construction. A design that scrolled the body under a fixed header
       //     would be worse than the clip: the columns would then LIE about which data they label.
       Stack(gap: 0) {
-        if (filterable || onExport != null) {
-          Row(px: 3, py: 1, gap: 3, align: Align.Center) {
-            if (filterable) { Field(label: "Search", value: search, placeholder: "Search all columns"); }
-            Button(label: "Columns", onPress: ToggleColumnMenu, tone: Tone.Ghost);
-            if (onExport != null) { Button(label: "Export", onPress: Export, tone: Tone.Ghost); }
+        if (filterable || onExport != null || selectable) {
+          if (picked.Count > 0) {
+            // THE SELECTION'S TOOLBAR, in the same place as the reading one — the verbs move to where the eye already is.
+            SelectionBar(picked.Count, ClearPick) { Slot("selection", picked.ToArray()); }
+          } else {
+            Row(px: 3, py: 1, gap: 2, align: Align.Center, wrap: Wrapping.Wrap) {
+              if (filterable) {
+                Box(grow: 1, minW: "12rem", maxW: "22rem") { SearchField("Search all columns", search); }
+                GridToolButton(ColumnFilterCount() > 0 ? "Filter · " + ColumnFilterCount().ToString() : "Filter",
+                               ToggleFilters, Icons.Filter, on: filtersOpen);
+              }
+              Spacer();
+              GridToolButton("Columns", ToggleColumnMenu, Icons.Columns, on: showColumnMenu);
+              if (onExport != null) { GridToolButton("Export", Export, Icons.Download, discloses: false); }
+            }
+          }
+        }
+        // THE FILTERS THAT ARE SET, while their row is shut — each says what it does in words and takes a ×.
+        if (filterable && !filtersOpen && AnyColumnFilter()) {
+          Row(gap: 2, px: 3, pb: 2, align: Align.Center, wrap: Wrapping.Wrap, label: "Active filters") {
+            foreach (var c in columns) {
+              if (WantOf(typed[columns.IndexOf(c)]) != "") {
+                FilterChip(ChipText(c, typed[columns.IndexOf(c)]), "Remove filter " + c.Label, () => ClearColumnFilter(c.Name));
+              }
+            }
+            Pressable(onClick: ClearFilters, label: "Clear all filters") {
+              Text("Clear all", fontSize: FontSize.Caption, color: Colors.Primary.Text);
+            }
           }
         }
         // Which columns are on screen. A Pressable per column rather than a Checkbox, because a checkbox binds
@@ -622,7 +740,10 @@ public sealed class GridBand<T> {
         }
         Stack(gap: 0, overflowX: Overflow.Auto) {
           Stack(gap: 0, role: UiRole.Grid, label: label, minW: TableW()) {
-            Row(gap: 0, px: 3, py: 2, bg: Colors.Surface, role: UiRole.GridRow) {
+            Row(gap: 0, px: 3, py: 2, bg: Colors.Surface, borderBW: 1, border: Colors.Border, role: UiRole.GridRow) {
+              if (selectable) {
+                PickCell("Select all rows", AllVisiblePicked(), TogglePickAll);
+              }
               // ⚑ THE READER'S ORDER, not the prop's — and iterated over COLUMNS, never over `order`.
               //
               //   `order` is a `List<string>`, and a `foreach` over STRINGS stamps each one as a rendered ITEM (a bare
@@ -632,16 +753,17 @@ public sealed class GridBand<T> {
               foreach (var slot in columns) {
                 foreach (var h in columns) {
                   if (order.IndexOf(h.Name) == columns.IndexOf(slot) && Shown(h.Name)) {
-                    if (h.Fill) { FillCell(justify: h.Align) { HeaderCell(col: h, sorted: sortBy.Name == h.Name && h.Sortable, desc: descending, onSort: SortByColumn, onMove: MoveColumn, onGroup: GroupByColumn, grouping: groupBy == h.Name); } }
-                    else { FixedCell(px: h.Width, justify: h.Align) { HeaderCell(col: h, sorted: sortBy.Name == h.Name && h.Sortable, desc: descending, onSort: SortByColumn, onMove: MoveColumn, onGroup: GroupByColumn, grouping: groupBy == h.Name); } }
+                    if (h.Fill) { FillCell(justify: h.Align) { HeaderCell(col: h, sorted: sortBy.Name == h.Name && h.Sortable, desc: descending, onSort: SortByColumn, onMove: MoveColumn, onGroup: GroupByColumn, grouping: groupBy == h.Name, onFilter: filterable && h.Filterable ? FilterColumn : null, filtered: WantOf(typed[columns.IndexOf(h)]) != ""); } }
+                    else { FixedCell(px: h.Width, justify: h.Align) { HeaderCell(col: h, sorted: sortBy.Name == h.Name && h.Sortable, desc: descending, onSort: SortByColumn, onMove: MoveColumn, onGroup: GroupByColumn, grouping: groupBy == h.Name, onFilter: filterable && h.Filterable ? FilterColumn : null, filtered: WantOf(typed[columns.IndexOf(h)]) != ""); } }
                   }
                 }
               }
             }
-            // P-24 — ONE BOUND BOX PER COLUMN. Wide arm only: a row of boxes does not fit a phone, and the quick
-            // search above is what the narrow arm offers instead.
-            if (filterable) {
-              Row(gap: 0, px: 3, py: 1, bg: Colors.Surface, borderW: 1, border: Colors.Border, label: "Filter row") {
+            // P-24 — ONE BOUND BOX PER COLUMN, drawn only while somebody is filtering (see `filtersOpen`). Wide arm
+            // only: a row of boxes does not fit a phone, and the quick search above is what the narrow arm offers.
+            if (filterable && filtersOpen) {
+              Row(gap: 0, px: 3, py: 1, bg: Colors.Sunken, borderW: 1, border: Colors.Border, label: "Filter row") {
+                if (selectable) { Box(w: 36, shrink: 0); }
                 // The `Input` is INLINE rather than in a `FilterCell` child, because the binding targets THIS
                 // component's own list — handing it down would need the indexed form to cross a component boundary
                 // as a `Binding<string>`, which is a separate arm and a separate slice.
@@ -652,14 +774,16 @@ public sealed class GridBand<T> {
                         FillCell(justify: null) {
                           if (h.Filterable) {
                             Input(value: typed[columns.IndexOf(h)], label: "Filter " + h.Label, name: "filter-" + h.Name, w: "100%",
-                                  placeholder: h.Kind == GridColumnKind.Text ? "contains…" : "= > <");
+                                  autoFocus: focusFilter == h.Name,
+                                  placeholder: h.Kind == GridColumnKind.Text ? "contains…" : "e.g. > 100");
                           }
                         }
                       } else {
                         FixedCell(px: h.Width, justify: null) {
                           if (h.Filterable) {
                             Input(value: typed[columns.IndexOf(h)], label: "Filter " + h.Label, name: "filter-" + h.Name, w: "100%",
-                                  placeholder: h.Kind == GridColumnKind.Text ? "contains…" : "= > <");
+                                  autoFocus: focusFilter == h.Name,
+                                  placeholder: h.Kind == GridColumnKind.Text ? "contains…" : "e.g. > 100");
                           }
                         }
                       }
@@ -673,25 +797,24 @@ public sealed class GridBand<T> {
             //  · UNGROUPED keeps the flat row loop it always had, so the ROW is the outermost repeated
             //    region and `Assert.Items` still counts rows. Every existing grid's tests are unaffected.
             //  · GROUPED puts the BAND loop outside, which is the only way a band's rows are CONTIGUOUS
-            //    and the header is its OWN item. Emitting the header inside the row loop instead — which
-            //    this did — fuses it with the first row of the band: measured, a grouped grid reported
-            //    `[1] ▼ Blue (1) [2] ▼ Red (2) [3] R-3`, so the first row of every band was not
-            //    addressable at all, and the two Reds were not even adjacent.
+            //    and the header is its OWN item. Emitting the header inside the row loop instead fuses it with the
+            //    first row of the band, so the first row of every band was not addressable at all.
             //
-            // The cells are one `[Part]`, so the markup is written ONCE despite the two shapes.
-            //
-            // ⚠ THIS COMMENT USED TO CREDIT `[Part]` FOR THE SLOT RESOLUTION AND THAT WAS NEVER TRUE. `[Part]` is a
-            // PACKAGING marker — not listed by `osy kit`, never vendored alone — with no rendering semantics at all.
             // What makes `Slot(c.Name, row)` find the app's `slot Status { r => … }` is that named slot TEMPLATES flow
-            // into a child component that supplies none of its own, and that rule did not exist until 2026-09-04. Until
-            // then every cell here rendered its fallback text and no grid in any app had ever shown a cell template.
+            // into a child component that supplies none of its own (2026-09-04) — `[Part]` is a packaging marker only.
+            //
+            // ⚠ A PICKABLE ROW IS NOT WRAPPED IN A PRESS: its check is a control of its own, and a button inside a
+            //   button is invalid markup that a screen reader flattens. The row hands its OPEN press to its cells instead.
             if (Grouped()) {
               foreach (var band in Bands()) {
                 GroupBand(label: band.Key, count: band.Rows.Count, sums: SumsIn(band),
                           collapsed: IsCollapsed(band.Key), onToggle: () => ToggleBand(band.Key));
                 if (!IsCollapsed(band.Key)) {
                   foreach (var r in band.Rows) {
-                    if (rowSelected != null) {
+                    if (selectable) {
+                      GridRowCells(cols: columns, order: order, hidden: hidden, row: r, pickable: true, isPicked: IsPicked(r), pickName: PickName(r),
+                                   onPick: () => TogglePick(r), opens: rowSelected != null, onOpen: () => rowSelected(r));
+                    } else if (rowSelected != null) {
                       Pressable(onClick: () => rowSelected(r)) { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
                     } else { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
                   }
@@ -699,7 +822,10 @@ public sealed class GridBand<T> {
               }
             } else {
               foreach (var r in visible) {
-                if (rowSelected != null) {
+                if (selectable) {
+                  GridRowCells(cols: columns, order: order, hidden: hidden, row: r, pickable: true, isPicked: IsPicked(r), pickName: PickName(r),
+                               onPick: () => TogglePick(r), opens: rowSelected != null, onOpen: () => rowSelected(r));
+                } else if (rowSelected != null) {
                   Pressable(onClick: () => rowSelected(r)) { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
                 } else { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
               }
@@ -727,8 +853,22 @@ public sealed class GridBand<T> {
         // ⚠ THE SAME FILTER, on the arm a phone actually renders. A filter that applied only to the table
         //   would be a grid that shows different rows at two window widths, which is the one thing a
         //   responsive control must never do.
-        if (filterable) { Field(label: "Search", value: search, placeholder: "Search all columns"); }
-        if (onExport != null) { Button(label: "Export", onPress: Export, tone: Tone.Ghost); }
+        if (picked.Count > 0) {
+          SelectionBar(picked.Count, ClearPick) { Slot("selection", picked.ToArray()); }
+        } else {
+          if (filterable) { SearchField("Search all columns", search); }
+          if (onExport != null) { Button(label: "Export", onPress: Export, tone: Tone.Ghost); }
+        }
+        // A column filter set on a wider screen still applies here, so it is still SAID here — with its ×.
+        if (filterable && AnyColumnFilter()) {
+          Row(gap: 2, align: Align.Center, wrap: Wrapping.Wrap, label: "Active filters") {
+            foreach (var c in columns) {
+              if (WantOf(typed[columns.IndexOf(c)]) != "") {
+                FilterChip(ChipText(c, typed[columns.IndexOf(c)]), "Remove filter " + c.Label, () => ClearColumnFilter(c.Name));
+              }
+            }
+          }
+        }
         if (Grouped()) {
           foreach (var band in Bands()) {
             GroupBand(label: band.Key, count: band.Rows.Count, sums: SumsIn(band),
@@ -751,7 +891,7 @@ public sealed class GridBand<T> {
         if (visible.Count == 0 && AnyFilter()) {
           Row(gap: 2, py: 3, align: Align.Center) {
             Text("No rows match the filter.", color: Colors.TextMuted);
-            if (search.Trim() != "") { Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary.Text); } }
+            if (search.Trim() != "" || AnyColumnFilter()) { Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary.Text); } }
           }
         }
       }
@@ -761,19 +901,23 @@ public sealed class GridBand<T> {
 
 /// ONE cell — header or body — carrying this column's SIZING, so the header and the rows cannot disagree about it.
 [Composable][Part] component HeaderCell<T>(GridColumn<T> col, bool sorted, bool desc, Action<GridColumn<T>> onSort,
-                                     Action<string, int> onMove, Action<string> onGroup, bool grouping) {
+                                     Action<string, int> onMove, Action<string> onGroup, bool grouping,
+                                     Action<string>? onFilter = null, bool filtered = false) {
   render {
     Row(role: UiRole.ColumnHeader, sort: col.Sortable ? (sorted ? (desc ? UiSort.Descending : UiSort.Ascending) : UiSort.None) : UiSort.None,
-        gap: 1, align: Align.Center, w: "100%") {
+        gap: 1, align: Align.Center, w: "100%", position: Position.Relative) {
+      // A right-aligned column's NAME sits over its figures, at the right — the header says where to look.
+      if (col.Align == "right") { Spacer(); }
       if (col.Sortable) {
-        Pressable(onClick: () => onSort(col)) {
-          Text(col.Label, fontWeight: FontWeight.Medium, fontSize: FontSize.Caption, color: Colors.TextSecondary);
-        }
+        // ⚑ THE SORT MARK IS PART OF THE PRESS, and it is drawn only where it says something: on the column the rows
+        //   ARE sorted by, always; on any other, only while the pointer or the keyboard is on that header — so a
+        //   table at rest reads as its columns' names, and the one arrow it shows is the one that is true.
+        HeaderSort(col.Label, sorted, desc, () => onSort(col), filtered: filtered);
       } else {
         Text(col.Label, fontWeight: FontWeight.Medium, fontSize: FontSize.Caption, color: Colors.TextMuted);
+        if (filtered) { Icon(Icons.Filter, size: 11, color: Colors.Primary.Text); }
       }
-      if (sorted) { Text(desc ? "▼" : "▲", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true); }
-      Spacer();
+      if (col.Align != "right") { Spacer(); }
       // ⚑ MOVE AND GROUP ARE BUTTONS, NOT A DRAG — and that is the accessibility answer as well as the simple
       //   one. A drag-to-reorder is unreachable from a keyboard and invisible to a screen reader, so a control
       //   whose ONLY reordering affordance was a drag would fail krav 6.3 outright. Each carries its column's
@@ -784,12 +928,59 @@ public sealed class GridBand<T> {
       //    `admin-costs.mjs`'s clickable-target floor, which is the only tier that could have seen it: happy-dom
       //    has no layout, so every existing DataGrid test passes on a 5-pixel button.
       //    ⚑ The INTERIOR grows, not the row: 22×22 is inside the 24px header line, so no grid changes height.
-      HeaderTool("Move " + col.Label + " left", "‹", () => onMove(col.Name, -1));
-      HeaderTool("Move " + col.Label + " right", "›", () => onMove(col.Name, 1));
-      HeaderTool((grouping ? "Ungroup " : "Group by ") + col.Label, grouping ? "⊟" : "⊞", () => onGroup(col.Name), lit: grouping);
+      // ⭐ AND THEY TAKE NO ROOM WHILE QUIET (looks round 2): the tools float over the header's far edge — the start of a
+      //    right-aligned column, the end of any other — so a column's name gets its whole width at rest instead of
+      //    wrapping beside four invisible boxes ("Annual value" broke over two lines in a 140px column). They keep
+      //    their boxes, names and focus, so a keyboard, a screen reader and a test reach them exactly as before.
+      HeaderTools(atStart: col.Align == "right") {
+        // The funnel opens the filter row with THIS column's box focused. A FILTERED column is marked beside its NAME
+        // (see `HeaderSort`), not here: a lit tool floating at a right-aligned column's start sat beside the column
+        // before it, and read as belonging to that one.
+        if (onFilter != null) { HeaderTool("Filter by " + col.Label, "⏷", () => onFilter(col.Name)); }
+        HeaderTool("Move " + col.Label + " left", "‹", () => onMove(col.Name, -1));
+        HeaderTool("Move " + col.Label + " right", "›", () => onMove(col.Name, 1));
+        HeaderTool((grouping ? "Ungroup " : "Group by ") + col.Label, grouping ? "⊟" : "⊞", () => onGroup(col.Name), lit: grouping);
+      }
       Box(drag: col.Width, dragAxis: DragAxis.Horizontal, dragStep: 8, dragMin: 72, dragMax: 640, w: "6px", cursor: "col-resize");
     }
   }
+}
+
+/// A header's tools, floating over its far edge so they take no width from the column's name.
+[Composable][Part] component HeaderTools(bool atStart = false) {
+  variants {
+    base { Position = Position.Absolute; Top = "50%"; TranslateY = "-50%"; Right = "6px"; Display = Display.Flex; }
+    atStart { Right = "auto"; Left = "0"; }
+  }
+  render { Row(gap: 0, align: Align.Center) { Slot; } }
+}
+
+/// A sortable column's name and its sort mark, as ONE press — so the mark is reached, named and focused with the name.
+[Composable][Part] component HeaderSort(string label, bool sorted, bool desc, Action onPress, bool filtered = false) {
+  render {
+    Pressable(onClick: onPress, label: label) {
+      Row(gap: 1, align: Align.Center) {
+        Text(label, fontWeight: sorted ? FontWeight.Semibold : FontWeight.Medium, fontSize: FontSize.Caption,
+             color: sorted ? Colors.OnSurface : Colors.TextSecondary);
+        // The column is narrowed by a filter — said beside its name, in the accent, for as long as it is.
+        if (filtered) { Icon(Icons.Filter, size: 11, color: Colors.Primary.Text); }
+        SortMark(glyph: sorted ? (desc ? "↓" : "↑") : "↕", lit: sorted);
+      }
+    }
+  }
+}
+
+/// The arrow beside a column's name — QUIET UNTIL WANTED, exactly like `HeaderTool`: shown on the sorted column, and
+/// on any other only while that header is under the pointer or holds the keyboard. Its box is always there, so a
+/// header never shifts as the mark comes and goes.
+[Composable][Part] component SortMark(string glyph, bool lit = false) {
+  variants {
+    base { Opacity = "0"; Transition = Motion.Fast; Color = Colors.TextMuted;
+           inside HeaderCell.Hover { Opacity = "1"; }
+           inside HeaderSort.Focus { Opacity = "1"; } }
+    lit { Opacity = "1"; Color = Colors.OnSurface; }
+  }
+  render { Text(glyph, fontSize: FontSize.Caption, decorative: true); }
 }
 
 /// One of a column header's tools — move it left or right, group by it. QUIET UNTIL WANTED: drawn only while the
@@ -798,7 +989,7 @@ public sealed class GridBand<T> {
 /// its 22×22 box and its name the whole time, so it is exactly as reachable by a keyboard, a screen reader or a test.
 [Composable][Part] component HeaderTool(string label, string glyph, Action onPress, bool lit = false) {
   variants {
-    base { Opacity = "0"; Transition = Motion.Fast;
+    base { Opacity = "0"; Transition = Motion.Fast; Bg = Colors.Surface; Rounded = Radius.Sm;
            inside HeaderCell.Hover { Opacity = "1"; }
            Focus { Opacity = "1"; } }
     lit { Opacity = "1"; }
@@ -898,9 +1089,28 @@ public sealed class GridBand<T> {
 /// ONE TABLE ROW's cells — the wide arm's answer to `GridCard`, and extracted for the same reason:
 /// the grid renders rows from two places (flat, and inside a band) and a second copy of this markup
 /// would drift. A `Slot` resolves from in here exactly as it does from `GridCard`.
-[Composable][Part] component GridRowCells<T>(GridColumn<T>[] cols, List<string> order, List<string> hidden, T row) {
+/// A PICKABLE row leads with its check, and — because a check cannot sit inside a press — carries the row's OPEN as a
+/// press over its cells rather than being wrapped in one.
+[Composable][Part] component GridRowCells<T>(GridColumn<T>[] cols, List<string> order, List<string> hidden, T row,
+                                         bool pickable = false, bool isPicked = false, Action? onPick = null, string pickName = "row",
+                                         bool opens = false, Action? onOpen = null) {
   render {
-    Row(gap: 0, px: 3, py: 2, borderW: 1, border: Colors.Border, role: UiRole.GridRow) {
+    Row(gap: 0, px: 3, py: 2, borderBW: 1, border: Colors.Border, role: UiRole.GridRow,
+        bg: isPicked ? Colors.Primary.Subtle : Colors.Transparent) {
+      if (pickable) { PickCell("Select " + pickName, isPicked, onPick); }
+      if (opens) {
+        Pressable(onClick: onOpen, grow: 1, minW: "0") { GridCells(cols: cols, order: order, hidden: hidden, row: row); }
+      } else {
+        GridCells(cols: cols, order: order, hidden: hidden, row: row);
+      }
+    }
+  }
+}
+
+/// The cells of one row, in the reader's order — shared by a plain row and a pickable one.
+[Composable][Part] component GridCells<T>(GridColumn<T>[] cols, List<string> order, List<string> hidden, T row) {
+  render {
+    Row(gap: 0, grow: 1, minW: "0") {
       // See DataGrid's header loop: iterate the COLUMNS, never `order` — a foreach over strings stamps items.
       foreach (var slot in cols) {
         foreach (var c in cols) {
@@ -908,6 +1118,60 @@ public sealed class GridBand<T> {
             if (c.Fill) { FillCell(justify: c.Align) { BodyCell(figure: c.Kind == GridColumnKind.Number, justify: c.Align) { Slot(c.Name, row) { Text(c.Value(row)); } } } }
             else { FixedCell(px: c.Width, justify: c.Align) { BodyCell(figure: c.Kind == GridColumnKind.Number, justify: c.Align) { Slot(c.Name, row) { Text(c.Value(row)); } } } }
           }
+        }
+      }
+    }
+  }
+}
+
+/// The pick check at the head of a row (and of the header, for every row in view) — a real checkbox to a screen
+/// reader, a 36px column to the eye.
+[Composable][Part] component PickCell(string label, bool picked, Action onToggle) {
+  variants { base { Display = Display.Flex; Shrink = 0; W = "36px"; } }
+  render {
+    Row(align: Align.Center) {
+      Pressable(onClick: onToggle, label: label, role: UiRole.Checkbox, checked: picked, w: 22, h: 22,
+                align: Align.Center, justify: Justify.Center) {
+        PickBox(on: picked) { if (picked) { Icon(Icons.Check, size: 12, color: Colors.OnPrimary); } }
+      }
+    }
+  }
+}
+
+/// The square a pick check draws — filled with the accent while it is on.
+[Composable][Part] component PickBox(bool on = false) {
+  variants {
+    base { Display = Display.Flex; W = "16px"; H = "16px"; Rounded = Radius.Sm; BorderW = 1; Border = Colors.Border;
+           Bg = Colors.Surface; Transition = Motion.Fast; }
+    on { Bg = Colors.Primary; Border = Colors.Primary; }
+  }
+  render { Box { Slot; } }
+}
+
+/// A toolbar button of the grid's own — quiet (no fill until pressed or hovered), an optional glyph, and `on` while
+/// what it opens is open, so the toggle says its state as well as `pressed:` does.
+[Composable][Part] component GridToolButton(string label, Action onPress, Icons? icon = null, bool on = false, bool discloses = true) {
+  variants {
+    base { Display = Display.InlineFlex; H = Length.ControlSm; Px = 2;
+           Rounded = Radius.Md; Color = Colors.TextSecondary; FontSize = FontSize.Label; FontWeight = FontWeight.Medium;
+           Transition = Motion.Fast; Hover { Bg = Colors.Muted; Color = Colors.OnSurface; } }
+    on { Bg = Colors.Muted; Color = Colors.OnSurface; }
+  }
+  render {
+    // A tool that OPENS something (the filter row, the column chooser) says whether it is open — `expanded:` is the
+    // disclosure state a screen reader announces, and what `Assert.Expanded("Filter", false)` reads.
+    if (discloses) {
+      Pressable(onClick: onPress, expanded: on, label: label) {
+        Row(gap: 1, align: Align.Center) {
+          if (icon != null) { Icon(icon.Value, size: 14); }
+          Text(label);
+        }
+      }
+    } else {
+      Pressable(onClick: onPress, label: label) {
+        Row(gap: 1, align: Align.Center) {
+          if (icon != null) { Icon(icon.Value, size: 14); }
+          Text(label);
         }
       }
     }

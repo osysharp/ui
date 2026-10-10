@@ -122,6 +122,12 @@ theme Ui {
     // than a new screen they have navigated to.
     RailDrawerW = "min(84vw, 320px)";
     AsideW    = "340px";     // a shell's right rail — an activity feed, a timeline, a summary beside the page
+    // THE WORKBENCH (`WorkbenchShell`, `Dock`): an activity bar of section marks, the explorer beside it, the page's
+    // docked drawers (sized by the reader's drag, so not tokens) and the status line under all.
+    ActivityW  = "52px";
+    ExplorerW  = "248px";
+    StatusBarH = "26px";
+    AssistantW = "400px";    // the in-app assistant's panel
     AppBarH   = "52px";
     StoreHeaderH = "68px";   // a storefront's header — taller than an app bar, because it carries a wordmark
     EditorialHeaderH = "80px";   // an editorial header — room to breathe over a hero

@@ -208,6 +208,7 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
 /// for every kit page — so an app with a shell of its own has its settings in it with nothing more to write. ⚑ AN APP
 /// MAY STILL TAKE IT OVER, by declaring a `[Layout] component SettingsFrame()` of its own, when its settings stand in a
 /// different frame from its other pages.
+/// In a test it is the frame around the page, so scope to the page's own regions: `Ui.Click("Save", within: "Workshop")`.
 /// need: a layout for settings pages, put the app's shell around every kit's settings page
 /// e.g. `component MyShell() : WorkspaceShell { render { AppShell(chrome) { Slot; } } }` (every settings page then stands in it)
 /// ⚑ ON ITS OWN IT IS THE WINDOW'S HEIGHT. The area fills its parent (`h: "100%"`), and an app's shell gives it one; the
@@ -355,6 +356,7 @@ component SettingsSection(string title, string description = "", bool locked = f
 /// One setting in a `SettingsSection` — its control (the slot), the line saying what it does, and, when the reader's
 /// organisation sets it while the rest of the section is the app's, "Set by your organization" under it. What a
 /// `[Settings]` section draws for each field; reach for it on a page of your own so a hand-made row reads the same.
+/// In a test drive the control inside it by its label (`Ui.Click("Publish new reviews at once")`), and read the line under it as text.
 /// e.g. `SettingRow(hint: "Staff can still hide one.") { Switch("Publish new reviews at once", value: rules.PublishAtOnce); }`
 [Composable]
 component SettingRow(string hint = "", bool setByOrganization = false) {
@@ -374,6 +376,7 @@ component SettingRow(string hint = "", bool setByOrganization = false) {
 
 /// Short settings side by side — account numbers, counts, durations — in as many columns as the section has room for,
 /// one on a phone. What a `[Settings]` section puts two or more short fields in.
+/// In a test there is nothing to drive — fill the fields inside it by their labels: `Ui.Fill("Bank", "…")`.
 /// e.g. `SettingsGrid { Field("Bank", value: a.Bank); Field("Receivables", value: a.Receivables); }`
 [Composable]
 component SettingsGrid() {

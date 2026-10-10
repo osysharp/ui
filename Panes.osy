@@ -1,0 +1,342 @@
+// Ui — how a PAGE is arranged once the shell has framed it (`using Osysharp.Ui;`): drawers docked to the right and the
+// bottom, navigation inside a tab, a record laid out as a document, a workspace of cards, and an assistant to ask.
+// Each is one control a page drops in; each takes its colours, corners and depth from the theme, so a look changes
+// how it reads and never what it does.
+
+namespace Osysharp.Ui;
+
+// ── Dock — the page's drawers ───────────────────────────────────────────────────────────────────────────────────────
+
+/// THE PAGE'S DRAWERS — the page in the middle, a drawer docked on the RIGHT (an inspector, the record a row opened)
+/// and one along the BOTTOM (a log, a console, a timeline), each with its title and a close, each resizable by its edge
+/// (drag or arrow keys; the size is remembered). The page decides when each is open, because it is what knows what is
+/// selected: `Dock(right: picked != null, …) { … slot right { … } }`. Below Laptop a drawer becomes a sheet over the page.
+/// Give it the page's full height — the `WorkbenchShell` does, as does any shell with `Panes = true` — and the middle
+/// scrolls on its own while the drawers stay put.
+/// In a test the drawers are named by their titles: `Assert.Visible("INC-4821", within: "Details")`,
+/// `Ui.Click("Close Details")`.
+/// need: a detail drawer on the right, an inspector panel, a bottom panel for logs, a console drawer, a side panel beside a list
+/// e.g. `Dock(right: open != null, rightTitle: "Details", onCloseRight: Close) { DataGrid(…); slot right { Text(open.Title); } }`
+[Composable]
+component Dock(bool right = false, bool bottom = false, string rightTitle = "Details", string bottomTitle = "Panel",
+               Action onCloseRight = null, Action onCloseBottom = null) {
+  // ⚑ A PULL, NOT A WIDTH: `drag:` moves its number the way the pointer moves, and a right drawer GROWS as its edge is
+  //   pulled LEFT. So the bound number is how far the edge has been pulled from where it started, and the width is
+  //   derived from it — the edge follows the hand, and the arrow keys move it the same way.
+  [Remembered] int rightPull = 0;
+  [Remembered] int bottomPull = 0;
+
+  render {
+    if (Layout.AtLeast(Laptop)) {
+      Row(align: Align.Stretch, gap: 0, grow: 1, minW: "0", minH: "0", h: "100%") {
+        Stack(gap: 0, grow: 1, minW: "0", minH: "0") {
+          Stack(gap: 0, grow: 1, minH: "0", overflowY: Overflow.Auto) { Slot; }
+          if (bottom) {
+            DockEdge(horizontal: true) {
+              Box(drag: bottomPull, dragAxis: DragAxis.Vertical, dragStep: 8, dragMin: -400, dragMax: 120,
+                  label: "Resize " + bottomTitle, w: "100%", h: "6px", cursor: "row-resize");
+            }
+            DockDrawer(bottomTitle, onCloseBottom, h: 240 - bottomPull) { Slot("bottom"); }
+          }
+        }
+        if (right) {
+          DockEdge(horizontal: false) {
+            Box(drag: rightPull, dragAxis: DragAxis.Horizontal, dragStep: 8, dragMin: -360, dragMax: 120,
+                label: "Resize " + rightTitle, w: "6px", h: "100%", cursor: "col-resize");
+          }
+          DockDrawer(rightTitle, onCloseRight, w: 380 - rightPull) { Slot("right"); }
+        }
+      }
+    } else {
+      // ON A NARROW SCREEN the two drawers part ways. The RIGHT one is what a person opened (a record, a row's detail),
+      // so it takes the screen as a sheet and closes back to the list. The BOTTOM one is ambient (a log, a timeline) —
+      // a sheet would bury the page under it the moment it opens — so it follows the page, in the flow, with its title.
+      Stack(gap: 0, grow: 1, minW: "0") {
+        Slot;
+        if (bottom) { DockDrawer(bottomTitle, onCloseBottom) { Slot("bottom"); } }
+      }
+      if (right) { DockSheet(rightTitle, onCloseRight) { Slot("right"); } }
+    }
+  }
+}
+
+/// The grab line between the page and a drawer — a hairline that thickens under the pointer.
+[Composable, Part]
+component DockEdge(bool horizontal) {
+  variants {
+    base { Shrink = 0; Bg = Colors.Border; Transition = Motion.Fast; Hover { Bg = Colors.Focus; } }
+    horizontal { H = "1px"; Overflow = Overflow.Visible; }
+  }
+  render {
+    if (horizontal) { Box(w: "100%", h: "1px", position: Position.Relative, overflow: Overflow.Visible) {
+      Box(position: Position.Absolute, top: "-3px", left: "0", w: "100%", h: "6px", z: ZIndex.Sticky) { Slot; } } }
+    else { Box(w: "1px", h: "100%", position: Position.Relative, overflow: Overflow.Visible) {
+      Box(position: Position.Absolute, left: "-3px", top: "0", w: "6px", h: "100%", z: ZIndex.Sticky) { Slot; } } }
+  }
+}
+
+/// One docked drawer: its title and close on a head row, its content scrolling under it.
+[Composable, Part]
+component DockDrawer(string title, Action onClose, int w = 0, int h = 0) {
+  variants { base { Bg = Colors.Surface; Color = Colors.OnSurface; Shrink = 0; MinH = "0"; MinW = "0"; } }
+  render {
+    Stack(gap: 0, w: w > 0 ? w : "100%", h: h > 0 ? h : "100%", role: UiRole.Region, label: title) {
+      Row(gap: 2, align: Align.Center, px: 3, minH: Length.ControlMd, borderBW: 1, border: Colors.Border) {
+        Text(title, fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.TextSecondary, grow: 1);
+        if (onClose != null) { IconButton("Close " + title, onClose, size: Size.Sm) { Icon(Icons.Close, size: 14); } }
+      }
+      Stack(gap: 0, grow: 1, minH: "0", overflowY: Overflow.Auto) { Slot; }
+    }
+  }
+}
+
+/// A drawer on a narrow screen: the whole screen, over the page, closed by its own button or Escape.
+[Composable, Part]
+component DockSheet(string title, Action onClose) {
+  variants {
+    base { Position = Position.Fixed; Top = "0"; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Drawer;
+           Bg = Colors.Surface; Color = Colors.OnSurface; }
+  }
+  render {
+    Stack(gap: 0, role: UiRole.Region, label: title, onEscape: onClose) {
+      Row(gap: 2, align: Align.Center, px: 3, minH: Length.AppBarH, borderBW: 1, border: Colors.Border) {
+        Text(title, fontWeight: FontWeight.Semibold, grow: 1);
+        if (onClose != null) { IconButton("Close " + title, onClose) { Icon(Icons.Close, size: 18); } }
+      }
+      Stack(gap: 0, grow: 1, minH: "0", overflowY: Overflow.Auto) { Slot; }
+    }
+  }
+}
+
+// ── SubNav — navigation inside a tab ────────────────────────────────────────────────────────────────────────────────
+
+/// NAVIGATION INSIDE A TAB — the list down the left of a tab's body that moves between that tab's own pages (a record's
+/// invoices, one at a time; a settings tab's sections), so a record can have tabs AND go deeper inside one without a
+/// second tab strip. Each `SubNavItem` is one place; the one shown is `selected`. Below Tablet it lays out as a row of
+/// chips that scrolls sideways. Put the tab's content beside it in a `Row`, or use it as `Dock`'s companion.
+/// In a test press an item by its label: `Ui.Click("INV-20418", within: "Invoices")`, and `Assert.Selected("INV-20418")`.
+/// need: navigation inside a tab, a list of sections down the side, master detail inside a record, sub navigation, nested tabs
+/// e.g. `SubNav("Invoices") { foreach (var i in invoices) { SubNavItem(i.Number, selected: i == open, onPress: () => Open(i), hint: i.Due); } }`
+[Composable]
+component SubNav(string label) {
+  render {
+    if (Layout.AtLeast(Tablet)) {
+      Stack(gap: 1, role: UiRole.TabList, label: label, w: "15rem", shrink: 0) { Slot; }
+    } else {
+      Row(gap: 2, role: UiRole.TabList, label: label, overflowX: Overflow.Auto, pb: 1) { Slot; }
+    }
+  }
+}
+
+/// One place in a `SubNav` — its label, an optional hint under it (a date, a sum) and a count beside it.
+/// In a test press it by its label: `Ui.Click("Activity")`.
+/// e.g. `SubNavItem("Activity", selected: tab == 2, onPress: () => Show(2), count: "12")`
+[Composable]
+component SubNavItem(string label, bool selected = false, Action onPress = null, string hint = "", string count = "") {
+  variants {
+    // `Shrink = 0`: in the narrow arm the items sit in a row that scrolls sideways, and an item that shrinks there is
+    // an item whose words overprint each other (measured on a phone: "IN…" over its own date).
+    base { Display = Display.Flex; Px = 3; Py = 2; Rounded = Radius.Md; Color = Colors.TextSecondary; Transition = Motion.Fast;
+           MinH = Length.TouchDense; MinW = "0"; WhiteSpace = WhiteSpace.Nowrap; Shrink = 0;
+           Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    selected { Bg = Primary.Subtle; Color = Primary.Strong; }
+  }
+  render {
+    Pressable(onClick: onPress, role: UiRole.Tab, selected: selected, label: label) {
+      Row(gap: 2, align: Align.Center, w: "100%", minW: "0") {
+        Stack(gap: 0, grow: 1, minW: "0") {
+          Text(label, fontWeight: selected ? FontWeight.Semibold : FontWeight.Medium, overflow: Overflow.Hidden,
+               textOverflow: TextOverflow.Ellipsis);
+          if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+        }
+        if (count != "") { Text(count, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+      }
+    }
+  }
+}
+
+// ── Paper — a record as a document ──────────────────────────────────────────────────────────────────────────────────
+
+/// A RECORD AS A DOCUMENT — a sheet of paper on the page's ground: a reading width, generous margins, a hairline and the
+/// theme's lift, so an invoice, a contract or a report reads as the thing it is rather than as a form about it. Its
+/// content is the slot; put the record's activity beside it (`ShellAside`, or a column of its own).
+/// In a test it is a named region: `Assert.Visible("Total due", within: "Invoice INV-20418")`.
+/// need: show a record as a document, an invoice page, a printable page, a contract view, a paper sheet
+/// e.g. `Paper("Invoice INV-20418") { PageTitle("Invoice"); … }`
+[Composable]
+component Paper(string label) {
+  variants {
+    base { Bg = Colors.Surface; Color = Colors.OnSurface; BorderW = 1; Border = Colors.CardLine; Rounded = Radius.Sm;
+           Shadow = Shadow.Raised; W = "100%"; MaxW = "52rem"; Px = 5; Py = 6; Mx = "auto";
+           Laptop { Px = 10; Py = 10; } }
+  }
+  render { Stack(gap: 5, role: UiRole.Region, label: label) { Slot; } }
+}
+
+// ── WidgetGrid — a workspace of cards ───────────────────────────────────────────────────────────────────────────────
+
+/// How many of a `WidgetGrid`'s columns a widget takes. A grid is four columns wide on a laptop, two on a tablet and
+/// one on a phone, and a span never asks for more than there is.
+public enum WidgetSpan { One, Two, Three, Full }
+
+/// A WORKSPACE OF CARDS — figures, charts and lists side by side on a four-column grid (two on a tablet, one on a
+/// phone), each a `Widget`. With `editing` on, each widget shows its tools (move it earlier or later, remove it), so a
+/// person arranges their own workspace; the order and the set are the page's to keep.
+/// In a test each widget is a region named by its title: `Assert.Visible("12,430", within: "Requests a minute")`.
+/// need: a dashboard of cards, a modular workspace, customise a dashboard, widgets, a grid of metrics and charts
+/// e.g. `WidgetGrid { Widget("Revenue", span: WidgetSpan.Two) { … } Widget("Churn") { … } }`
+[Composable]
+component WidgetGrid() {
+  render {
+    Box(display: Display.Grid, gap: 4, w: "100%",
+        cols: Layout.AtLeast(Laptop) ? "repeat(4, minmax(0, 1fr))" : (Layout.AtLeast(Tablet) ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)")) {
+      Slot;
+    }
+  }
+}
+
+/// One card of a `WidgetGrid` — a title (and a quiet subtitle), its content, and while `editing` its tools.
+/// In a test it is a region named by its title; while editing, `Ui.Click("Remove Revenue")`, `Ui.Click("Move Revenue earlier")`.
+/// e.g. `Widget("Error rate", subtitle: "last 24 hours") { Metric("Error rate", "0.2%"); }`
+[Composable]
+component Widget(string title, string subtitle = "", WidgetSpan span = WidgetSpan.One, bool editing = false,
+                 Action onRemove = null, Action onEarlier = null, Action onLater = null) {
+  variants {
+    base { Bg = Colors.Surface; Color = Colors.OnSurface; BorderW = 1; Border = Colors.CardLine; Rounded = Radius.Lg;
+           Shadow = Shadow.Raised; P = 4; MinW = "0"; }
+    span {
+      One { }
+      Two { Tablet { ColSpan = "span 2"; } }
+      Three { Tablet { ColSpan = "span 2"; } Laptop { ColSpan = "span 3"; } }
+      Full { ColSpan = "1 / -1"; }
+    }
+    editing { BorderStyle = BorderStyle.Dashed; Border = Colors.Border; }
+  }
+  render {
+    Stack(gap: 3, role: UiRole.Region, label: title) {
+      Row(gap: 2, align: Align.Center, minW: "0") {
+        Stack(gap: 0, grow: 1, minW: "0") {
+          Text(title, fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.TextSecondary);
+          if (subtitle != "") { Text(subtitle, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+        }
+        if (editing) {
+          if (onEarlier != null) { IconButton("Move " + title + " earlier", onEarlier, size: Size.Sm) { Icon(Icons.ArrowLeft, size: 14); } }
+          if (onLater != null) { IconButton("Move " + title + " later", onLater, size: Size.Sm) { Icon(Icons.ArrowRight, size: 14); } }
+          if (onRemove != null) { IconButton("Remove " + title, onRemove, size: Size.Sm, tone: Tone.Danger) { Icon(Icons.Close, size: 14); } }
+        }
+      }
+      Slot;
+    }
+  }
+}
+
+// ── AssistantPanel — an assistant to ask, over the page ────────────────────────────────────────────────────────────
+
+/// Who said a turn in an `AssistantPanel`.
+public enum AssistantVoice { Person, Assistant }
+
+/// One turn of a conversation with the in-app assistant — who said it and what. `Cites` names what the answer drew on
+/// ("INC-4821 · 3 runbooks"), shown under it.
+public sealed class AssistantTurn {
+  public AssistantVoice From = AssistantVoice.Person;
+  public string Text = "";
+  public string Cites = "";
+}
+
+/// AN ASSISTANT TO ASK, OVER THE PAGE — a panel that floats at the right edge (a full-screen sheet on a phone) with the
+/// conversation so far, a few suggested questions while it is empty, and a box to ask in. It is the PRESENTATION only:
+/// the app keeps the turns, binds the draft, and answers `onSend` however it likes (an agent, a search, a canned reply),
+/// setting `working` while it does. Open it from anywhere — a shell's `actions` slot, a record's head — and close it
+/// with its button or Escape; the page under it stays live.
+/// In a test it is a dialog named by its title: `Ui.Fill("Ask", "Why did this fail?", within: "Assistant")`,
+/// `Ui.Click("Ask it")`, then `Assert.Visible("…", within: "Assistant")`.
+/// need: an in-app chat, an ai assistant panel, ask a question about the page, an agent overlay, a copilot sidebar
+/// e.g. `if (asking) { AssistantPanel("Assistant", turns, value: draft, onSend: Ask, onClose: Close, working: busy); }`
+[Composable]
+component AssistantPanel(string title, AssistantTurn[] turns, Binding<string> value, Action onSend, Action onClose,
+                         bool working = false, string[] suggestions = [], Action<string> onSuggest = null,
+                         string placeholder = "Ask about what you are looking at") {
+  render {
+    AssistantFrame(Layout.AtLeast(Tablet), title, onClose) {
+      Stack(gap: 4, grow: 1, minH: "0", overflowY: Overflow.Auto, px: 4, py: 4, role: UiRole.Region, label: "Conversation") {
+        if (turns.Length == 0 && !working) {
+          Stack(gap: 3) {
+            Text("Ask about anything on this page.", color: Colors.TextMuted);
+            if (onSuggest != null) {
+              foreach (var s in suggestions) {
+                AssistantSuggestion(s, () => onSuggest(s));
+              }
+            }
+          }
+        }
+        foreach (var t in turns) { AssistantBubble(t.From, t.Text, t.Cites); }
+        if (working) {
+          Row(gap: 2, align: Align.Center, role: UiRole.Status) {
+            Lamp(lit: true, waiting: true, tone: Tone.Primary);
+            Text("Thinking…", fontSize: FontSize.Caption, color: Colors.TextMuted);
+          }
+        }
+      }
+      Row(gap: 2, align: Align.End, px: 3, py: 3, borderTW: 1, border: Colors.Border) {
+        Box(grow: 1, minW: "0") {
+          Input(value: value, label: "Ask", placeholder: placeholder, w: "100%", onEnter: onSend);
+        }
+        IconButton("Ask it", onSend, tone: Tone.Primary, disabled: value.Trim() == "") { Icon(Icons.Send, size: 16); }
+      }
+    }
+  }
+}
+
+/// The assistant's floating panel (or, on a phone, its sheet): a head with its mark, title and close.
+[Composable, Part]
+component AssistantFrame(bool floats, string title, Action onClose) {
+  variants {
+    base { Position = Position.Fixed; Z = ZIndex.Drawer; Bg = Colors.Elevated; Color = Colors.OnSurface;
+           Display = Display.Flex; Top = "0"; Right = "0"; Bottom = "0"; Left = "0";
+           Tablet { Top = "12px"; Right = "12px"; Bottom = "12px"; Left = "auto"; W = Length.AssistantW;
+                    Rounded = Radius.Lg; Shadow = Shadow.Deep; BorderW = 1; Border = Colors.CardLine; } }
+  }
+  render {
+    // ⚠ No `w:` on this root: the panel's width is the variant's `Length.AssistantW` from Tablet up, and a width
+    //   written here would override it — the first draw covered the whole page.
+    Stack(gap: 0, role: UiRole.Dialog, label: "Assistant", onEscape: onClose, overflow: Overflow.Hidden) {
+      Row(gap: 2, align: Align.Center, px: 4, minH: Length.AppBarH, borderBW: 1, border: Colors.Border) {
+        Icon(Icons.Sparkles, size: 16, color: Colors.Primary);
+        Text(title, fontWeight: FontWeight.Semibold, grow: 1);
+        IconButton("Close the assistant", onClose, size: Size.Sm) { Icon(Icons.Close, size: 16); }
+      }
+      Slot;
+    }
+  }
+}
+
+/// One turn: the person's on the right in a soft bubble, the assistant's on the left as plain text under its mark.
+[Composable, Part]
+component AssistantBubble(AssistantVoice from, string text, string cites) {
+  render {
+    if (from == AssistantVoice.Person) {
+      Row(justify: Justify.End) {
+        Box(px: 3, py: 2, bg: Colors.Muted, rounded: Radius.Lg, maxW: "85%") { Text(text); }
+      }
+    } else {
+      Row(gap: 2, align: Align.Start) {
+        Box(pt: 1) { Icon(Icons.Sparkles, size: 14, color: Colors.Primary); }
+        Stack(gap: 1, grow: 1, minW: "0") {
+          Text(text);
+          if (cites != "") { Text(cites, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+        }
+      }
+    }
+  }
+}
+
+/// A suggested question — pressing it asks it.
+[Composable, Part]
+component AssistantSuggestion(string text, Action onPress) {
+  variants {
+    base { Display = Display.Flex; Px = 3; Py = 2; Rounded = Radius.Md; BorderW = 1; Border = Colors.Border;
+           Color = Colors.TextSecondary; Transition = Motion.Fast; Hover { Bg = Colors.Muted; Color = Colors.OnSurface; } }
+  }
+  render { Pressable(onClick: onPress, label: text) { Text(text, textAlign: TextAlign.Left); } }
+}

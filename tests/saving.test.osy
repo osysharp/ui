@@ -1,0 +1,55 @@
+// How a page's unit of work is SHOWN — inline (`SaveActions`) and kept by itself (`AutoSave`). Each test reads the row
+// back after the screen says what happened, because a save control that says "Saved" and kept nothing is the failure
+// these exist to rule out.
+
+/// Inline: an edit marks the record "Edited" and offers Save and Discard beside its name; Save keeps it.
+[Test(Workshop)]
+void an_inline_save_keeps_the_edit_and_says_so() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/edit");
+  Assert.Hidden("Edited");
+  Ui.Fill("Artwork", "Three etchings, one frame");
+  Assert.Visible("Edited");
+  Ui.Click("Save");
+  Assert.Visible("Job saved.");
+  Assert.Hidden("Edited");
+  runas (Tom) { Assert.Equal("Three etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// Inline: Discard puts the record back as it was, and nothing is written.
+[Test(Workshop)]
+void an_inline_discard_puts_it_back_and_writes_nothing() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/edit");
+  Ui.Fill("Artwork", "Something else");
+  Ui.Click("Discard");
+  Assert.Hidden("Edited");
+  runas (Tom) { Assert.Equal("Two etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// Kept by itself: the edit waits out its window ("Saving in …"), then is kept without anybody pressing Save.
+[Test(Workshop)]
+void an_auto_save_keeps_the_edit_once_its_window_has_passed() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/jot");
+  Ui.Fill("Artwork", "Two etchings, walnut");
+  Assert.Visible("Saving in");
+  Ui.Tick();
+  Ui.Tick();
+  Assert.Visible("All changes saved");
+  runas (Tom) { Assert.Equal("Two etchings, walnut", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// Kept by itself — and Undo inside the window takes the edit back, so nothing is kept.
+[Test(Workshop)]
+void undo_inside_the_window_takes_an_auto_save_back() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/jot");
+  Ui.Fill("Artwork", "A mistake");
+  Ui.Click("Undo");
+  Assert.Hidden("Saving in");
+  Ui.Tick();
+  Ui.Tick();
+  Assert.Hidden("All changes saved");
+  runas (Tom) { Assert.Equal("Two etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}

@@ -1,0 +1,253 @@
+// Ui — THE WORKBENCH SHELL: the arrangement of a developer tool or an operator's console. One more arrangement of the
+// one `AppChrome` contract (`Shell.osy`), so an app moves to it by changing one word.
+//
+//     [Layout] component Shell() {
+//       render { WorkbenchShell(chrome) { Outlet(retain: 8); slot status { Text("Connected"); } } }
+//     }
+//
+// ⚑ THE NAVIGATION IS SPLIT IN TWO, which is what makes it a workbench rather than a sidebar:
+//   · the ACTIVITY BAR — one mark per top-level section, always in view, never wider than a glyph;
+//   · the EXPLORER beside it — the pages of the section you are in, with whatever the app adds under them (saved
+//     views, a queue's filters). Pressing the current section's mark folds the explorer away and back (Mod+B too),
+//     because on a console the width is worth more than the map once you know where you are.
+//   The page's own DRAWERS — an inspector on the right, a log or a console at the bottom — are the page's, not the
+//   shell's: they open over what the page has selected, so the page holds them (`Dock`). The shell's job is the frame
+//   they sit in: full height, nothing scrolling but the panes, and a STATUS LINE under everything.
+//
+// THE BANDS, as every shell: below Tablet the activity bar and the explorer become one drawer behind the menu button
+// (every section with its pages under it) and the status line stays; from Tablet up the frame is as described.
+
+namespace Osysharp.Ui;
+
+/// THE WORKBENCH SHELL — an activity bar of section marks, an explorer with the current section's pages, a top bar,
+/// full-height panes for the page and a status line along the foot. For DEVELOPER tools and OPERATORS' consoles: a
+/// support desk, an incident room, a data or deployment tool — anything used all day at full density. Pair it with
+/// `Dock` on a page for the right and bottom drawers.
+///
+/// Slots, all optional:
+///   (default)   the routed page — `Outlet(retain: 8)`; it fills the panes, so give it a `Dock` or its own scroll
+///   `explorer`  under the section's pages in the explorer — saved views, a queue's filters, a tree
+///   `search`    in the top bar — `ShellSearch(…)` is shaped for it
+///   `actions`   top-bar controls right of search
+///   `status`    the status line along the foot — a connection lamp, a count, the build
+///
+/// In a test the regions carry names, so scope to them: `Ui.Click("Queues", within: "Main navigation")`,
+/// `Assert.Visible("Connected", within: "Status")`, and `Ui.Click("Hide the explorer")` folds the explorer.
+/// need: a developer tool layout, an operator console shell, activity bar and explorer, vscode style layout, a status bar
+/// e.g. `WorkbenchShell(chrome) { Outlet(retain: 8); slot status { Lamp(live: true, tone: Tone.Success); Text("Live"); } }`
+[Composable]
+component WorkbenchShell(AppChrome chrome) {
+  bool drawerOpen = false;   // phone only
+  [Remembered] bool explorerShut = false;
+  bool userMenuOpen = false;
+
+  live var path = Navigation.CurrentPath ?? "";
+  live var current = chrome.CurrentRoute(path);
+  live var hasUser = chrome.User != null;
+  live var hasMenu = chrome.User != null && chrome.User.Menu.Length > 0;
+
+  action ToggleExplorer() { explorerShut = !explorerShut; }
+  action OpenDrawer() { drawerOpen = true; }
+  action CloseDrawer() { drawerOpen = false; }
+  action ToggleUserMenu() { userMenuOpen = !userMenuOpen; drawerOpen = false; }
+  action CloseUserMenu() { userMenuOpen = false; }
+  action DismissAll() { userMenuOpen = false; drawerOpen = false; }
+  action Navigated() { drawerOpen = false; }
+
+  /// The top-level section the current page belongs to — the one whose pages the explorer lists.
+  NavItem SectionOf(string here) {
+    foreach (var item in chrome.Nav) {
+      if (item.Kind != NavKind.Section && (item.To == here || item.HasRoute(here))) { return item; }
+      if (item.Kind == NavKind.Section) {
+        foreach (var c in item.Children) { if (c.To == here || c.HasRoute(here)) { return c; } }
+      }
+    }
+    return null;
+  }
+
+  /// Every mark the activity bar carries: the top-level items, with a `NavKind.Section`'s children lifted to the top
+  /// (a section heading is a word, and an activity bar has no room for words).
+  NavItem[] Marks() {
+    List<NavItem> all = [];
+    foreach (var item in chrome.Nav) {
+      if (item.Kind == NavKind.Section) { foreach (var c in item.Children) { all.Add(c); } }
+      else { all.Add(item); }
+    }
+    return all.ToArray();
+  }
+
+  variants { base { Display = Display.Flex; Bg = Colors.Bg; Color = Colors.OnBg; } }
+
+  render {
+    if (Layout.AtLeast(Tablet)) {
+      Stack(gap: 0, h: Length.Screen, w: "100%", minW: "0") {
+        Row(align: Align.Stretch, gap: 0, grow: 1, minH: "0", minW: "0") {
+          WorkbenchActivityBar(label: "Main navigation") {
+            Row(align: Align.Center, justify: Justify.Center, minH: Length.AppBarH) { ShellBrand(chrome, markOnly: true); }
+            Stack(gap: 1, grow: 1, minH: "0", py: 1, overflowY: Overflow.Auto, scrollbarWidth: ScrollbarWidth.None) {
+              foreach (var item in Marks()) {
+                if (SectionOf(current) != null && SectionOf(current).Key() == item.Key()) {
+                  // The section you are in: its mark folds the explorer, the way it does in every editor.
+                  WorkbenchMark(item, NavState.Current, explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer);
+                } else {
+                  WorkbenchMarkLink(item, item.HasRoute(current) ? NavState.Trail : NavState.Idle, Navigated);
+                }
+              }
+            }
+            if (hasUser) {
+              RailIdentity(chrome.User, false, hasMenu, userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll);
+            }
+          }
+          if (!explorerShut && SectionOf(current) != null) {
+            WorkbenchExplorer(SectionOf(current), current, Navigated) { Slot("explorer"); }
+          }
+          Stack(gap: 0, grow: 1, minW: "0", minH: "0") {
+            RailTopBar(chrome, false, OpenDrawer) {
+              slot search { Slot("search"); }
+              slot actions {
+                Slot("actions");
+                IconButton(explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer, size: Size.Sm,
+                           shortcut: "Mod+B") { Icon(Icons.PanelLeft, size: 16); }
+              }
+            }
+            ShellBody(true, arrangement: ShellPage.Panes) {
+              slot page { Slot; }
+              slot aside { Slot("aside"); }
+            }
+          }
+        }
+        WorkbenchStatus() { Slot("status"); }
+        KeyboardSheet();
+      }
+    } else {
+      Stack(gap: 0, minH: Length.Screen, w: "100%", minW: "0") {
+        RailTopBar(chrome, true, OpenDrawer) {
+          slot search { Slot("search"); }
+          slot actions { Slot("actions"); }
+        }
+        if (drawerOpen) {
+          ShellScrim(CloseDrawer);
+          WorkbenchPhoneDrawer(label: "Main navigation") {
+            Row(gap: 2, align: Align.Center, px: 3, minH: Length.AppBarH) { ShellBrand(chrome); }
+            Stack(gap: 1, px: 2, py: 2, grow: 1, minH: "0", overflowY: Overflow.Auto) {
+              foreach (var item in Marks()) { SidebarNavLeaf(item, current, Navigated); }
+            }
+          }
+        }
+        Stack(gap: 0, grow: 1, minW: "0", role: UiRole.Main, label: "Page") { Slot; }
+        WorkbenchStatus() { Slot("status"); }
+      }
+    }
+    if (userMenuOpen && !Layout.AtLeast(Tablet) && hasMenu) {
+      ShellSheet("Account", CloseUserMenu) {
+        ShellSheetIdentity(chrome.User);
+        Divider();
+        ShellMenuItems(chrome.User.Menu, DismissAll);
+      }
+    }
+  }
+}
+
+/// The activity bar's column — the chrome's ground, one glyph wide.
+[Composable, Part]
+component WorkbenchActivityBar(string label) {
+  variants {
+    base { Ground = Ground.Chrome; Bg = Colors.Surface; Color = Colors.OnSurface; BorderRW = 1; Border = Colors.Border;
+           W = Length.ActivityW; Shrink = 0; }
+  }
+  render { Stack(gap: 0, align: Align.Center, role: UiRole.Navigation, label: label) { Slot; } }
+}
+
+/// One section's mark that LEADS somewhere — to the section's first page.
+[Composable, Part]
+component WorkbenchMarkLink(NavItem item, NavState state, Action onNavigated) {
+  variants {
+    base { Position = Position.Relative; Display = Display.Flex; W = Length.ActivityW; MinH = Length.TouchDense;
+           Color = Colors.TextMuted; Transition = Motion.Fast;
+           Hover { Color = Colors.OnSurface; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    state { Current { Color = Colors.OnSurface; } Trail { Color = Colors.OnSurface; } Idle { } }
+  }
+  render {
+    Link(href: item.FirstRoute(), label: item.Label, current: false, onClick: onNavigated, shortcut: item.Shortcut) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state); }
+      WorkbenchTip(item.Label, item.Badge);
+    }
+  }
+}
+
+/// The mark of the section you are IN — lit, with the accent's edge, and pressing it folds the explorer.
+[Composable, Part]
+component WorkbenchMark(NavItem item, NavState state, string action, Action onPress) {
+  variants {
+    base { Position = Position.Relative; Display = Display.Flex; W = Length.ActivityW; MinH = Length.TouchDense;
+           Color = Colors.OnSurface; BorderLW = 2; Border = Colors.Primary; Transition = Motion.Fast;
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render {
+    Pressable(onClick: onPress, label: item.Label + " — " + action, current: true) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", ml: "-2px") { ShellNavMark(item.Icon, state); }
+      WorkbenchTip(item.Label, item.Badge);
+    }
+  }
+}
+
+/// A mark's name, beside it on hover and keyboard focus — the activity bar has no room for words.
+[Composable, Part]
+component WorkbenchTip(string text, string badge = "") {
+  variants {
+    base { Display = Display.None; Position = Position.Absolute; Left = "100%"; Top = "50%";
+           TranslateY = "-50%"; Ml = 1; Px = 2; Py = 1; Rounded = Radius.Sm; Bg = Colors.OnSurface;
+           Color = Colors.Surface; FontSize = FontSize.Caption; WhiteSpace = WhiteSpace.Nowrap;
+           Z = ZIndex.Tooltip; Shadow = Shadow.Floating; PointerEvents = PointerEvents.None;
+           inside WorkbenchMarkLink.Hover { Display = Display.Flex; }
+           inside WorkbenchMarkLink.Focus { Display = Display.Flex; }
+           inside WorkbenchMark.Hover { Display = Display.Flex; }
+           inside WorkbenchMark.Focus { Display = Display.Flex; } }
+  }
+  render {
+    Row(gap: 2, align: Align.Center, decorative: true) {
+      Text(text);
+      if (badge != "") { Text(badge, fontWeight: FontWeight.Semibold); }
+    }
+  }
+}
+
+/// The explorer: the current section's name, its pages, and what the app adds under them (the `explorer` slot).
+[Composable, Part]
+component WorkbenchExplorer(NavItem section, string current, Action onNavigated) {
+  variants {
+    base { Ground = Ground.Chrome; Bg = Colors.Sunken; Color = Colors.OnSurface; BorderRW = 1; Border = Colors.Border;
+           W = Length.ExplorerW; Shrink = 0; MinH = "0"; OverflowY = Overflow.Auto; }
+  }
+  render {
+    Stack(gap: 0, role: UiRole.Navigation, label: section.Label) {
+      Row(align: Align.Center, px: 4, minH: Length.AppBarH) { SectionLabel(section.Label); }
+      Stack(gap: 1, px: 2) {
+        if (section.Children.Length == 0) { SidebarNavLeaf(section, current, onNavigated); }
+        foreach (var c in section.Children) { SidebarNavLeaf(c, current, onNavigated); }
+      }
+      Stack(gap: 1, px: 2, pt: 4) { Slot; }
+    }
+  }
+}
+
+/// The status line along the foot — small type on the chrome's ground, the app's `status` slot laid out in a row.
+[Composable, Part]
+component WorkbenchStatus() {
+  variants {
+    base { Ground = Ground.Chrome; Bg = Colors.Surface; Color = Colors.TextMuted; BorderTW = 1; Border = Colors.Border;
+           MinH = Length.StatusBarH; Px = 3; FontSize = FontSize.Caption; Shrink = 0; }
+  }
+  render { Row(gap: 4, align: Align.Center, role: UiRole.ContentInfo, label: "Status") { Slot; } }
+}
+
+/// The phone's drawer — every section with its pages under it, over a scrim.
+[Composable, Part]
+component WorkbenchPhoneDrawer(string label) {
+  variants {
+    base { Position = Position.Fixed; Top = "0"; Bottom = "0"; Left = "0"; Z = ZIndex.Drawer; Ground = Ground.Chrome;
+           Bg = Colors.Surface; Color = Colors.OnSurface; Shadow = Shadow.Deep; W = Length.RailDrawerW; }
+  }
+  render { Stack(gap: 0, role: UiRole.Navigation, label: label) { Slot; } }
+}

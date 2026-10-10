@@ -573,6 +573,7 @@ component StorefrontDrawerLink(string label, string to, bool isCurrent, bool nes
 
 /// THE ANNOUNCEMENT BAR — one line above the header: free delivery, opening hours, a new collection. Quiet, centred,
 /// and optionally a link.
+/// In a test it is text, and its link is pressed by its words: `Ui.Click("Book a time")`.
 /// need: a thin announcement bar above a site header, a promo strip, a banner with an offer
 /// e.g. `slot promo { StorePromo("Free delivery on orders over €80"); }`
 /// e.g. `slot promo { StorePromo("Now booking December", linkLabel: "Book a time", to: "/book"); }`
@@ -595,6 +596,7 @@ component StorePromo(string text, string linkLabel = "", string to = "") {
 
 /// THE SITE FOOTER — the brand and a line about it, the catalogue's categories as columns of links, and a closing line.
 /// Generous and quiet, the way the best shops end a page. A `contentinfo` landmark.
+/// In a test it is the "contentinfo" landmark; press a link by its words: `Ui.Click("Shoes", within: "Footer")`.
 /// need: a website footer, a site footer with links, a shop footer
 /// e.g. `slot footer { StoreFooter(chrome, "Restored by hand in Gothenburg since 1998.", note: "© 2026 Rust & Chrome"); }`
 /// Its `about` slot sits under the name — where a region of footer blocks goes, so staff arrange what it says:

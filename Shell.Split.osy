@@ -195,6 +195,7 @@ component SplitPhoneBar(AppChrome chrome, bool menuOpen, Action onToggleMenu, Ac
 
 /// THE SPLIT SHELL'S PICTURE — a photograph filling the panel, cropped to cover. `focus` moves the crop when the subject
 /// sits away from the middle (`"center 30%"`).
+/// In a test the picture is found by its alt text: `Assert.Visible("The salon's front room")`.
 /// need: the picture for a split shell's panel, a full-height photo beside the page
 /// e.g. `slot art { SplitArt(Textures.FrontOfHouse, "The salon's front room"); }`
 [Composable]

@@ -149,6 +149,7 @@ public enum MenuFrom {
 /// A key chip — a BINDING (`"Mod+K"`, `"Shift+?"`, `"J"`) shown as the keys to press, spelled for the reader's
 /// platform: `⌘K` on a Mac, `Ctrl+K` elsewhere. Write the binding exactly as `shortcut:` takes it, never the glyphs.
 /// To show the key an ACTION is bound to, use `KeyHintOf(action)` — that one cannot drift from the binding at all.
+/// In a test it is text, spelled for the platform the test runs on: `Assert.Visible("⌘K")`.
 /// e.g. `KeyHint("Mod+K")` · `KeyHint("J")`
 [Composable] component KeyHint(string keys) {
   variants {

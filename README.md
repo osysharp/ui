@@ -52,12 +52,13 @@ component Orders() {
 | group | controls |
 |---|---|
 | actions | `Button`, `IconButton`, `Menu`, `MenuItem`, `CommandMenu`, `KeyHint` |
-| input | `Field`, `NumberField`, `DecimalField`, `DurationField`, `DatePicker`, `DateTimePicker`, `Dropdown`, `Checkbox`, `Option` |
-| overlays | `Dialog`, `Backdrop`, `Scrim`, `ShellSheet`, `KeyboardSheet` |
-| data | `DataGrid`, `Card`, `Metric`, `Badge`, `RecordBadge`, `RecordPanel`, `ListRow` |
-| feedback | `Alert`, `Done`, `EmptyState`, `ProgressBar`, `Spinner`, `Skeleton`, `SaveBar`, `Lamp` |
+| input | `Field`, `NumberField`, `DecimalField`, `DurationField`, `DatePicker`, `DateTimePicker`, `Dropdown`, `RadioGroup`, `Checkbox`, `Option`, `SearchField` |
+| overlays | `Dialog`, `Backdrop`, `Scrim`, `ShellSheet`, `KeyboardSheet`, `AssistantPanel` |
+| data | `DataGrid` (selectable, with a selection toolbar), `SelectionBar`, `FilterChip`, `Card`, `Metric`, `Badge`, `RecordBadge`, `RecordPanel`, `ListRow` |
+| feedback | `Alert`, `Done`, `EmptyState`, `ProgressBar`, `Spinner`, `Skeleton`, `SaveBar`, `SaveActions`, `AutoSave`, `Lamp` |
 | settings | `SettingsArea`, `SettingsPage`, `SettingsSection`, `SettingRow`, `SettingsOverview` |
-| shells | `SidebarShell`, `RailShell`, `TabbedShell`, `FocusedShell`, `SplitShell`, `CatalogueShell`, `EditorialShell`, `MarqueeShell`, `StorefrontShell` |
+| shells | `SidebarShell`, `RailShell`, `TabbedShell`, `WorkbenchShell`, `FocusedShell`, `SplitShell`, `CatalogueShell`, `EditorialShell`, `MarqueeShell`, `StorefrontShell` |
+| page arrangements | `Dock` (right and bottom drawers), `SubNav`, `Paper`, `WidgetGrid`, `Widget` |
 | typography | `PageHead`, `PageTitle`, `CardTitle`, `SectionLabel`, `FieldLabel`, `Hint`, `Strong` |
 
 Its words are translated (`locales/`), and every control is keyboard-reachable and labelled for a screen reader.

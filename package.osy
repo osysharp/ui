@@ -8,7 +8,7 @@
 // Flat by declaration, not by convention: the kit has no `model/` folder, so it says so (design §5b ①, nothing
 // hardcodes a layout). `package.osy` is never matched by its own globs.
 package Osysharp.Ui {
-  version     "2.19.0";
+  version     "2.20.0";
   minPlatform "0.9.0";
   summary     "the general application vocabulary: buttons, fields, dialogs, the data grid, and the app shell.";
 

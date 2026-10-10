@@ -84,6 +84,34 @@ component OrderPage(Guid id) {
   }
 }
 
+/// One order's artwork, edited IN PLACE — the inline save beside its name (`SaveActions`).
+[Route("/orders/{id}/edit")] [Authorize(IsFramer)] [Render(CSR)] [Title("Edit the job")]
+component OrderEditPage(Guid id) {
+  live var order = FrameOrder.FirstOrDefault(o => o.Id == id);
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(order.Customer) { SaveActions(saved: "Job saved."); }
+        Field("Artwork", value: order.Artwork);
+      }
+    }
+  }
+}
+
+/// The same edit, KEPT BY ITSELF — no Save at all (`AutoSave`).
+[Route("/orders/{id}/jot")] [Authorize(IsFramer)] [Render(CSR)] [Title("Jot")]
+component OrderJotPage(Guid id) {
+  live var order = FrameOrder.FirstOrDefault(o => o.Id == id);
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(order.Customer) { AutoSave(after: 2); }
+        Field("Artwork", value: order.Artwork);
+      }
+    }
+  }
+}
+
 /// "Settled" beside an order's name, once it is.
 [Contribution("Settled")]
 component PaidBadge(FrameOrder record) : RecordBadge<FrameOrder> {

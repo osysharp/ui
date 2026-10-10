@@ -11,6 +11,7 @@ namespace Osysharp.Ui;
 /// A key chip showing the key bound ON THIS PAGE to `action` — a control whose `onPress` is that action and whose
 /// `shortcut:` binds the key — and nothing at all when no control binds one. The hint cannot drift from the binding:
 /// rename the key on the button and every chip follows; remove the button and the chip goes.
+/// In a test it is text: `Assert.Visible("⌘K")` — but drive the ACTION, not the chip: `Ui.Press("Mod+K")`.
 /// e.g. `Row { Text("Assign to me"); KeyHintOf(AssignToMe); }`
 [Composable] component KeyHintOf(Action action) {
   variants {

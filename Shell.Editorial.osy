@@ -234,6 +234,7 @@ component EditorialMenuButton(bool open, Action onPress) {
 
 /// THE EDITORIAL FOOTER — a line about the place and its links, then the brand's NAME set enormous across the whole
 /// width: the site signs off rather than listing itself. A `contentinfo` landmark.
+/// In a test it is the "contentinfo" landmark: `Assert.Visible("Three chairs on Harbour Street", within: "Footer")`.
 /// need: a brand website footer, a footer with the name set huge, a studio or salon site footer
 /// e.g. `slot footer { EditorialFooter(chrome, "Three chairs on Harbour Street, since 2011.", note: "© 2026 Harbour Street Hair"); }`
 [Composable]

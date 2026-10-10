@@ -193,6 +193,53 @@ public string ZoneWords(Zone zone) {
 /// need: a toggle that takes effect at once, turn a setting on or off, an immediate on off control
 /// e.g. `Switch("Live updates", value: live, onToggle: Apply)` — `value` writes itself; `onToggle` is what makes
 /// it take effect NOW, which is the whole difference from a Checkbox.
+/// ONE CHOICE OF A FEW, ALL IN VIEW — a radio per option, under a caption. Reach for it instead of a `Dropdown` when
+/// there are two to six options and the person should SEE them before choosing (a form anyone may have to fill in, a
+/// question whose answers explain each other). Same shape as `Dropdown`: `value` is a two-way `Binding<T>`, `options`
+/// defaults to the enum's members worded by their labels, and a template says what one option reads.
+/// In a test press the option by its words: `Ui.Click("Dental practice")`, and read it back with `Assert.Checked("Dental practice")`.
+/// need: radio buttons, choose one of a few options shown at once, an either or question, a single choice list
+/// e.g. `RadioGroup("What kind of practice is it?", value: kind)` · over rows: `RadioGroup("Ship with", value: o.Carrier, options: carriers) { c => Text(c.Name); }`
+[Composable] component RadioGroup<T>(string label, Binding<T> value, T[] options = T.Members, string hint = "",
+                                     bool disabled = false) {
+  action Choose(T m) { value = m; }
+  render {
+    Stack(gap: 2, role: UiRole.RadioGroup, label: label) {
+      Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted);
+      if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+      foreach (var m in options) {
+        Pressable(onClick: () => Choose(m), role: UiRole.Radio, checked: m == value, disabled: disabled) {
+          Row(align: Align.Center, gap: 2, minH: Length.TouchDense) {
+            RadioMark(on: m == value);
+            Slot(m) { Text(m.Label, fontSize: FontSize.Body, color: Colors.OnSurface); }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// A radio's circle — a ring, with the accent's dot inside while it is the one chosen.
+[Composable, Part] component RadioMark(bool on = false) {
+  variants {
+    base { Display = Display.InlineFlex; W = "20px"; H = "20px"; Shrink = 0; Rounded = Radius.Circle; BorderW = 2;
+           Border = Colors.TextMuted; Transition = Motion.Fast; }
+    on { Border = Colors.Primary; }
+  }
+  render {
+    // ⚠ NO `w:`/`h:` HERE — the circle's size is the variant's, and a size written on the render root overrides it
+    //   (the first draw stretched every ring into a 760px ellipse).
+    Row(align: Align.Center, justify: Justify.Center, decorative: true) {
+      if (on) { Box(w: "10px", h: "10px", rounded: Radius.Circle, bg: Colors.Primary); }
+    }
+  }
+}
+
+/// An on/off switch — a `Checkbox` drawn as a track and thumb, for a setting that takes effect as it is flipped, or a
+/// mode a page is in ("Customise"). `value` is a two-way `Binding<bool>`; `onToggle` runs after it changes.
+/// In a test press it by its label: `Ui.Click("Customise")`, and read it with `Assert.Checked("Customise")`.
+/// need: an on off toggle, a switch for a setting, turn a mode on and off, a toggle that shows its state
+/// e.g. `Switch("Send payment reminders", value: terms.Reminders)`
 [Composable] component Switch(string label, Binding<bool> value, Action onToggle = null, bool disabled = false) {
   // The same change as `Checkbox` above, for the same reason — see its note. A switch is the immediate-effect
   // sibling, so `onToggle` is where its commit usually goes.
