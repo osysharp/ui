@@ -49,16 +49,6 @@ public abstract theme Relay {
     ChromeCurrent   = Modes.Of(light: "#FFFFFF", dark: "#1E2228");
     OnChromeCurrent = Modes.Of(light: "#16181D", dark: "#FFFFFF");
     ChromeFocus     = Colors.Focus;
-    // A chart on the console: the signal for the figure, steel for the line it is held against.
-    Series1       = Modes.Of(light: Palette.From("#D9530F"), dark: Palette.From("#FF7A3D"));
-    Series2       = Modes.Of(light: Palette.From("#53627A"), dark: Palette.From("#94A3BA"));
-    ChartSurface  = Colors.Surface;
-    ChartBorder   = Colors.CardLine;
-    ChartGrid     = Colors.Muted;
-    ChartInk      = Colors.OnSurface;
-    ChartMuted    = Colors.TextMuted;
-    ChartTipBg    = Colors.OnSurface;
-    ChartTipInk   = Colors.Surface;
   }
   Font {
     Sans    = "\"Reddit Sans\", ui-sans-serif, system-ui, sans-serif";

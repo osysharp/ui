@@ -50,15 +50,6 @@ public abstract theme Signal {
     OnChromeCurrent = Modes.Of(light: "#FFFFFF", dark: "#FFFFFF");
     ChromeFocus     = Modes.Of(light: "#C2ACFF", dark: "#C2ACFF");
     // The data carries the colour here: ultraviolet for the figure, a sea-green for what it is measured against.
-    Series1       = Modes.Of(light: Palette.From("#6A3BE4"), dark: Palette.From("#A889FF"));
-    Series2       = Modes.Of(light: Palette.From("#0E9F7A"), dark: Palette.From("#3CCB93"));
-    ChartSurface  = Colors.Surface;
-    ChartBorder   = Colors.CardLine;
-    ChartGrid     = Colors.Muted;
-    ChartInk      = Colors.OnSurface;
-    ChartMuted    = Colors.TextMuted;
-    ChartTipBg    = Colors.OnSurface;
-    ChartTipInk   = Colors.Surface;
   }
   Font {
     Sans    = "\"Sofia Sans\", ui-sans-serif, system-ui, sans-serif";

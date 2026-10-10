@@ -8,7 +8,7 @@
 // Every token the app does not override comes from the look: its palette in light and dark, its type and the faces it
 // ships, its density, its radii and elevation, and the colours of the app's chrome. `osy kit looks` lists them.
 package Osysharp.Ui.Looks {
-  version     "0.1.0";
+  version     "0.1.1";
   minPlatform "0.9.0";
   summary     "five looks for apps on the UI kit — Ledger, Relay, Civic, Studio, Signal — each a theme an app derives from and makes its own.";
   model "model/**/*.osy";

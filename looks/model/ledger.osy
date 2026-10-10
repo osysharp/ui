@@ -49,17 +49,6 @@ public abstract theme Ledger {
     ChromeCurrent   = Modes.Of(light: "#E5ECF6", dark: "#1A2A40");
     OnChromeCurrent = Modes.Of(light: "#173C6B", dark: "#B9D5F7");
     ChromeFocus     = Colors.Focus;
-    // The chart kit's card and ink, on this look's paper.
-    // A chart in the ledger's inks: navy for the figure, brass for what it is measured against.
-    Series1       = Modes.Of(light: Palette.From("#2F5F9E"), dark: Palette.From("#86B6F2"));
-    Series2       = Modes.Of(light: Palette.From("#B07A1E"), dark: Palette.From("#E3B25C"));
-    ChartSurface  = Colors.Surface;
-    ChartBorder   = Colors.CardLine;
-    ChartGrid     = Colors.Muted;
-    ChartInk      = Colors.OnSurface;
-    ChartMuted    = Colors.TextMuted;
-    ChartTipBg    = Colors.OnSurface;
-    ChartTipInk   = Colors.Surface;
   }
   Font {
     Sans    = "\"Wix Madefor Text\", ui-sans-serif, system-ui, sans-serif";

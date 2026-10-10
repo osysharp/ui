@@ -51,16 +51,6 @@ public abstract theme Civic {
     ChromeCurrent   = Modes.Of(light: "#DCE9F8", dark: "#1C3550");
     OnChromeCurrent = Modes.Of(light: "#0B3F80", dark: "#D3E5FB");
     ChromeFocus     = Colors.Focus;
-    // A chart in the service blue, against a deep teal — two hues no colour-blind reader confuses.
-    Series1       = Modes.Of(light: Palette.From("#155DB1"), dark: Palette.From("#7DB4F5"));
-    Series2       = Modes.Of(light: Palette.From("#00797A"), dark: Palette.From("#4CC3BE"));
-    ChartSurface  = Colors.Surface;
-    ChartBorder   = Colors.CardLine;
-    ChartGrid     = Colors.Muted;
-    ChartInk      = Colors.OnSurface;
-    ChartMuted    = Colors.TextMuted;
-    ChartTipBg    = Colors.OnSurface;
-    ChartTipInk   = Colors.Surface;
   }
   Font {
     Sans    = "\"Atkinson Hyperlegible Next\", ui-sans-serif, system-ui, sans-serif";

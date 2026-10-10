@@ -49,16 +49,6 @@ public abstract theme Studio {
     ChromeCurrent   = Modes.Of(light: "#FFFFFF", dark: "#26262B");
     OnChromeCurrent = Modes.Of(light: "#18181B", dark: "#FFFFFF");
     ChromeFocus     = Colors.Focus;
-    // A chart in ink, against the cobalt focus colour — the bench's two tools.
-    Series1       = Modes.Of(light: Palette.From("#27272A"), dark: Palette.From("#E4E4E7"));
-    Series2       = Modes.Of(light: Palette.From("#2F5BEA"), dark: Palette.From("#7C9BFF"));
-    ChartSurface  = Colors.Surface;
-    ChartBorder   = Colors.CardLine;
-    ChartGrid     = Colors.Muted;
-    ChartInk      = Colors.OnSurface;
-    ChartMuted    = Colors.TextMuted;
-    ChartTipBg    = Colors.OnSurface;
-    ChartTipInk   = Colors.Surface;
   }
   Font {
     Sans    = "\"Figtree\", ui-sans-serif, system-ui, sans-serif";
