@@ -1,4 +1,4 @@
-// Ui — the COMMAND MENU (`using Osysharp.Ui;`): ⌘K. D-HELPDESKDESIGN1 — the Raycast / Linear shape, a filter field
+// Ui — the COMMAND MENU (`using Osysharp.Ui;`): ⌘K. The Raycast / Linear shape, a filter field
 // over grouped actions with their shortcuts, for a tool people live in and drive from the keyboard.
 
 namespace Osysharp.Ui;

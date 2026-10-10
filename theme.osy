@@ -3,13 +3,10 @@
 // The `Osysharp.Ui` kit namespace — its public types enter scope only via `using Osysharp.Ui;`.
 namespace Osysharp.Ui;
 
-// ⭐ THE FLOOR IS "SWITCHBOARD" (D-HELPDESKDESIGN1, 2026-10-01) — Docs/OsySharp/design/ui-kit/floor.md is the system
-//    and Docs/OsySharp/design/helpdesk/direction.md where it came from. It replaced the template default this file
-//    shipped (system font, indigo #4F46E5, grey surfaces), which was the look the design method bans outright and the
-//    floor under every app that did not re-theme. What an app overrides is unchanged: the same token names.
+// ⭐ THE FLOOR IS "SWITCHBOARD" — a considered default rather than the template look (system font, indigo, grey
+//    surfaces), because it is the floor under every app that does not re-theme. An app overrides the same token names.
 //
-// ⚑ EVERY TEXT PAIR HERE IS CONTRAST-CHECKED — `python3 Docs/OsySharp/design/ui-kit/contrast.py` (exits 1 on a
-//   failure). Change a colour, run it. `Primary` in particular is used as TEXT (links, the current nav row) as well
+// ⚑ EVERY TEXT PAIR HERE IS CONTRAST-CHECKED to WCAG AA — change a colour, check the pairs it is used in. `Primary` in particular is used as TEXT (links, the current nav row) as well
 //   as a fill, so its light value is the deep line-cyan that reads as both (5.2 : 1 either way against white), and the
 //   dark value is the bright one, with DARK text on it — white on a bright cyan fails.
 theme Ui {
@@ -64,8 +61,8 @@ theme Ui {
     //    A declared face costs nothing until text is set in it, so an app that names its own never downloads these.
     Sans = "\"Mona Sans\", ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, system-ui, sans-serif";
     // Ids, counts, times and key hints — with tabular figures wherever they line up in a column.
-    // ⚠ The three proportional faces before `monospace` are for ARABIC only (D-RTL2): no monospace face here carries
-    //   it, and the generic `monospace` fallback set "2 أكتوبر" as disconnected letters on Harbour's timeline. Latin,
+    // ⚠ The three proportional faces before `monospace` are for ARABIC only: no monospace face here carries
+    //   it, and the generic `monospace` fallback sets "2 أكتوبر" as disconnected letters. Latin,
     //   digits and every glyph the faces before them have are never reached.
     Mono = "\"Martian Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, \"Geeza Pro\", \"Noto Sans Arabic\", \"Segoe UI\", monospace";
     // The DISPLAY face — headings, a wordmark, a hero. The kit's own sans until an app gives it a face of its own,
@@ -73,7 +70,7 @@ theme Ui {
     Display = Font.Sans;
   }
 
-  // ⚑ `Length`, NOT `Size` (owner, 2026-08-24). `Size` is the control-size ENUM (`Sm`/`Md`/`Lg`), and one spelling
+  // ⚑ `Length`, NOT `Size`. `Size` is the control-size ENUM (`Sm`/`Md`/`Lg`), and one spelling
   // for two different things was bearable only while every reference was bare — the qualification arc makes
   // `Size.Lg` and `Size.Column` both legal and both mean something else. The enum keeps the name; this group was
   // the badly named half, since its members are lengths, not points on a scale.

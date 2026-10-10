@@ -33,8 +33,7 @@
 // ⚑ WHAT IT DOES SHARE, honestly: a group's children open as a CLICK-pinned flyout beside the row, which is the
 //   same mechanism `SidebarRail` uses when collapsed, for the same reason (a hover-only disclosure does not exist
 //   on a touch screen). The two are near-duplicates of about thirty lines and they are NOT shared, because the
-//   rail's flyout also carries the group's label and its rows are always icon-width. That is a real judgement and
-//   it is in the ledger (D-SHELL3) rather than hidden here.
+//   rail's flyout also carries the group's label and its rows are always icon-width.
 //
 // THE BANDS:
 //   compact  < 768   the rail is an off-canvas DRAWER, labelled (a drawer has the width for words), opened from
@@ -90,7 +89,7 @@ component RailShell(AppChrome chrome) {
   bool drawerOpen = false;      // phone only
   // The rail widened into a labelled panel. Pointer only — on a phone the drawer already IS the labelled form, so
   // there is nothing for this to mean and nothing to press.
-  // REMEMBERED (D-HELPDESKDESIGN1): the reader widened or narrowed it on purpose, so the next page — and the next visit
+  // REMEMBERED: the reader widened or narrowed it on purpose, so the next page — and the next visit
   // in this browser — opens it the way they left it.
   [Remembered] bool expanded = false;
   bool userMenuOpen = false;
@@ -190,7 +189,7 @@ component RailFrame(
         // switching arrangement never DROPS an app's primary action — the record's promise is that you lose the
         // layout and nothing else. A POSITION only; `ShellTaskBar` brings the chrome, so an unfilled slot is free.
         Slot("primary");
-        // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+        // `?` opens the page's keyboard sheet, from anywhere — fixed, so it takes no room here.
         KeyboardSheet();
       }
     }
@@ -262,7 +261,7 @@ component RailBar(
             overflowX: Overflow.Visible, px: 2, py: 2, scrollbarWidth: ScrollbarWidth.None) {
         if (chrome.Loading) { ShellNavSkeleton(!labelled); }
         if (!chrome.Loading) {
-          // PINNED and RECENT first — the reader's own shortcuts, above the app's map (D-HELPDESKDESIGN1).
+          // PINNED and RECENT first — the reader's own shortcuts, above the app's map.
           ShellShortcuts(chrome, !labelled, onNavigated);
           if (chrome.Nav.Length == 0) { RailNavEmpty(labelled); }
           foreach (var item in chrome.Nav) {
@@ -685,7 +684,7 @@ component RailIdentity(ShellUser user, bool labelled, bool hasMenu, bool open,
 [Composable, Part]
 component RailUserMenu(ShellUser user) {
   variants {
-    // A connected menu (D-HELPDESKDESIGN1): it grows out of the rail beside it and keeps a notch pointing back.
+    // A connected menu: it grows out of the rail beside it and keeps a notch pointing back.
     base { Position = Position.Absolute; Left = "100%"; Bottom = "0"; Ml = 2; MinW = "240px"; Z = ZIndex.Popover;
            Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
            TransformOrigin = "bottom left"; Animation = KitMenuGrowSide; }

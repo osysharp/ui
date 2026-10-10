@@ -75,11 +75,11 @@ namespace Osysharp.Ui;
       // The caption names the figure, so a reader hears "lent out right now: 7" rather than a bare "7".
       Text(text, label: label + ": " + text);
       FieldLabel(label);
-      // ⭐ THE CHANGE BELONGS IN THIS CALL, for the same reason the caption does (owner, 2026-09-20: *"i want to be
-      //   able to see things over time … but also totals over that time"*). A figure with no comparison is a
+      // ⭐ THE CHANGE BELONGS IN THIS CALL, for the same reason the caption does: a reader wants a figure over time
+      //   and its total over that time. A figure with no comparison is a
       //   number; "18%, up from 5%" is a finding, and almost every analytics question ever asked is really about
       //   the second one. Rendered as a sibling `Text` it would drift from the figure it describes and reach a
-      //   screen reader as an unrelated fragment — the exact defect this control was rewritten to fix in 2026-08.
+      //   screen reader as an unrelated fragment.
       //
       // ⚠ `changeIsGood` IS A SEPARATE ARGUMENT BECAUSE DIRECTION IS NOT MEANING. More requests is good; more
       //   refusals is not, and more time waiting on a human is not. A control that coloured on the sign alone
@@ -135,7 +135,7 @@ namespace Osysharp.Ui;
 //    ⚑ SO THE NAME IS NOW A DESIGN CHOICE, NOT A CONSTRAINT, AND IT HAS NOT BEEN RE-DECIDED. `TextLink` is the
 //    design-system name for this control (Braid, Polaris) and leaves room for an `IconLink`; renaming it to `Link`
 //    is a kit API change with call sites behind it, so it is somebody's decision rather than a mechanical
-//    consequence of the escape landing. Ledger H-54.
+//    consequence of the escape landing.
 [Composable]
 [AllowAnonymous]
 component TextLink(string label, string to, Tone tone = Tone.Primary) {

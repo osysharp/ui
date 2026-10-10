@@ -84,8 +84,8 @@ public enum RailDrawer { Closed, Open }
 [Composable]
 component SidebarShell(AppChrome chrome) {
   bool drawerOpen = false;      // phone only — the rail slid in over a scrim
-  // The reader's own choice, honoured only where there is room to expand — and REMEMBERED in their browser
-  // (D-HELPDESKDESIGN1), so a rail collapsed on one page is collapsed on the next and on the next visit.
+  // The reader's own choice, honoured only where there is room to expand — and REMEMBERED in their browser,
+  // so a rail collapsed on one page is collapsed on the next and on the next visit.
   [Remembered] bool collapsed = false;
   bool userMenuOpen = false;
   // EXPANSION MEMORY, as two sets rather than one. A group is open when it holds the current page — which is what
@@ -206,7 +206,7 @@ component SidebarFrame(
         // switching arrangement never DROPS an app's primary action — the record's promise is that you lose the
         // layout and nothing else. A POSITION only; `ShellTaskBar` brings the chrome, so an unfilled slot is free.
         Slot("primary");
-        // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+        // `?` opens the page's keyboard sheet, from anywhere — fixed, so it takes no room here.
         KeyboardSheet();
       }
     }
@@ -283,7 +283,7 @@ component SidebarRail(
             px: 2, py: 2, scrollbarWidth: ScrollbarWidth.Thin) {
         if (chrome.Loading) { ShellNavSkeleton(iconOnly); }
         if (!chrome.Loading) {
-          // PINNED and RECENT first — the reader's own shortcuts, above the app's map (D-HELPDESKDESIGN1).
+          // PINNED and RECENT first — the reader's own shortcuts, above the app's map.
           ShellShortcuts(chrome, iconOnly, onNavigated);
           if (chrome.Nav.Length == 0) { SidebarNavEmpty(iconOnly); }
           foreach (var item in chrome.Nav) {
@@ -749,7 +749,7 @@ component SidebarMenuButton(Action onPress) {
 [Composable, Part]
 component SidebarUserMenu(ShellUser user) {
   variants {
-    // A connected menu (D-HELPDESKDESIGN1): it grows out of the chip's corner and keeps a notch pointing at it.
+    // A connected menu: it grows out of the chip's corner and keeps a notch pointing at it.
     base { Position = Position.Absolute; Top = "100%"; Right = "0"; Mt = 2; MinW = "240px"; Z = ZIndex.Popover;
            Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
            TransformOrigin = "top right"; Animation = KitMenuGrow; }

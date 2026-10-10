@@ -56,6 +56,18 @@ component OrdersPage() {
   }
 }
 
+/// A quick quote: the moulding a customer has not chosen yet is a text answer that starts empty, and the menu says so.
+[Route("/quote")] [Authorize(IsFramer)] [Render(CSR)] [Title("Quote")]
+component QuotePage() {
+  string moulding = "";
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Quote");
+      Dropdown("Moulding", value: moulding, options: ["Oak", "Walnut", "Black ash"], placeholder: "Choose a moulding") { m => Text(m); }
+    }
+  }
+}
+
 /// One order: its customer and artwork, the badges the rest of the app puts beside its name (`RecordBadge`), and the
 /// panels it adds under it (`RecordPanel`). The page names neither — whatever contributes to the slots is drawn.
 [Route("/orders/{id}")] [Authorize(IsFramer)] [Render(CSR)] [Title("Framing job")]

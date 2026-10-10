@@ -33,7 +33,7 @@ component Button(
     //   what lets them differ — an atom `Button` has always been able to (its positional is content and `label:` is
     //   the ARIA name), and the kit control could not, which is why `demo/kanban` reached past the kit to the atom.
     string announceAs = "",
-    // D-HELPDESKDESIGN1 — a key combo that presses this button from anywhere on the page (`"Mod+Enter"`, `"R"`):
+    // A key combo that presses this button from anywhere on the page (`"Mod+Enter"`, `"R"`):
     // the atom's `shortcut:`, through this button's own `onPress`. See `osy docs ui-menus#hints`. Hovering or focusing the
     // button shows its name and key; `showShortcut: true` shows the key ON the button instead ("Send ⌘↵") — for
     // the one primary action a reader should learn the key of.

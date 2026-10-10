@@ -13,7 +13,7 @@
 //     }
 //
 // FOR DISCOVERY AND SELECTION: a shop, a restaurant's ordering site, a salon's booking site, ticketing — anything a
-// visitor BROWSES and then commits to (`Docs/OsySharp/shell_taxonomy.md`, the Storefront row). It should feel like a
+// visitor BROWSES and then commits to. It should feel like a
 // destination, not like a business application, and that decides every choice below.
 //
 // ⛔ IT IS NOT THE SIDEBAR WITH THE RAIL MOVED TO THE TOP. A business shell organises an app around its FUNCTIONS and
@@ -610,7 +610,7 @@ component StoreFooter(AppChrome chrome, string blurb = "", string note = "") {
         Stack(gap: 3, maxW: "320px", minW: "220px") {
           Text(chrome.Product, fontFamily: Font.Display, fontSize: FontSize.Title);
           if (blurb != "") { Text(blurb, color: Colors.TextMuted, lineHeight: "1.6"); }
-          // Under the name: what the site says about itself — a region of footer blocks staff arrange (D-SITEFRAME1),
+          // Under the name: what the site says about itself — a region of footer blocks staff arrange,
           // or anything else the app puts here.
           Slot("about");
         }
@@ -663,7 +663,7 @@ string StoreLinkName(string label, string to) {
 }
 
 /// The outside glyph after a link to an address outside the site; nothing for a page of the site. A menu staff edit may
-/// hold an outside address (D-SITEFRAME1), and a customer should know before pressing that it leaves the shop.
+/// hold an outside address, and a customer should know before pressing that it leaves the shop.
 [Composable, Part]
 component StoreOutsideMark(string to) {
   render {

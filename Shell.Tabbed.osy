@@ -60,7 +60,7 @@
 //    row reads as a rendering fault. Material's own tab spec reaches the same answer for the same reason.
 //
 //    ⚑ WHAT WOULD CHANGE THE ANSWER: a platform measurement that answers "how wide are these N children" in one
-//    read, before paint. That is a real gap and it is in the ledger (D-SHELL2), not a thing this shell should fake.
+//    read, before paint — not a thing this shell should fake.
 //
 // ⚑ THE PHONE GETS THE SECONDARY STRIP TOO, and that is a deliberate choice over the two obvious alternatives.
 //   Putting a section's sub-areas inside the section's own PAGE makes every page re-implement its own navigation
@@ -217,7 +217,7 @@ component TabbedFrame(
       // switching arrangement never DROPS an app's primary action — the record's promise is that you lose the
       // layout and nothing else. A POSITION only; `ShellTaskBar` brings the chrome, so an unfilled slot is free.
       Slot("primary");
-      // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+      // `?` opens the page's keyboard sheet, from anywhere — fixed, so it takes no room here.
       KeyboardSheet();
 
       // A phone's page must not end UNDER the fixed bar. A spacer in flow rather than padding on the body, so the
@@ -286,7 +286,7 @@ component TabbedTopRow(
 [Composable, Part]
 component TabbedUserMenu(ShellUser user) {
   variants {
-    // A connected menu (D-HELPDESKDESIGN1): it grows out of the chip's corner and keeps a notch pointing at it.
+    // A connected menu: it grows out of the chip's corner and keeps a notch pointing at it.
     base { Position = Position.Absolute; Top = "100%"; Right = "0"; Mt = 2; MinW = "240px"; Z = ZIndex.Popover;
            Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
            TransformOrigin = "top right"; Animation = KitMenuGrow; }

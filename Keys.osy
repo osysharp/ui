@@ -1,5 +1,4 @@
-// Ui — KEYBOARD HINTS DERIVED FROM THE BINDING (`using Osysharp.Ui;`). D-HELPDESKDESIGN1, "keyboard hints wherever a key
-// works" (owner, 2026-10-01).
+// Ui — KEYBOARD HINTS DERIVED FROM THE BINDING (`using Osysharp.Ui;`): a keyboard hint wherever a key works.
 //
 // ⭐ ONE SOURCE OF TRUTH: the `shortcut:` on the control the key presses. Every hint is derived from it — the chip at a
 //   menu row's end (`KeyHintOf`, from the action the row runs), the tip a button shows on hover and focus (`KeyTip`),

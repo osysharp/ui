@@ -1,4 +1,4 @@
-// Ui — COMPOSITION (`using Osysharp.Ui;`, D-COMPOSE1 S5): where one kit's pages let another kit — or the app — add to
+// Ui — COMPOSITION (`using Osysharp.Ui;`): where one kit's pages let another kit — or the app — add to
 // them, the pages a kit puts in the app's navigation, and the frame a kit's working pages stand in.
 //
 // ⭐ A SLOT IS A PLACE OTHERS ADD TO. A kit marks one — `[Slot] public abstract component QuotePanel(Quote quote);` — and

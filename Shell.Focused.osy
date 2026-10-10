@@ -8,7 +8,7 @@
 //
 // ⛔ IT IS TASK-ORIENTED, AND THAT IS A DIFFERENT THING FROM "MINIMAL". This shell was first written as "the other
 //    arrangements with the chrome removed", and that framing is wrong in a way that matters to the whole taxonomy
-//    (`Docs/OsySharp/shell_taxonomy.md`, SF-10): a later `Immersive` shell is the EXPERIENCE-oriented one — a map,
+//    of shells: a later `Immersive` shell is the EXPERIENCE-oriented one — a map,
 //    a photo editor, a drawing tool, where the content IS the point and the chrome gets out of its way. Build
 //    Focused by subtraction and the two become one shell wearing two names.
 //
@@ -47,18 +47,16 @@
 //      `<a>` with a real href and draws NO dialog. (`shell-focused-exit.mjs`, one name shorter, is the SELF-LINK
 //      gate — a different defect on the same control; do not confuse the two.)
 //
-//   ⚑ THIS WAS FILED AS AN OPEN OWNER CALL (D-SHELL4) PROPOSING AN `AppChrome.OnExit` FIELD, and both proposed
-//     contract changes were unnecessary — `NavigationRoute.IsDirty`'s own doc comment already said
-//     "`Navigation.Close` refuses a dirty route unless forced, so the app can confirm first", and `admin/`'s own
-//     shell had shipped the whole pattern for months. Nothing new is on `AppChrome`. Before adding a field to a
+//   ⚑ NO `AppChrome.OnExit` FIELD IS NEEDED: `NavigationRoute.IsDirty` already carries the rule —
+//     "`Navigation.Close` refuses a dirty route unless forced, so the app can confirm first". Nothing new is on
+//     `AppChrome`. Before adding a field to a
 //     record three of four arrangements would not use, run `osy docs ui-navigation#closing`.
 //
 // ⛔ THE STEPPER IS VERTICAL, AND THAT IS A TAXONOMY DECISION RATHER THAN A LAYOUT PREFERENCE.
 //
-//    It was horizontal until 2026-09-07 — a full-width row of labelled items directly under the top bar. Put
-//    `focused-wide-light.png` beside `tabbed-wide-light.png` from that day and they are the same picture: a bar,
-//    then a strip of labelled items, then the page. A chooser looking at two screenshots could not tell which
-//    shell they were looking at, which defeats the entire point of having a taxonomy.
+//    A full-width row of labelled items directly under the top bar is the Tabbed shell's silhouette: a bar, then a
+//    strip of labelled items, then the page. A chooser looking at two screenshots could not tell which shell they
+//    were looking at, which defeats the point of having distinct shells.
 //
 //    ⚑ AND THE MODELS ARE OPPOSITES, which is what makes a shared silhouette actively harmful rather than merely
 //       unhelpful. Tabs are PARALLEL DESTINATIONS: choose any, in any order, and they persist for the life of the
@@ -244,7 +242,7 @@ component FocusedFrame(
               //    way pays nothing for this line. It is `Position.Sticky`, so it still pins to the foot of the
               //    viewport on a long form, and it is full width on a phone because the column is.
               Slot("primary");
-              // `?` opens the page's keyboard sheet, from anywhere (D-HELPDESKDESIGN1) — fixed, so it takes no room here.
+              // `?` opens the page's keyboard sheet, from anywhere — fixed, so it takes no room here.
               KeyboardSheet();
             }
           }
@@ -375,7 +373,7 @@ component FocusedBar(
 [Composable, Part]
 component FocusedUserMenu(ShellUser user) {
   variants {
-    // A connected menu (D-HELPDESKDESIGN1): it grows out of the chip's corner and keeps a notch pointing at it.
+    // A connected menu: it grows out of the chip's corner and keeps a notch pointing at it.
     base { Position = Position.Absolute; Top = "100%"; Right = "0"; Mt = 2; MinW = "240px"; Z = ZIndex.Popover;
            Bg = Colors.Elevated; Rounded = Radius.Lg; Shadow = Shadow.Floating; P = 1;
            TransformOrigin = "top right"; Animation = KitMenuGrow; }

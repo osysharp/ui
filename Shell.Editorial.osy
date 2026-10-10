@@ -248,7 +248,7 @@ component EditorialFooter(AppChrome chrome, string blurb = "", string note = "")
     Stack(role: UiRole.ContentInfo, label: "Site footer", gap: 10) {
       Row(gap: 10, justify: Justify.Between, align: Align.Start, wrap: Wrapping.Wrap) {
         if (blurb != "") { Text(blurb, fontSize: FontSize.Subhead, lineHeight: "1.6", maxW: "420px"); }
-        // What the site says about itself — a region of footer blocks staff arrange (D-SITEFRAME1), as StoreFooter's.
+        // What the site says about itself — a region of footer blocks staff arrange, as StoreFooter's.
         Box(maxW: "420px") { Slot("about"); }
         Stack(role: UiRole.Navigation, label: "Footer navigation", gap: 2) {
           foreach (var c in chrome.Primary()) { StoreFooterLink(c.Label, c.FirstRoute()); }

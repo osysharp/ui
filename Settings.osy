@@ -1,5 +1,4 @@
-// Ui — THE SETTINGS AREA (`using Osysharp.Ui;`). Stage 2, owner 2026-10-01: *"we are building out the admin/configuration
-// surface as well"* — one layout and navigation for an app's admin pages, explicit save and discard on the page's unit of
+// Ui — THE SETTINGS AREA (`using Osysharp.Ui;`): one layout and navigation for an app's admin and configuration pages, explicit save and discard on the page's unit of
 // work (with undo through its savepoints), "who changed this and when", and sections a person may see but not change.
 //
 // ⭐ SO EVERY APP'S ADMIN LOOKS AND BEHAVES ALIKE: the nav is a column of the area's sections, grouped, with the current
@@ -11,7 +10,7 @@
 //   are on every settings page, the kits' included:
 //     component MyShell() : WorkspaceShell { render { AppShell(chrome) { Slot; } } }
 //
-// ⭐ KITS ANNOUNCE THEIR SECTIONS (D-SETTINGSREG1). A kit with something an admin configures implements
+// ⭐ KITS ANNOUNCE THEIR SECTIONS. A kit with something an admin configures implements
 //   `ISettingsProvider` and ships the pages its links open, under `[Layout(SettingsFrame)]`. `SettingsArea()` with no list
 //   gathers every provider in the app — the app's own and every kit's — so adding a kit adds its settings, and the whole
 //   app's configuration reads as one place. Nobody wires a provider: it is DISCOVERED (`App.Implementations<T>()`).
@@ -58,7 +57,7 @@ public List<SettingsLink> AnnouncedSettings() {
 }
 
 /// Where an organisation's policy reaches into an app's settings — implemented by the org layer's package, never by an
-/// app or a kit (D-ORGPOLICY1). Discovered like a settings provider: with none in the app, no setting is the
+/// app or a kit. Discovered like a settings provider: with none in the app, no setting is the
 /// organisation's. `setting` is the key `osy model` lists for an `[OrgPolicy]` field — "Osysharp.Privacy.PrivacySetup.ReviewPlans"
 /// — the one name an organisation's rule uses for the setting across every app, so it is data here, not a reference.
 /// A kit or an app never writes that key: it asks `SetByOrganization<T>(x => x.Field)`, which the compiler turns into it.
@@ -188,7 +187,7 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
           if (!Layout.AtLeast(Tablet)) {
             Row(px: 4, pt: 3) { TextLink("All settings", to: home, tone: Tone.Default); }
           }
-          // THE AREA'S HOME IS AN OVERVIEW, not a title over an empty page (D-SETTINGSREG1 shots, 2026-10-02): every
+          // THE AREA'S HOME IS AN OVERVIEW, not a title over an empty page: every
           // section the reader may open, by group, each with what it is for. The app's own page at `home` follows it —
           // a page with nothing to add renders nothing.
           if (atHome && gathered) { SettingsOverview(shown, title); }

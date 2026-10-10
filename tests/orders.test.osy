@@ -46,3 +46,15 @@ void an_orders_page_shows_the_panel_and_badge_the_app_contributes() {
   Assert.Hidden("Settled");
   Assert.Visible("Nothing noted yet.", within: "Bench notes");
 }
+
+/// A text value not chosen yet is "", and the menu shows its placeholder for it exactly as for `null` — the way a
+/// `<select>`'s empty value is its placeholder option. Once chosen, the choice is what it shows.
+[Test(Workshop)]
+void a_menu_over_text_shows_its_placeholder_until_something_is_chosen() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/quote");
+  Assert.Visible("Choose a moulding");
+  Ui.Select("Moulding", "Walnut");
+  Assert.Hidden("Choose a moulding");
+  Assert.Visible("Walnut");
+}

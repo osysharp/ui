@@ -68,7 +68,9 @@ namespace Osysharp.Ui;
       Pressable(onClick: Toggle, disabled: disabled, role: UiRole.ComboBox, expanded: open, label: label, id: trigger) {
         Row(align: Align.Center, gap: 2, h: Length.ControlMd, px: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md,
             bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body) {
-          if (value == null) { Text(placeholder, color: Colors.TextMuted); }
+          // Nothing chosen is `null` — and, for a text value, "" too: a `<select>`'s empty value is its placeholder
+          // option, and a text answer not given yet starts as "". Either way the box says what to do.
+          if (value == null || $"{value}" == "") { Text(placeholder, color: Colors.TextMuted); }
           else { Slot(value) { Text(value.Label); } }
           Spacer();
           Text("▾", color: Colors.TextMuted, decorative: true);
@@ -142,10 +144,8 @@ public string ZoneWords(Zone zone) {
 /// ⛔ AND `value` IS ALREADY WRITTEN WHEN `onToggle` RUNS. Do NOT flip it again in the handler: the control has
 /// toggled it, so `onToggle: () => { t.IsDone = !t.IsDone; Save(); }` toggles it TWICE and the box springs back.
 /// A handler that only commits is the whole of it — `onToggle: Save`.
-/// (Eval run 20 of 019 reasoned its way to this from the example's NAME, and said so: *"if our action also sets
-/// job.IsDone = !job.IsDone, that would double-toggle it back … matching how the doc's example LIKELY just calls a
-/// plain commit"*. It guessed right and rewrote a just-written action on the guess. A contract nobody states is a
-/// contract every reader re-derives, and the next one guesses the other way.)
+/// (Stated because it is easy to guess the other way: an action that also flips the field undoes the click. The box
+/// flips the field; the handler saves.)
 /// need: tick a box, an on or off choice in a form, agree to something, mark an item done
 /// e.g. `Checkbox("Email me", value: notify)` — `value` is two-way, so a plain box needs NO action at all.
 /// e.g. in a row — `Checkbox(t.Step, value: t.IsDone, onToggle: Save)`

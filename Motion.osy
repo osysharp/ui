@@ -1,4 +1,4 @@
-// Ui — THE MOTION VOCABULARY (`using Osysharp.Ui;`). D-HELPDESKDESIGN1, Docs/OsySharp/design/ui-kit/floor.md §5.
+// Ui — THE MOTION VOCABULARY (`using Osysharp.Ui;`).
 //
 // Each animation here answers ONE question a reader has, and the kit's own controls use them for exactly that and
 // nothing else. An app uses them the same way (`animation: KitArrive`). Reduced motion is the platform's: movement

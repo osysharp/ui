@@ -47,8 +47,8 @@ namespace Osysharp.Ui;
   }
 }
 
-/// Where a `Menu` hangs off the thing that opened it — and so which corner it GROWS from (D-HELPDESKDESIGN1: a menu
-/// visibly connects to its trigger). The menu is placed against its nearest positioned ancestor, so put the trigger
+/// Where a `Menu` hangs off the thing that opened it — and so which corner it GROWS from (a menu visibly connects to
+/// its trigger). The menu is placed against its nearest positioned ancestor, so put the trigger
 /// and the menu together in a `Box(position: Position.Relative)`.
 public enum MenuFrom {
   BelowStart,   // under the trigger, left edges aligned — a toolbar button, a field's options

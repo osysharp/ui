@@ -8,12 +8,9 @@ namespace Osysharp.Ui;
 /// ⚠ AN ENUM GOES IN AS `value.Label`, never bare and never `.ToString()`. `label` is a `string`, so `Badge(m.Cuisine)`
 /// is a compile error and `Badge(m.Cuisine.ToString())` compiles and shows the member NAME — `StreetFood`, run
 /// together. ⭐ `.Label` is the words `[Label("Street food")]` declares, and is legal in every position.
-/// ⚑ THIS SENTENCE IS HERE BECAUSE THE LINT CANNOT REACH THE AUTHOR WHO AVOIDS THE MISTAKE. Measured 2026-08-29 on
-/// an eval run: it reasoned that a two-word member "doesn't read cleanly as a badge label" and RENAMED ITS OWN
-/// DOMAIN to a one-word noun to dodge the display problem. Every teaching
-/// mechanism for this (`ui-enum-rendered-without-its-label`, `[Label]`, `osy docs enum-labels`) fires only AFTER a
-/// multi-word member is written, and it declined to write one. A diagnostic paid when hit cannot teach someone who
-/// avoids the hit, so the fact belongs where it is read BEFORE the line is written.
+/// ⚑ So a status needs no renaming to read well on a badge: keep the two-word member your domain calls it and give it
+/// its words with `[Label]`. The lint (`ui-enum-rendered-without-its-label`) and `osy docs enum-labels` say the same
+/// once a member is written; this is here so it is read before.
 /// need: a small coloured label for a status, a pill beside a name, mark a row as new or urgent
 [Composable]
 /// ⚠ THE LABEL MAY BE EMPTY, AND ONLY BECAUSE THE SLOT CAN CARRY IT. This renders `Slot { Text(label); }`, so
@@ -34,7 +31,7 @@ component Badge(string label = "", Tone tone = Tone.Default) {
       //    start is the TOP. So `Row(align: Align.Center) { Badge(…); Button(…); }` could never line up: the badge
       //    overrode the row's own alignment and floated above every control beside it. An explicit width overrides
       //    `align-items: stretch` just as well and says nothing about POSITION, so the parent's alignment applies
-      //    in both directions. Measured on `demo/todo`, where the overdue pill sat ~6px above its buttons.
+      //    in both directions — otherwise an overdue pill in a row of buttons sits about 6px above them.
       Display = Display.InlineFlex; W = "fit-content"; H = "22px"; Px = 2; Rounded = Radius.Pill;
       FontSize = FontSize.Caption; FontWeight = FontWeight.Medium; WhiteSpace = WhiteSpace.Nowrap;
     }

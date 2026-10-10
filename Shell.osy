@@ -132,7 +132,7 @@ public sealed class NavItem {
   public string Key() { return To != "" ? To : Label; }
 
   /// An address OUTSIDE the site (http/https) — a shell marks it as one, so nobody follows it thinking it is a page of
-  /// the site (a menu staff edit may hold one: D-SITEFRAME1).
+  /// the site (a menu staff edit may hold one).
   public bool Outside() { return To.StartsWith("https://") || To.StartsWith("http://"); }
 
   /// WHERE THIS ENTRY GOES WHEN PRESSED — its own `To`, or the first route beneath it when it has none.
@@ -488,7 +488,7 @@ public sealed class AppChrome {
     return all.ToArray();
   }
 
-  /// THE SECTION THE READER IS CURRENTLY INSIDE — the `Primary()` entry that holds `current`, or null when the
+  /// THE SECTION THE READER IS INSIDE — the `Primary()` entry that holds `current`, or null when the
   /// route falls outside the nav entirely (a record detail, a wizard step).
   ///
   /// ⭐ WHAT A SECONDARY STRIP IS DRAWN FROM. A bar shell shows a section's sub-areas only once you are in that
@@ -524,7 +524,7 @@ public sealed class AppChrome {
   /// BEHIND YOU is a question about the LIST. Both are answered here rather than at a call site: a `foreach` in a
   /// render block has no index, and a shell that tried to derive position per row would re-walk the tree per step.
   ///
-  /// ⚠ NOTHING ACTIVE IS NOT AN ERROR. On a route the flow does not cover, every step reads as todo and the shell
+  /// ⚠ NOTHING ACTIVE IS NOT AN ERROR. On a route the flow does not cover, every step reads as still to do and the shell
   /// shows no "Step n of m" — which is right: a wizard's confirmation page is genuinely outside the numbered part.
   public FlowStep[] Steps(string current) {
     var items = Primary();
@@ -898,7 +898,7 @@ component ShellCountButton(string label, int count, Action onPress, Tone tone = 
     //   have saved it. Shrinking it to 18px is half the fix; landing it on the corner is the other half.
     //
     // ⚠ AND THE OFFSETS MUST STAY POSITIVE. A negative pair hangs the badge outside the button, where the top bar
-    //   clips it against the viewport's edge — measured, with the button temporarily filled so its box was visible.
+    //   clips it against the viewport's edge.
     base { Position = Position.Absolute; Top = "4px"; Right = "4px"; MinW = "14px"; H = "14px"; Px = "3px";
            Rounded = Radius.Pill; FontSize = "10px"; FontWeight = FontWeight.Semibold; LineHeight = 1;
            BorderW = 2; Border = Colors.Surface; }
@@ -1323,8 +1323,8 @@ component ShellBody(bool isWide, int p = 5, int pNarrow = 3, ShellPage arrangeme
 
 /// ⭐ THE HIGHLIGHT OF A NAV ROW THAT HAS LOST ITS LABEL — a SQUARE around the glyph, never a band across the rail.
 ///
-/// ⛔ THIS IS THE WHOLE RULE, AND IT IS ONE RULE FOR EVERY SHELL (owner, 2026-09-08): *when it's just icons the box
-///    should just be the icon; when it's with text, it should be the full row.* A collapsed rail, a collapsed
+/// ⛔ THIS IS THE WHOLE RULE, AND IT IS ONE RULE FOR EVERY SHELL: when it is just icons the box is just the icon;
+///    when it is with text, it is the full row. A collapsed rail, a collapsed
 ///    sidebar and a phone drawer are three places a row can lose its label, so the decision lives HERE and each
 ///    shell reaches for it — rather than being re-authored per shell, which is how the rail and the sidebar came to
 ///    disagree with each other AND with the glyph (measured below).

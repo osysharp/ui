@@ -126,7 +126,7 @@ namespace Osysharp.Ui;
   render {
     Pressable(onClick: onPress, label: label, disabled: disabled || !canPress, whenDenied: whenDenied, shortcut: shortcut) {
       Row(align: Align.Center, justify: Justify.Center) { Slot; }
-      // The name an icon has no room for, and its key — on hover and keyboard focus (D-HELPDESKDESIGN1).
+      // The name an icon has no room for, and its key — on hover and keyboard focus.
       if (shortcut != "") { KeyTip(label, shortcut); }
     }
   }
