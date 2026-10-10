@@ -1,0 +1,42 @@
+// Ui — FILM: a background film that moves behind a heading, with the pause a reader needs (`using Osysharp.Ui;`).
+//
+//   AmbientVideo  a film the app ships, filling its box, muted and looping, with its own pause button in a corner.
+//                 Still from the start for a reader who asked for reduced motion, showing its poster.
+
+namespace Osysharp.Ui;
+
+/// A BACKGROUND FILM with its own pause — the hero film behind a landing page's heading, a product's short loop. It plays
+/// a film the app ships (`model/videos/harbour.mp4` is `Videos.Harbour`), muted and looping, cropped to fill its box,
+/// and draws a small pause button in a corner: anything that moves for more than five seconds needs a way to stop it
+/// (WCAG 2.2.2), and the browser's own controls are not shown on a background film. The button keeps ONE name and says
+/// whether it is pressed, so a screen reader hears one control change and a test finds it after it has been pressed.
+/// A reader who asked their device for reduced motion sees the `poster`, and the button reads as pressed.
+/// Put the words over it as its children; they sit above the film.
+/// In a test: `Ui.Click("Pause the film")` pauses it and the same click plays it again.
+/// need: a background video, a hero film behind a heading, a looping clip on a landing page, autoplay a muted video, a video with a pause button
+/// e.g. `AmbientVideo(Videos.Harbour, Textures.HarbourStill) { Text("Sail with us", fontSize: FontSize.Title); }`
+[Composable]
+component AmbientVideo(Videos video, Textures poster, string pauseLabel = "Pause the film", string focus = "center") {
+  bool moving = true;
+
+  action Toggle() { moving = !moving; }
+
+  render {
+    Box(position: Position.Relative, w: "100%", h: "100%", overflow: Overflow.Hidden) {
+      Video(video: video, poster: poster, ambient: true, playing: moving,
+            position: Position.Absolute, inset: "0", w: "100%", h: "100%",
+            objectFit: ObjectFit.Cover, objectPosition: focus);
+      Box(position: Position.Relative, w: "100%", h: "100%") {
+        Slot;
+      }
+      Pressable(onClick: Toggle, label: pauseLabel, pressed: !moving,
+                position: Position.Absolute, right: "12px", bottom: "12px",
+                w: Length.ControlSm, h: Length.ControlSm, rounded: Radius.Md,
+                bg: Colors.Surface, color: Colors.OnSurface) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") {
+          Icon(moving ? Icons.Pause : Icons.Play, size: 15);
+        }
+      }
+    }
+  }
+}

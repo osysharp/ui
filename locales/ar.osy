@@ -4,6 +4,50 @@
 // Source language: en.
 
 translations ar {
+  // ── AmbientVideo ──
+  /// AmbientVideo · a control's name for screen readers
+  /// shown through AmbientVideo.pauseLabel
+  accessibleName "Pause the film" => "إيقاف الفيلم مؤقتًا";
+
+  // ── AssistantFrame ──
+  /// AssistantFrame · a control's name for screen readers
+  accessibleName "Assistant" => "المساعد";
+  /// AssistantFrame · a button's label · at most ~27 characters
+  /// shown through IconButton.label
+  button "Close the assistant" => "إغلاق المساعد";
+
+  // ── AssistantPanel ──
+  /// AssistantPanel · a control's name for screen readers
+  accessibleName "Ask" => "اسأل";
+  /// AssistantPanel · a control's name for screen readers
+  /// beside: "Ask"
+  accessibleName "Conversation" => "المحادثة";
+  /// AssistantPanel · a button's label · at most ~12 characters
+  /// shown through IconButton.label
+  /// beside: "Ask"
+  button "Ask it" => "اسأل";
+  /// AssistantPanel · placeholder text inside an empty field · at most ~47 characters
+  /// shown through AssistantPanel.placeholder
+  placeholder "Ask about what you are looking at" => "اسأل عما تراه";
+  /// AssistantPanel · text on the page
+  text "Ask about anything on this page." => "اسأل عن أي شيء في هذه الصفحة.";
+  /// AssistantPanel · text on the page
+  text "Thinking…" => "جارٍ التفكير…";
+
+  // ── AutoSave ──
+  /// AutoSave · a control's name for screen readers
+  accessibleName "Saving" => "الحفظ";
+  /// AutoSave · a button's label · at most ~11 characters
+  /// shown through Button.label
+  button "Retry" => "إعادة المحاولة";
+  /// AutoSave · text on the page
+  /// shown through AutoSave.saved
+  text "All changes saved" => "تم حفظ كل التغييرات";
+  /// AutoSave · text on the page
+  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// beside: "Undo"
+  text "Saving in {ToString} s" => { zero: "الحفظ خلال {ToString} ث", one: "الحفظ خلال {ToString} ث", two: "الحفظ خلال {ToString} ث", few: "الحفظ خلال {ToString} ث", many: "الحفظ خلال {ToString} ث", other: "الحفظ خلال {ToString} ث" };
+
   // ── CalendarPanel ──
   /// CalendarPanel · a control's name for screen readers
   /// placeholders: {label} = label (string)
@@ -39,26 +83,67 @@ translations ar {
 
   // ── DataGrid ──
   /// DataGrid · a control's name for screen readers
+  accessibleName "Active filters" => "عوامل التصفية النشطة";
+  /// DataGrid · a control's name for screen readers
+  accessibleName "Clear all filters" => "مسح كل عوامل التصفية";
+  /// DataGrid · a control's name for screen readers
   accessibleName "Column chooser" => "اختيار الأعمدة";
   /// DataGrid · a control's name for screen readers
   accessibleName "Filter row" => "صف التصفية";
   /// DataGrid · a control's name for screen readers
   /// placeholders: {h.Label} = h.Label (string)
   accessibleName "Filter {h.Label}" => "تصفية {h.Label}";
+  /// DataGrid · a control's name for screen readers
+  /// placeholders: {c.Label} = c.Label (string)
+  /// shown through FilterChip.removeLabel
+  accessibleName "Remove filter {c.Label}" => "إزالة عامل التصفية {c.Label}";
   /// DataGrid · a button's label · at most ~13 characters
-  /// shown through Button.label
+  /// shown through GridToolButton.label
   button "Columns" => "الأعمدة";
   /// DataGrid · a button's label · at most ~12 characters
-  /// shown through Button.label
+  /// shown through GridToolButton.label
   button "Export" => "تصدير";
-  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~12 characters
-  /// shown through Field.label
-  label "Search" => "بحث";
-  /// DataGrid · placeholder text inside an empty field · at most ~26 characters
-  /// shown through Field.placeholder
-  placeholder "Search all columns" => "البحث في كل الأعمدة";
+  /// DataGrid · a button's label · at most ~12 characters
+  /// shown through GridToolButton.label
+  /// beside: "12rem"
+  button "Filter" => "تصفية";
+  /// DataGrid · a button's label · at most ~27 characters
+  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// shown through GridToolButton.label
+  /// beside: "12rem"
+  button "Filter · {ToString}" => { zero: "تصفية · {ToString}", one: "تصفية · {ToString}", two: "تصفية · {ToString}", few: "تصفية · {ToString}", many: "تصفية · {ToString}", other: "تصفية · {ToString}" };
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~26 characters
+  /// shown through SearchField.label
+  label "Search all columns" => "البحث في كل الأعمدة";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~21 characters
+  /// shown through PickCell.label
+  label "Select all rows" => "تحديد كل الصفوف";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~35 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} contains {want}" => "{c.Label} يحتوي على {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~27 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} is {want}" => "{c.Label} هو {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~30 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} over {want}" => "{c.Label} أكبر من {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~40 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} starts with {want}" => "{c.Label} يبدأ بـ {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~31 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} under {want}" => "{c.Label} أقل من {want}";
   /// DataGrid · placeholder text inside an empty field · at most ~15 characters
   placeholder "contains…" => "يحتوي على…";
+  /// DataGrid · placeholder text inside an empty field · at most ~16 characters
+  placeholder "e.g. > 100" => "مثلًا > 100";
+  /// DataGrid · text on the page
+  text "Clear all" => "مسح الكل";
   /// DataGrid · text on the page
   text "No rows match the filter." => "لا توجد صفوف مطابقة للتصفية.";
 
@@ -73,6 +158,27 @@ translations ar {
   /// also in DataGrid
   text "Clear" => "مسح";
 
+  // ── Dock ──
+  /// Dock · a control's name for screen readers
+  /// shown through Dock.rightTitle
+  accessibleName "Details" => "التفاصيل";
+  /// Dock · a control's name for screen readers
+  /// shown through Dock.bottomTitle
+  accessibleName "Panel" => "اللوحة";
+  /// Dock · a control's name for screen readers
+  /// placeholders: {bottomTitle} = bottomTitle (string)
+  accessibleName "Resize {bottomTitle}" => "تغيير حجم {bottomTitle}";
+  /// Dock · a control's name for screen readers
+  /// placeholders: {rightTitle} = rightTitle (string)
+  accessibleName "Resize {rightTitle}" => "تغيير حجم {rightTitle}";
+
+  // ── DockDrawer ──
+  /// DockDrawer · a button's label · at most ~19 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  /// also in DockSheet
+  button "Close {title}" => "إغلاق {title}";
+
   // ── Done ──
   /// Done · a label (a field, a list item, a menu entry) · at most ~11 characters
   /// shown through Done.label
@@ -80,7 +186,7 @@ translations ar {
 
   // ── DurationField ──
   /// DurationField · a control's name for screen readers
-  /// beside: "How many", "Done"
+  /// beside: "How many"
   accessibleName "Unit" => "الوحدة";
   /// DurationField · a control's name for screen readers
   /// placeholders: {label} = label (string)
@@ -90,7 +196,7 @@ translations ar {
   button "Done" => "تم";
   /// DurationField · a label (a field, a list item, a menu entry) · at most ~14 characters
   /// shown through NumberField.label
-  /// beside: "Unit", "Done"
+  /// beside: "Unit"
   label "How many" => "كم";
 
   // ── DurationWords ──
@@ -196,20 +302,33 @@ translations ar {
   /// placeholders: {step.Label} = step.Label (string)
   accessibleName "{step.Label} parts" => "أجزاء {step.Label}";
 
+  // ── GridRowCells ──
+  /// GridRowCells · a label (a field, a list item, a menu entry) · at most ~24 characters
+  /// placeholders: {pickName} = pickName (string)
+  /// shown through PickCell.label
+  label "Select {pickName}" => "تحديد {pickName}";
+  /// GridRowCells · a label (a field, a list item, a menu entry) · at most ~9 characters
+  /// shown through GridRowCells.pickName
+  label "row" => "صف";
+
   // ── GroupBand ──
   /// GroupBand · text on the page
   /// shown through Strong.text
   text "(none)" => "(لا شيء)";
 
   // ── HeaderCell ──
-  /// HeaderCell · a control's name for screen readers
+  /// HeaderCell · a label (a field, a list item, a menu entry) · at most ~30 characters
   /// placeholders: {col.Label} = col.Label (string)
-  /// beside: "6px"
-  accessibleName "Move {col.Label} left" => "نقل {col.Label} إلى اليسار";
-  /// HeaderCell · a control's name for screen readers
+  /// shown through HeaderTool.label
+  label "Filter by {col.Label}" => "تصفية حسب {col.Label}";
+  /// HeaderCell · a label (a field, a list item, a menu entry) · at most ~30 characters
   /// placeholders: {col.Label} = col.Label (string)
-  /// beside: "6px"
-  accessibleName "Move {col.Label} right" => "نقل {col.Label} إلى اليمين";
+  /// shown through HeaderTool.label
+  label "Move {col.Label} left" => "نقل {col.Label} إلى اليسار";
+  /// HeaderCell · a label (a field, a list item, a menu entry) · at most ~31 characters
+  /// placeholders: {col.Label} = col.Label (string)
+  /// shown through HeaderTool.label
+  label "Move {col.Label} right" => "نقل {col.Label} إلى اليمين";
 
   // ── KeyboardSheet ──
   /// KeyboardSheet · a subtitle
@@ -255,15 +374,19 @@ translations ar {
   // ── Osysharp.Ui.ShellPresence ──
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through Osysharp.Ui.ShellPresence.Away
-  /// beside: "Online", "Do not disturb"
+  /// beside: "None", "Online", "Do not disturb"
   label "Away" => "بعيد";
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~20 characters
   /// shown through Osysharp.Ui.ShellPresence.Busy
-  /// beside: "Online", "Away"
+  /// beside: "None", "Online", "Away"
   label "Do not disturb" => "عدم الإزعاج";
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Osysharp.Ui.ShellPresence.None
+  /// beside: "Online", "Away", "Do not disturb"
+  label "None" => "لا شيء";
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~12 characters
   /// shown through Osysharp.Ui.ShellPresence.Online
-  /// beside: "Away", "Do not disturb"
+  /// beside: "None", "Away", "Do not disturb"
   label "Online" => "متصل";
 
   // ── RailBar ──
@@ -309,35 +432,62 @@ translations ar {
   /// also in SidebarNavEmpty
   text "No sections yet" => "لا توجد أقسام بعد";
 
+  // ── SaveActions ──
+  /// SaveActions · a control's name for screen readers
+  accessibleName "Changes" => "التغييرات";
+  /// SaveActions · a button's label · at most ~13 characters
+  /// shown through Button.label
+  /// beside: "Edited", "Save"
+  /// also in SaveBar
+  button "Discard" => "تجاهل";
+  /// SaveActions · a button's label · at most ~10 characters
+  /// shown through Button.label
+  /// beside: "Edited", "Discard"
+  /// also in SaveBar
+  button "Save" => "حفظ";
+  /// SaveActions · a button's label · at most ~10 characters
+  /// shown through IconButton.label
+  /// also in AutoSave
+  /// also in SaveBar
+  button "Undo" => "تراجع";
+  /// SaveActions · a button's label · at most ~20 characters
+  /// placeholders: {ToLower} = undoLabel.ToLower(…) (string)
+  /// shown through IconButton.label
+  /// also in SaveBar
+  button "Undo {ToLower}" => "تراجع عن {ToLower}";
+  /// SaveActions · text on the page
+  text "Edited" => "معدَّل";
+  /// SaveActions · text on the page
+  /// placeholders: {problem} = problem (string)
+  /// also in AutoSave
+  /// also in SaveBar
+  text "Not saved — {problem}" => "لم يُحفظ — {problem}";
+  /// SaveActions · text on the page
+  /// shown through SaveActions.saved
+  text "Saved" => "تم الحفظ";
+
   // ── SaveBar ──
   /// SaveBar · a control's name for screen readers
   accessibleName "Not saved" => "لم يُحفظ";
   /// SaveBar · a control's name for screen readers
   accessibleName "Unsaved changes" => "تغييرات غير محفوظة";
-  /// SaveBar · a button's label · at most ~13 characters
-  /// shown through Button.label
-  /// beside: "Unsaved changes", "Save"
-  button "Discard" => "تجاهل";
-  /// SaveBar · a button's label · at most ~10 characters
-  /// shown through Button.label
-  /// beside: "Unsaved changes", "Discard"
-  button "Save" => "حفظ";
-  /// SaveBar · a button's label · at most ~10 characters
-  /// shown through Button.label
-  button "Undo" => "تراجع";
-  /// SaveBar · a button's label · at most ~20 characters
-  /// placeholders: {ToLower} = undoLabel.ToLower(…) (string)
-  /// shown through Button.label
-  button "Undo {ToLower}" => "تراجع عن {ToLower}";
-  /// SaveBar · text on the page
-  /// placeholders: {problem} = problem (string)
-  text "Not saved — {problem}" => "لم يُحفظ — {problem}";
   /// SaveBar · text on the page
   /// shown through SaveBar.saved
   text "Saved." => "تم الحفظ.";
   /// SaveBar · text on the page
   /// beside: "Discard", "Save"
   text "Unsaved changes" => "تغييرات غير محفوظة";
+
+  // ── SelectionBar ──
+  /// SelectionBar · a control's name for screen readers
+  accessibleName "Selection" => "التحديد";
+  /// SelectionBar · a button's label · at most ~21 characters
+  /// shown through Button.label
+  button "Clear selection" => "مسح التحديد";
+  /// SelectionBar · text on the page
+  /// placeholders: {ToString} = count.ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// beside: "Clear selection"
+  text "{ToString} selected" => { zero: "{ToString} محدد", one: "عنصر واحد محدد", two: "عنصران محددان", few: "{ToString} عناصر محددة", many: "{ToString} عنصرًا محددًا", other: "{ToString} عنصر محدد" };
 
   // ── SettingsArea ──
   /// SettingsArea · a control's name for screen readers
@@ -567,4 +717,41 @@ translations ar {
   text "T" key "weekday-initial-thursday" => "خ";
   /// WeekdayRow · text on the page
   text "W" key "weekday-initial-wednesday" => "ر";
+
+  // ── Widget ──
+  /// Widget · a button's label · at most ~28 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  button "Move {title} earlier" => "تقديم {title}";
+  /// Widget · a button's label · at most ~26 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  button "Move {title} later" => "تأخير {title}";
+  /// Widget · a button's label · at most ~20 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  button "Remove {title}" => "إزالة {title}";
+
+  // ── WorkbenchShell ──
+  /// WorkbenchShell · a control's name for screen readers
+  /// shown through WorkbenchMark.action
+  accessibleName "Hide the explorer" => "إخفاء المستكشف";
+  /// WorkbenchShell · a control's name for screen readers
+  /// shown through WorkbenchMark.action
+  accessibleName "Show the explorer" => "إظهار المستكشف";
+  /// WorkbenchShell · a button's label · at most ~24 characters
+  /// shown through IconButton.label
+  /// beside: "actions"
+  button "Hide the explorer" => "إخفاء المستكشف";
+  /// WorkbenchShell · a button's label · at most ~24 characters
+  /// shown through IconButton.label
+  /// beside: "actions"
+  button "Show the explorer" => "إظهار المستكشف";
+  /// WorkbenchShell · a label (a field, a list item, a menu entry) · at most ~21 characters
+  /// shown through WorkbenchActivityBar.label
+  label "Main navigation" => "التنقل الرئيسي";
+
+  // ── WorkbenchStatus ──
+  /// WorkbenchStatus · a control's name for screen readers
+  accessibleName "Status" => "الحالة";
 }

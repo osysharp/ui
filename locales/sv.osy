@@ -4,6 +4,50 @@
 // Source language: en.
 
 translations sv {
+  // ── AmbientVideo ──
+  /// AmbientVideo · a control's name for screen readers
+  /// shown through AmbientVideo.pauseLabel
+  accessibleName "Pause the film" => "Pausa filmen";
+
+  // ── AssistantFrame ──
+  /// AssistantFrame · a control's name for screen readers
+  accessibleName "Assistant" => "Assistent";
+  /// AssistantFrame · a button's label · at most ~27 characters
+  /// shown through IconButton.label
+  button "Close the assistant" => "Stäng assistenten";
+
+  // ── AssistantPanel ──
+  /// AssistantPanel · a control's name for screen readers
+  accessibleName "Ask" => "Fråga";
+  /// AssistantPanel · a control's name for screen readers
+  /// beside: "Ask"
+  accessibleName "Conversation" => "Samtal";
+  /// AssistantPanel · a button's label · at most ~12 characters
+  /// shown through IconButton.label
+  /// beside: "Ask"
+  button "Ask it" => "Fråga";
+  /// AssistantPanel · placeholder text inside an empty field · at most ~47 characters
+  /// shown through AssistantPanel.placeholder
+  placeholder "Ask about what you are looking at" => "Fråga om det du tittar på";
+  /// AssistantPanel · text on the page
+  text "Ask about anything on this page." => "Fråga om vad som helst på den här sidan.";
+  /// AssistantPanel · text on the page
+  text "Thinking…" => "Tänker…";
+
+  // ── AutoSave ──
+  /// AutoSave · a control's name for screen readers
+  accessibleName "Saving" => "Sparar";
+  /// AutoSave · a button's label · at most ~11 characters
+  /// shown through Button.label
+  button "Retry" => "Försök igen";
+  /// AutoSave · text on the page
+  /// shown through AutoSave.saved
+  text "All changes saved" => "Alla ändringar sparade";
+  /// AutoSave · text on the page
+  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// beside: "Undo"
+  text "Saving in {ToString} s" => { one: "Sparar om {ToString} s", other: "Sparar om {ToString} s" };
+
   // ── CalendarPanel ──
   /// CalendarPanel · a control's name for screen readers
   /// placeholders: {label} = label (string)
@@ -39,26 +83,67 @@ translations sv {
 
   // ── DataGrid ──
   /// DataGrid · a control's name for screen readers
+  accessibleName "Active filters" => "Aktiva filter";
+  /// DataGrid · a control's name for screen readers
+  accessibleName "Clear all filters" => "Rensa alla filter";
+  /// DataGrid · a control's name for screen readers
   accessibleName "Column chooser" => "Välj kolumner";
   /// DataGrid · a control's name for screen readers
   accessibleName "Filter row" => "Filterrad";
   /// DataGrid · a control's name for screen readers
   /// placeholders: {h.Label} = h.Label (string)
   accessibleName "Filter {h.Label}" => "Filtrera {h.Label}";
+  /// DataGrid · a control's name for screen readers
+  /// placeholders: {c.Label} = c.Label (string)
+  /// shown through FilterChip.removeLabel
+  accessibleName "Remove filter {c.Label}" => "Ta bort filtret {c.Label}";
   /// DataGrid · a button's label · at most ~13 characters
-  /// shown through Button.label
+  /// shown through GridToolButton.label
   button "Columns" => "Kolumner";
   /// DataGrid · a button's label · at most ~12 characters
-  /// shown through Button.label
+  /// shown through GridToolButton.label
   button "Export" => "Exportera";
-  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~12 characters
-  /// shown through Field.label
-  label "Search" => "Sök";
-  /// DataGrid · placeholder text inside an empty field · at most ~26 characters
-  /// shown through Field.placeholder
-  placeholder "Search all columns" => "Sök i alla kolumner";
+  /// DataGrid · a button's label · at most ~12 characters
+  /// shown through GridToolButton.label
+  /// beside: "12rem"
+  button "Filter" => "Filter";
+  /// DataGrid · a button's label · at most ~27 characters
+  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// shown through GridToolButton.label
+  /// beside: "12rem"
+  button "Filter · {ToString}" => { one: "Filter · {ToString}", other: "Filter · {ToString}" };
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~26 characters
+  /// shown through SearchField.label
+  label "Search all columns" => "Sök i alla kolumner";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~21 characters
+  /// shown through PickCell.label
+  label "Select all rows" => "Markera alla rader";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~35 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} contains {want}" => "{c.Label} innehåller {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~27 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} is {want}" => "{c.Label} är {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~30 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} over {want}" => "{c.Label} över {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~40 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} starts with {want}" => "{c.Label} börjar med {want}";
+  /// DataGrid · a label (a field, a list item, a menu entry) · at most ~31 characters
+  /// placeholders: {c.Label} = c.Label (string), {want} = want (string)
+  /// shown through ChipText()
+  label "{c.Label} under {want}" => "{c.Label} under {want}";
   /// DataGrid · placeholder text inside an empty field · at most ~15 characters
   placeholder "contains…" => "innehåller…";
+  /// DataGrid · placeholder text inside an empty field · at most ~16 characters
+  placeholder "e.g. > 100" => "t.ex. > 100";
+  /// DataGrid · text on the page
+  text "Clear all" => "Rensa alla";
   /// DataGrid · text on the page
   text "No rows match the filter." => "Inga rader matchar filtret.";
 
@@ -73,6 +158,27 @@ translations sv {
   /// also in DataGrid
   text "Clear" => "Rensa";
 
+  // ── Dock ──
+  /// Dock · a control's name for screen readers
+  /// shown through Dock.rightTitle
+  accessibleName "Details" => "Detaljer";
+  /// Dock · a control's name for screen readers
+  /// shown through Dock.bottomTitle
+  accessibleName "Panel" => "Panel";
+  /// Dock · a control's name for screen readers
+  /// placeholders: {bottomTitle} = bottomTitle (string)
+  accessibleName "Resize {bottomTitle}" => "Ändra storlek på {bottomTitle}";
+  /// Dock · a control's name for screen readers
+  /// placeholders: {rightTitle} = rightTitle (string)
+  accessibleName "Resize {rightTitle}" => "Ändra storlek på {rightTitle}";
+
+  // ── DockDrawer ──
+  /// DockDrawer · a button's label · at most ~19 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  /// also in DockSheet
+  button "Close {title}" => "Stäng {title}";
+
   // ── Done ──
   /// Done · a label (a field, a list item, a menu entry) · at most ~11 characters
   /// shown through Done.label
@@ -80,7 +186,7 @@ translations sv {
 
   // ── DurationField ──
   /// DurationField · a control's name for screen readers
-  /// beside: "How many", "Done"
+  /// beside: "How many"
   accessibleName "Unit" => "Enhet";
   /// DurationField · a control's name for screen readers
   /// placeholders: {label} = label (string)
@@ -90,7 +196,7 @@ translations sv {
   button "Done" => "Klar";
   /// DurationField · a label (a field, a list item, a menu entry) · at most ~14 characters
   /// shown through NumberField.label
-  /// beside: "Unit", "Done"
+  /// beside: "Unit"
   label "How many" => "Hur många";
 
   // ── DurationWords ──
@@ -196,20 +302,33 @@ translations sv {
   /// placeholders: {step.Label} = step.Label (string)
   accessibleName "{step.Label} parts" => "{step.Label}, delar";
 
+  // ── GridRowCells ──
+  /// GridRowCells · a label (a field, a list item, a menu entry) · at most ~24 characters
+  /// placeholders: {pickName} = pickName (string)
+  /// shown through PickCell.label
+  label "Select {pickName}" => "Markera {pickName}";
+  /// GridRowCells · a label (a field, a list item, a menu entry) · at most ~9 characters
+  /// shown through GridRowCells.pickName
+  label "row" => "rad";
+
   // ── GroupBand ──
   /// GroupBand · text on the page
   /// shown through Strong.text
   text "(none)" => "(ingen)";
 
   // ── HeaderCell ──
-  /// HeaderCell · a control's name for screen readers
+  /// HeaderCell · a label (a field, a list item, a menu entry) · at most ~30 characters
   /// placeholders: {col.Label} = col.Label (string)
-  /// beside: "6px"
-  accessibleName "Move {col.Label} left" => "Flytta {col.Label} åt vänster";
-  /// HeaderCell · a control's name for screen readers
+  /// shown through HeaderTool.label
+  label "Filter by {col.Label}" => "Filtrera på {col.Label}";
+  /// HeaderCell · a label (a field, a list item, a menu entry) · at most ~30 characters
   /// placeholders: {col.Label} = col.Label (string)
-  /// beside: "6px"
-  accessibleName "Move {col.Label} right" => "Flytta {col.Label} åt höger";
+  /// shown through HeaderTool.label
+  label "Move {col.Label} left" => "Flytta {col.Label} åt vänster";
+  /// HeaderCell · a label (a field, a list item, a menu entry) · at most ~31 characters
+  /// placeholders: {col.Label} = col.Label (string)
+  /// shown through HeaderTool.label
+  label "Move {col.Label} right" => "Flytta {col.Label} åt höger";
 
   // ── KeyboardSheet ──
   /// KeyboardSheet · a subtitle
@@ -255,15 +374,19 @@ translations sv {
   // ── Osysharp.Ui.ShellPresence ──
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through Osysharp.Ui.ShellPresence.Away
-  /// beside: "Online", "Do not disturb"
+  /// beside: "None", "Online", "Do not disturb"
   label "Away" => "Borta";
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~20 characters
   /// shown through Osysharp.Ui.ShellPresence.Busy
-  /// beside: "Online", "Away"
+  /// beside: "None", "Online", "Away"
   label "Do not disturb" => "Stör ej";
+  /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through Osysharp.Ui.ShellPresence.None
+  /// beside: "Online", "Away", "Do not disturb"
+  label "None" => "Ingen";
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~12 characters
   /// shown through Osysharp.Ui.ShellPresence.Online
-  /// beside: "Away", "Do not disturb"
+  /// beside: "None", "Away", "Do not disturb"
   label "Online" => "Online";
 
   // ── RailBar ──
@@ -309,35 +432,62 @@ translations sv {
   /// also in SidebarNavEmpty
   text "No sections yet" => "Inga avsnitt ännu";
 
+  // ── SaveActions ──
+  /// SaveActions · a control's name for screen readers
+  accessibleName "Changes" => "Ändringar";
+  /// SaveActions · a button's label · at most ~13 characters
+  /// shown through Button.label
+  /// beside: "Edited", "Save"
+  /// also in SaveBar
+  button "Discard" => "Släng";
+  /// SaveActions · a button's label · at most ~10 characters
+  /// shown through Button.label
+  /// beside: "Edited", "Discard"
+  /// also in SaveBar
+  button "Save" => "Spara";
+  /// SaveActions · a button's label · at most ~10 characters
+  /// shown through IconButton.label
+  /// also in AutoSave
+  /// also in SaveBar
+  button "Undo" => "Ångra";
+  /// SaveActions · a button's label · at most ~20 characters
+  /// placeholders: {ToLower} = undoLabel.ToLower(…) (string)
+  /// shown through IconButton.label
+  /// also in SaveBar
+  button "Undo {ToLower}" => "Ångra {ToLower}";
+  /// SaveActions · text on the page
+  text "Edited" => "Ändrad";
+  /// SaveActions · text on the page
+  /// placeholders: {problem} = problem (string)
+  /// also in AutoSave
+  /// also in SaveBar
+  text "Not saved — {problem}" => "Inte sparat — {problem}";
+  /// SaveActions · text on the page
+  /// shown through SaveActions.saved
+  text "Saved" => "Sparat";
+
   // ── SaveBar ──
   /// SaveBar · a control's name for screen readers
   accessibleName "Not saved" => "Inte sparat";
   /// SaveBar · a control's name for screen readers
   accessibleName "Unsaved changes" => "Osparade ändringar";
-  /// SaveBar · a button's label · at most ~13 characters
-  /// shown through Button.label
-  /// beside: "Unsaved changes", "Save"
-  button "Discard" => "Släng";
-  /// SaveBar · a button's label · at most ~10 characters
-  /// shown through Button.label
-  /// beside: "Unsaved changes", "Discard"
-  button "Save" => "Spara";
-  /// SaveBar · a button's label · at most ~10 characters
-  /// shown through Button.label
-  button "Undo" => "Ångra";
-  /// SaveBar · a button's label · at most ~20 characters
-  /// placeholders: {ToLower} = undoLabel.ToLower(…) (string)
-  /// shown through Button.label
-  button "Undo {ToLower}" => "Ångra {ToLower}";
-  /// SaveBar · text on the page
-  /// placeholders: {problem} = problem (string)
-  text "Not saved — {problem}" => "Inte sparat — {problem}";
   /// SaveBar · text on the page
   /// shown through SaveBar.saved
   text "Saved." => "Sparat.";
   /// SaveBar · text on the page
   /// beside: "Discard", "Save"
   text "Unsaved changes" => "Osparade ändringar";
+
+  // ── SelectionBar ──
+  /// SelectionBar · a control's name for screen readers
+  accessibleName "Selection" => "Markering";
+  /// SelectionBar · a button's label · at most ~21 characters
+  /// shown through Button.label
+  button "Clear selection" => "Rensa markering";
+  /// SelectionBar · text on the page
+  /// placeholders: {ToString} = count.ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// beside: "Clear selection"
+  text "{ToString} selected" => { one: "{ToString} markerad", other: "{ToString} markerade" };
 
   // ── SettingsArea ──
   /// SettingsArea · a control's name for screen readers
@@ -567,4 +717,41 @@ translations sv {
   text "T" key "weekday-initial-thursday" => "T";
   /// WeekdayRow · text on the page
   text "W" key "weekday-initial-wednesday" => "O";
+
+  // ── Widget ──
+  /// Widget · a button's label · at most ~28 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  button "Move {title} earlier" => "Flytta {title} tidigare";
+  /// Widget · a button's label · at most ~26 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  button "Move {title} later" => "Flytta {title} senare";
+  /// Widget · a button's label · at most ~20 characters
+  /// placeholders: {title} = title (string)
+  /// shown through IconButton.label
+  button "Remove {title}" => "Ta bort {title}";
+
+  // ── WorkbenchShell ──
+  /// WorkbenchShell · a control's name for screen readers
+  /// shown through WorkbenchMark.action
+  accessibleName "Hide the explorer" => "Dölj utforskaren";
+  /// WorkbenchShell · a control's name for screen readers
+  /// shown through WorkbenchMark.action
+  accessibleName "Show the explorer" => "Visa utforskaren";
+  /// WorkbenchShell · a button's label · at most ~24 characters
+  /// shown through IconButton.label
+  /// beside: "actions"
+  button "Hide the explorer" => "Dölj utforskaren";
+  /// WorkbenchShell · a button's label · at most ~24 characters
+  /// shown through IconButton.label
+  /// beside: "actions"
+  button "Show the explorer" => "Visa utforskaren";
+  /// WorkbenchShell · a label (a field, a list item, a menu entry) · at most ~21 characters
+  /// shown through WorkbenchActivityBar.label
+  label "Main navigation" => "Huvudnavigering";
+
+  // ── WorkbenchStatus ──
+  /// WorkbenchStatus · a control's name for screen readers
+  accessibleName "Status" => "Status";
 }

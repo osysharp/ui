@@ -60,6 +60,7 @@ component Orders() {
 | shells | `SidebarShell`, `RailShell`, `TabbedShell`, `WorkbenchShell`, `FocusedShell`, `SplitShell`, `CatalogueShell`, `EditorialShell`, `MarqueeShell`, `StorefrontShell` |
 | page arrangements | `Dock` (right and bottom drawers), `SubNav`, `Paper`, `WidgetGrid`, `Widget` |
 | typography | `PageHead`, `PageTitle`, `CardTitle`, `SectionLabel`, `FieldLabel`, `Hint`, `Strong` |
+| media | `AmbientVideo` — a background film with its own pause |
 
 Its words are translated (`locales/`), and every control is keyboard-reachable and labelled for a screen reader.
 

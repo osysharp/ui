@@ -73,7 +73,7 @@ component SaveActions(string saved = "Saved", string blockedBy = "", Action onSa
 
 /// NO SAVE BUTTON — the page's changes are kept by themselves `after` seconds after they were made, and until then
 /// the person can take them back: "Saving in 2 s · Undo", then "All changes saved". Undo steps back to the last savepoint
-/// when there is one (`UnitOfWork.Mark`) and otherwise drops the changes not yet kept — an undo that is TRUE: what has
+/// when there is one (`UnitOfWork.Mark`) and otherwise drops the changes waiting to be kept — an undo that is TRUE: what has
 /// been kept is kept, and the window to change your mind is the one before it is. A refused save keeps the changes and
 /// says why, with Retry.
 /// Put it where a person glances to know their work is safe — a record's head, a panel's foot.
