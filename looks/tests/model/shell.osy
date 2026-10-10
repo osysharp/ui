@@ -1,0 +1,42 @@
+// The specimen's frame — the kit's sidebar shell, so a look is judged on its chrome too: the rail, the top bar, the
+// current row, a badge, the person at the foot.
+
+using Osysharp.Ui;
+
+[Layout]
+[AllowAnonymous]
+component SpecimenShell() {
+  action Appearance() { Theme.Toggle(); }
+  action Search() { }
+  action Bell() { }
+
+  render {
+    SidebarShell(new AppChrome {
+      Product = "Halyard",
+      Tagline = "Accounts and billing",
+      Home = "/",
+      User = new ShellUser {
+        Name = "Maya Okafor", Secondary = "Account manager", Initials = "MO", Presence = ShellPresence.Online,
+        Menu = [ new MenuAction { Label = "Appearance", Icon = Icons.Eye, OnPress = Appearance } ],
+      },
+      Nav = [
+        new NavItem { Label = "Overview", To = "/", Icon = Icons.Home, Exact = true },
+        new NavItem { Label = "Accounts", To = "/accounts", Icon = Icons.Users },
+        new NavItem { Label = "Pipeline", To = "/pipeline", Icon = Icons.Chart },
+        new NavItem { Label = "Inbox", To = "/inbox", Icon = Icons.Bell, Badge = "2", BadgeTone = Tone.Primary },
+        new NavItem { Kind = NavKind.Section, Label = "Workspace", Children = [
+          new NavItem { Label = "New account", To = "/accounts/new", Icon = Icons.Plus },
+          new NavItem { Label = "Imports", To = "/imports", Icon = Icons.Upload },
+          new NavItem { Label = "Settings", To = "/settings", Icon = Icons.Gear },
+        ] },
+      ],
+    }) {
+      Outlet(retain: 8);
+      slot search { ShellSearch("Search accounts, invoices or people", onPress: Search); }
+      slot actions {
+        IconButton("Switch light or dark", Appearance) { Icon(Icons.Eye, size: 18); }
+        ShellCountButton("Notifications", 3, onPress: Bell) { Icon(Icons.Bell, size: 18); }
+      }
+    }
+  }
+}

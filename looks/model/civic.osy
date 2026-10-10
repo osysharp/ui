@@ -1,0 +1,84 @@
+// Civic — for services anyone may have to use: healthcare, public services, bookings, field work, any app whose users
+// did not choose it and must not get it wrong.
+//
+// The idea: plain and certain. Large type in a face designed to be told apart letter by letter, controls you cannot
+// miss with a thumb, nothing below 14px, square corners, bold headings, and a calm blue-grey page with white panels on
+// it. Everything is contrast-checked with room to spare, and focus is a black ring, never a tint.
+//
+// Taken from: the GOV.UK Design System (bold headings that say what the page is for, hard edges, generous spacing, a
+// focus state you can see across a room); the NHS digital service manual (a blue-grey page with white panels, text in
+// ink-blue rather than black, the summary list's ruled rows); Atkinson Hyperlegible, drawn for the Braille Institute
+// so that every letter is distinct (the I, l and 1; the O and 0).
+
+namespace Osysharp.Ui.Looks;
+
+/// Civic — plain and certain: large type in Atkinson Hyperlegible, controls you cannot miss, square corners, bold
+/// headings on a blue-grey page. For healthcare, public services and any app anyone may have to use.
+public abstract theme Civic {
+  Colors {
+    Bg            = Modes.Of(light: "#EEF2F4", dark: "#0E1418");
+    OnBg          = Modes.Of(light: "#1E2930", dark: "#E7EDF0");
+    Surface       = Modes.Of(light: "#FFFFFF", dark: "#162026");
+    OnSurface     = Modes.Of(light: "#1E2930", dark: "#E7EDF0");
+    Elevated      = Modes.Of(light: "#FFFFFF", dark: "#1B262D");
+    Sunken        = Modes.Of(light: "#F4F7F8", dark: "#0B1013");
+    Muted         = Modes.Of(light: "#E6ECEF", dark: "#22303A");
+    Border        = Modes.Of(light: "#B9C5CC", dark: "#3A4A55");
+    CardLine      = Modes.Of(light: "#D5DDE1", dark: "#2A3740");
+    TextSecondary = Modes.Of(light: "#2F3D46", dark: "#C7D2D8");
+    TextMuted     = Modes.Of(light: "#46586A", dark: "#A3B2BC");
+    BorderDanger  = Modes.Of(light: "#B91C1C", dark: "#F87171");
+    // THE ACCENT: a service blue, deep enough to carry white text at 6:1, and a light one with dark text at night.
+    Primary       = Modes.Of(light: Palette.From("#155DB1"), dark: Palette.From("#7DB4F5"));
+    OnPrimary     = Modes.Of(light: "#FFFFFF", dark: "#08203D");
+    // Focus is INK, not a tint of the accent: seen at once on any ground, by anyone.
+    Focus         = Modes.Of(light: "#0B0C0C", dark: "#FFDD57");
+    Success       = Modes.Of(light: Palette.From("#00703C"), dark: Palette.From("#4CC38A"));
+    Danger        = Modes.Of(light: Palette.From("#B91C1C"), dark: Palette.From("#F87171"));
+    Warning       = Modes.Of(light: Palette.From("#8A5300"), dark: Palette.From("#F2B84B"));
+    Waiting       = Modes.Of(light: "#55528A", dark: "#ABA8DA");
+    Scrim         = Modes.Of(light: "rgba(15,25,32,.50)", dark: "rgba(0,0,0,.68)");
+    // White chrome on the blue-grey page; the row you are on is a clear blue wash with the accent's darkest ink — a
+    // count or a badge on it stays readable, which a solid accent row would not allow.
+    Chrome          = Modes.Of(light: "#FFFFFF", dark: "#121A20");
+    OnChrome        = Modes.Of(light: "#1E2930", dark: "#E7EDF0");
+    ChromeMuted     = Modes.Of(light: "#2F3D46", dark: "#C7D2D8");
+    ChromeFaint     = Modes.Of(light: "#46586A", dark: "#A3B2BC");
+    ChromeHover     = Modes.Of(light: "#E6ECEF", dark: "#1C2730");
+    ChromeSunken    = Modes.Of(light: "#EEF2F4", dark: "#0E1418");
+    ChromeElevated  = Modes.Of(light: "#FFFFFF", dark: "#1B262D");
+    ChromeLine      = Modes.Of(light: "#D5DDE1", dark: "#26333C");
+    ChromeCurrent   = Modes.Of(light: "#DCE9F8", dark: "#1C3550");
+    OnChromeCurrent = Modes.Of(light: "#0B3F80", dark: "#D3E5FB");
+    ChromeFocus     = Colors.Focus;
+    // A chart in the service blue, against a deep teal — two hues no colour-blind reader confuses.
+    Series1       = Modes.Of(light: Palette.From("#155DB1"), dark: Palette.From("#7DB4F5"));
+    Series2       = Modes.Of(light: Palette.From("#00797A"), dark: Palette.From("#4CC3BE"));
+    ChartSurface  = Colors.Surface;
+    ChartBorder   = Colors.CardLine;
+    ChartGrid     = Colors.Muted;
+    ChartInk      = Colors.OnSurface;
+    ChartMuted    = Colors.TextMuted;
+    ChartTipBg    = Colors.OnSurface;
+    ChartTipInk   = Colors.Surface;
+  }
+  Font {
+    Sans    = "\"Atkinson Hyperlegible Next\", ui-sans-serif, system-ui, sans-serif";
+    Display = "\"Atkinson Hyperlegible Next\", ui-sans-serif, system-ui, sans-serif";
+    Mono    = "\"Atkinson Hyperlegible Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+    Figure  = "\"Atkinson Hyperlegible Next\", ui-sans-serif, system-ui, sans-serif";
+  }
+  // Nothing smaller than 14px: a caption is still something a person has to read.
+  FontSize   { Caption = "14px"; Label = "15px"; Body = "16px"; Subhead = "18px"; Heading = "22px"; Title = "32px"; Code = "14px"; }
+  FontWeight { Regular = 400; Medium = 600; Semibold = 700; Bold = 800; Headings = 700; }
+  Radius     { Sm = "2px"; Md = "3px"; Lg = "4px"; Pill = "999px"; Tag = "2px"; }
+  Space      { Step = "0.27rem"; Gutter = "1.25rem"; PagePad = "2rem"; SectionGap = "3rem"; FieldGap = "0.5rem"; }
+  Length     { ControlSm = "38px"; ControlMd = "46px"; ControlLg = "54px"; Touch = "48px"; TouchDense = "44px";
+               RailW = "272px"; AppBarH = "60px"; Measure = "62ch"; }
+  // Flat: a panel is set apart by its edge and the page around it, never a shadow.
+  Shadow {
+    Raised   = "none";
+    Floating = "0 0 0 1px rgba(15,25,32,.18), 0 8px 24px -10px rgba(15,25,32,.30)";
+    Deep     = "0 0 0 1px rgba(15,25,32,.18), 0 24px 60px -20px rgba(15,25,32,.40)";
+  }
+}

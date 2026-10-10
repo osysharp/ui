@@ -1,0 +1,4 @@
+using Osysharp.Ui.Looks;
+
+// The look the specimen wears by default. The others are photographed with `osy test --pixels --theme looks/<look>.osy`.
+theme Specimen : Looks.Ledger { }

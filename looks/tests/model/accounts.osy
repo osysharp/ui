@@ -1,0 +1,122 @@
+// A filtered table, and one record's page.
+
+using Osysharp.Ui;
+
+[Route("/accounts")] [Layout(SpecimenShell)] [Title("Accounts")] [Render(CSR)] [AllowAnonymous]
+component AccountsPage() {
+  string search = "";
+  AccountStatus? only = null;
+  action ShowAll() { only = null; }
+  action Show(AccountStatus s) { only = s; }
+  action Add() { Navigation.Go("/accounts/new"); }
+  action Import() { Navigation.Go("/imports"); }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Accounts", subtitle: "10 customers · £493,860 a year") {
+        Button("Import", onPress: Import);
+        Button("New account", onPress: Add, tone: Tone.Primary);
+      }
+      Tabs {
+        Tab("All", selected: only == null, onPress: ShowAll);
+        Tab("Active", selected: only == AccountStatus.Active, onPress: () => Show(AccountStatus.Active));
+        Tab("Overdue", selected: only == AccountStatus.Overdue, onPress: () => Show(AccountStatus.Overdue));
+        Tab("Trial", selected: only == AccountStatus.Trial, onPress: () => Show(AccountStatus.Trial));
+      }
+      Card {
+        DataGrid(
+          label: "Accounts",
+          rows: Accounts().Where(a => only == null || a.Status == only).ToList(),
+          filterable: true,
+          columns: [
+            new GridColumn<AccountRow> { Name = "Name", Label = "Account", Value = a => a.Name, Title = true, Fill = true, Width = 260 },
+            new GridColumn<AccountRow> { Name = "Owner", Label = "Owner", Value = a => a.Owner, Width = 150 },
+            new GridColumn<AccountRow> { Name = "Plan", Label = "Plan", Value = a => a.Plan.Label, Width = 110 },
+            new GridColumn<AccountRow> { Name = "Seats", Label = "Seats", Kind = GridColumnKind.Number,
+                                         Value = a => a.Seats.ToString(), Number = a => a.Seats, Align = "right", Width = 80 },
+            new GridColumn<AccountRow> { Name = "Annual", Label = "Annual value", Kind = GridColumnKind.Number,
+                                         Value = a => a.Annual.ToString("C2"), Number = a => a.Annual, Align = "right", Width = 140 },
+            new GridColumn<AccountRow> { Name = "Balance", Label = "Balance", Kind = GridColumnKind.Number,
+                                         Value = a => a.Balance == 0m ? "—" : a.Balance.ToString("C2"), Number = a => a.Balance, Align = "right", Width = 120 },
+            new GridColumn<AccountRow> { Name = "Status", Label = "Status", Value = a => a.Status.Label, Width = 120 },
+            new GridColumn<AccountRow> { Name = "LastActivity", Label = "Last activity", Value = a => a.LastActivity, Secondary = true, Width = 140 },
+          ]
+        ) {
+          slot Status { a => Badge(a.Status.Label, tone: a.Status); }
+        }
+      }
+    }
+  }
+}
+
+[Route("/accounts/kestrel")] [Layout(SpecimenShell)] [Title("Kestrel Freight")] [Render(CSR)] [AllowAnonymous]
+component AccountPage() {
+  action Call() { }
+  action Invoice() { }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Kestrel Freight", subtitle: "Enterprise · Felixstowe · customer since March 2021") {
+        Button("Log a call", onPress: Call);
+        Button("Send invoice", onPress: Invoice, tone: Tone.Primary);
+      }
+      Row(gap: 2, wrap: Wrapping.Wrap) {
+        Badge("Active", tone: Tone.Success);
+        Badge("310 seats", tone: Tone.Default);
+        Badge("Renewal in 41 days", tone: Tone.Warning);
+      }
+      Box(display: Display.Grid, cols: Layout.AtLeast(Laptop) ? "minmax(0, 2fr) minmax(0, 1fr)" : "minmax(0, 1fr)", gap: 4) {
+        Stack(gap: 4) {
+          Card("Invoices", subtitle: "Billed monthly in advance") {
+            DataGrid(
+              label: "Invoices",
+              rows: Invoices(),
+              columns: [
+                new GridColumn<InvoiceRow> { Name = "Number", Label = "Invoice", Value = i => i.Number, Title = true, Width = 130 },
+                new GridColumn<InvoiceRow> { Name = "Issued", Label = "Issued", Value = i => i.Issued, Width = 120 },
+                new GridColumn<InvoiceRow> { Name = "Due", Label = "Due", Value = i => i.Due, Width = 120 },
+                new GridColumn<InvoiceRow> { Name = "Billed", Label = "Billed", Kind = GridColumnKind.Number,
+                                             Value = i => i.Amount.ToString("C2"), Number = i => i.Amount, Align = "right", Width = 130, Fill = true },
+              ]
+            );
+          }
+          Card("Activity") {
+            foreach (var e in AccountActivity()) {
+              Row(gap: 3, align: Align.Start) {
+                Avatar(e.Initials, size: Size.Sm);
+                Stack(gap: 0, grow: 1) {
+                  Text($"{e.Who} {e.What}");
+                  Text(e.When, fontSize: FontSize.Caption, color: Colors.TextMuted);
+                }
+              }
+            }
+          }
+        }
+        Stack(gap: 4) {
+          Card("Details") {
+            Detail("Account owner", "Maya Okafor");
+            Detail("Plan", "Enterprise, annual");
+            Detail("Annual value", "£186,000.00");
+            Detail("Next invoice", "1 Nov 2026");
+            Detail("Billing contact", "accounts@kestrel-freight.example");
+          }
+          Card("Seats", subtitle: "310 of 320 in use") {
+            ProgressBar(97, tone: Tone.Warning);
+            Text("Ten left before the next band.", fontSize: FontSize.Caption, color: Colors.TextMuted);
+          }
+        }
+      }
+    }
+  }
+}
+
+/// One fact about a record — what it is on the left, its value on the right.
+[Composable]
+component Detail(string label, string value) {
+  render {
+    Row(justify: Justify.Between, gap: 4, py: 1) {
+      Text(label, color: Colors.TextMuted);
+      Text(value, fontWeight: FontWeight.Medium, textAlign: TextAlign.Right);
+    }
+  }
+}

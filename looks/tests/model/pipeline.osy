@@ -1,0 +1,49 @@
+// A board — work in columns, one card per deal.
+
+using Osysharp.Ui;
+
+[Route("/pipeline")] [Layout(SpecimenShell)] [Title("Pipeline")] [Render(CSR)] [AllowAnonymous]
+component PipelinePage() {
+  action Add() { }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Pipeline", subtitle: "9 open deals · £351,300") {
+        Button("New deal", onPress: Add, tone: Tone.Primary);
+      }
+      Box(display: Display.Grid, cols: Layout.AtLeast(Laptop) ? "repeat(4, minmax(0, 1fr))" : "minmax(0, 1fr)", gap: 4, align: Align.Start) {
+        foreach (var stage in Stage.Members) {
+          StageColumn(stage: stage);
+        }
+      }
+    }
+  }
+}
+
+[Composable]
+component StageColumn(Stage stage) {
+  render {
+    Stack(gap: 3, p: 3, bg: Colors.Sunken, rounded: Radius.Lg, label: stage.Label) {
+      Row(justify: Justify.Between, align: Align.Center) {
+        Text(stage.Label, fontWeight: FontWeight.Semibold);
+        Text($"{Deals().Count(d => d.Stage == stage)} · {Deals().Where(d => d.Stage == stage).Sum(d => d.Value).ToString("C0")}",
+             fontSize: FontSize.Caption, color: Colors.TextMuted);
+      }
+      foreach (var d in Deals().Where(d => d.Stage == stage)) {
+        Card {
+          Stack(gap: 2) {
+            Text(d.Title, fontWeight: FontWeight.Medium);
+            Text(d.Account, fontSize: FontSize.Label, color: Colors.TextMuted);
+            Row(justify: Justify.Between, align: Align.Center) {
+              Text(d.Value.ToString("C0"), fontWeight: FontWeight.Semibold);
+              Row(gap: 2, align: Align.Center) {
+                if (d.Late) { Badge($"Due {d.Due}", tone: Tone.Danger); } else { Text(d.Due, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+                Avatar(d.Owner, size: Size.Sm);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

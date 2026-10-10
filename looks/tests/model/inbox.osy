@@ -1,0 +1,75 @@
+// An inbox at a support desk's density — a list of conversations beside the one being read.
+
+using Osysharp.Ui;
+
+[Route("/inbox")] [Layout(SpecimenShell)] [Title("Inbox")] [Render(CSR)] [AllowAnonymous]
+component InboxPage() {
+  string reply = "";
+  action Send() { }
+  action Assign() { }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Inbox", subtitle: "8 open · 2 unread");
+      Box(display: Display.Grid, cols: Layout.AtLeast(Laptop) ? "minmax(300px, 380px) minmax(0, 1fr)" : "minmax(0, 1fr)", gap: 4, align: Align.Start) {
+        Card {
+          Stack(gap: 0, label: "Conversations") {
+            foreach (var c in Conversations()) {
+              ConversationLine(c: c, current: c.From == "Hannah Lowe");
+            }
+          }
+        }
+        Card("Export to the customs portal fails at row 1,204", subtitle: "Hannah Lowe · Kestrel Freight · opened 09:41") {
+          slot actions { Button("Assign", onPress: Assign); }
+          Stack(gap: 4) {
+            Message(from: "Hannah Lowe", initials: "HL", when: "09:41",
+                    text: "We tried the export again this morning and it stops at the same row every time. The file is attached; row 1,204 is a shipment with two consignees, if that helps.");
+            Message(from: "Maya Okafor", initials: "MO", when: "09:58",
+                    text: "Thanks Hannah. I can reproduce it with your file. I have passed it to the engineers and will write again by two o'clock.");
+            Alert("Internal note: the customs schema allows one consignee per line. Check with the integrations team.", title: "Note", tone: Tone.Warning);
+            TextAreaField("Reply", value: reply, placeholder: "Write to Hannah…", rows: 3);
+            Row(justify: Justify.End, gap: 2) {
+              Button("Send and close", onPress: Send);
+              Button("Send", onPress: Send, tone: Tone.Primary);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+[Composable]
+component ConversationLine(ConversationRow c, bool current) {
+  render {
+    Row(gap: 3, align: Align.Start, px: 3, py: 3, bg: current ? Colors.Muted : Colors.Transparent, rounded: Radius.Md,
+        label: c.Subject) {
+      Avatar(c.Initials, size: Size.Sm);
+      Stack(gap: 0, grow: 1, minW: "0") {
+        Row(justify: Justify.Between, gap: 2) {
+          Text(c.From, fontWeight: c.Unread ? FontWeight.Semibold : FontWeight.Medium, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+          Text(c.When, fontSize: FontSize.Caption, color: Colors.TextMuted, fontFamily: Font.Mono);
+        }
+        Text(c.Subject, fontSize: FontSize.Label, fontWeight: c.Unread ? FontWeight.Medium : FontWeight.Regular, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        Text(c.Snippet, fontSize: FontSize.Caption, color: Colors.TextMuted, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (c.Tag != "") { Row(pt: 1) { Badge(c.Tag, tone: c.TagTone); } }
+      }
+    }
+  }
+}
+
+[Composable]
+component Message(string from, string initials, string when, string text) {
+  render {
+    Row(gap: 3, align: Align.Start) {
+      Avatar(initials, size: Size.Sm);
+      Stack(gap: 1, grow: 1) {
+        Row(gap: 2, align: Align.Baseline) {
+          Text(from, fontWeight: FontWeight.Semibold);
+          Text(when, fontSize: FontSize.Caption, color: Colors.TextMuted, fontFamily: Font.Mono);
+        }
+        Text(text, lineHeight: 1.55);
+      }
+    }
+  }
+}

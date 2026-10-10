@@ -1,0 +1,86 @@
+// Relay — for the desk that is never quiet: support, operations, dispatch, incident response, developer tools.
+//
+// The idea: a control room. The densest look — more rows on a screen than any other — in a tight grotesk with its own
+// mono for every time, id and count, on cool graphite that is as good in the dark as in the light. Nothing decorates:
+// surfaces are a step apart rather than outlined, and the one colour is a signal orange, kept for what to press, where
+// you are and what is live.
+//
+// Taken from: Linear (13px interface type, greys that step rather than rule, a dark mode that is the product and not an
+// inversion); Front (a shared inbox at full density, the conversation first); Grafana (one signal colour on charcoal,
+// figures in a mono).
+
+namespace Osysharp.Ui.Looks;
+
+/// Relay — the control room: the densest look, graphite in light and dark, a mono for every time and id, signal
+/// orange. For support desks, operations and dispatch, and developer tools.
+public abstract theme Relay {
+  Colors {
+    Bg            = Modes.Of(light: "#F5F6F8", dark: "#0E1013");
+    OnBg          = Modes.Of(light: "#16181D", dark: "#E6E8EC");
+    Surface       = Modes.Of(light: "#FFFFFF", dark: "#15181C");
+    OnSurface     = Modes.Of(light: "#16181D", dark: "#E6E8EC");
+    Elevated      = Modes.Of(light: "#FFFFFF", dark: "#1C2025");
+    Sunken        = Modes.Of(light: "#EEF0F3", dark: "#0B0D0F");
+    Muted         = Modes.Of(light: "#ECEEF2", dark: "#22262C");
+    Border        = Modes.Of(light: "#DFE2E7", dark: "#272B32");
+    CardLine      = Modes.Of(light: "#E4E7EB", dark: "#22262C");
+    TextSecondary = Modes.Of(light: "#3B4049", dark: "#B9BEC7");
+    TextMuted     = Modes.Of(light: "#5D636E", dark: "#8C929C");
+    BorderDanger  = Modes.Of(light: "#B0124F", dark: "#FF6B98");
+    // THE SIGNAL: a deep safety orange on light, a bright one on the dark with near-black words on it.
+    Primary       = Modes.Of(light: Palette.From("#C2410C"), dark: Palette.From("#FF7A3D"));
+    OnPrimary     = Modes.Of(light: "#FFFFFF", dark: "#1C0A02");
+    Focus         = Modes.Of(light: "#C2410C", dark: "#FF8B54");
+    // Red is a raspberry and caution a clear yellow, so neither is ever read as the orange of an ordinary action.
+    Danger        = Modes.Of(light: Palette.From("#B0124F"), dark: Palette.From("#FF6B98"));
+    Warning       = Modes.Of(light: Palette.From("#8C6A00"), dark: Palette.From("#E8C546"));
+    Success       = Modes.Of(light: Palette.From("#11775A"), dark: Palette.From("#45C79A"));
+    Waiting       = Modes.Of(light: "#5E5F95", dark: "#A3A4D6");
+    Scrim         = Modes.Of(light: "rgba(10,12,16,.42)", dark: "rgba(0,0,0,.66)");
+    // The rail is the console's frame: a step DARKER than the page, in both modes.
+    Chrome          = Modes.Of(light: "#ECEEF2", dark: "#0A0B0D");
+    OnChrome        = Modes.Of(light: "#16181D", dark: "#E6E8EC");
+    ChromeMuted     = Modes.Of(light: "#3B4049", dark: "#AEB3BC");
+    ChromeFaint     = Modes.Of(light: "#585E69", dark: "#848A94");
+    ChromeHover     = Modes.Of(light: "#E1E4E9", dark: "#17191D");
+    ChromeSunken    = Modes.Of(light: "#F5F6F8", dark: "#111316");
+    ChromeElevated  = Modes.Of(light: "#FFFFFF", dark: "#1C2025");
+    ChromeLine      = Modes.Of(light: "#DDE0E5", dark: "#1C1F24");
+    ChromeCurrent   = Modes.Of(light: "#FFFFFF", dark: "#1E2228");
+    OnChromeCurrent = Modes.Of(light: "#16181D", dark: "#FFFFFF");
+    ChromeFocus     = Colors.Focus;
+    // A chart on the console: the signal for the figure, steel for the line it is held against.
+    Series1       = Modes.Of(light: Palette.From("#D9530F"), dark: Palette.From("#FF7A3D"));
+    Series2       = Modes.Of(light: Palette.From("#53627A"), dark: Palette.From("#94A3BA"));
+    ChartSurface  = Colors.Surface;
+    ChartBorder   = Colors.CardLine;
+    ChartGrid     = Colors.Muted;
+    ChartInk      = Colors.OnSurface;
+    ChartMuted    = Colors.TextMuted;
+    ChartTipBg    = Colors.OnSurface;
+    ChartTipInk   = Colors.Surface;
+  }
+  Font {
+    Sans    = "\"Reddit Sans\", ui-sans-serif, system-ui, sans-serif";
+    Display = "\"Reddit Sans\", ui-sans-serif, system-ui, sans-serif";
+    Mono    = "\"Reddit Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+    Figure  = "\"Reddit Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+  }
+  FontSize   { Caption = "11.5px"; Label = "12.5px"; Body = "13px"; Subhead = "14px"; Heading = "17px"; Title = "22px"; Code = "12px"; }
+  FontWeight { Regular = 420; Medium = 540; Semibold = 640; Bold = 720; Headings = 640; }
+  Radius     { Sm = "4px"; Md = "6px"; Lg = "8px"; Pill = "999px"; Tag = "4px"; }
+  Space      { Step = "0.215rem"; Gutter = "0.875rem"; PagePad = "1.25rem"; SectionGap = "1.75rem"; FieldGap = "0.3rem"; }
+  Length     { ControlSm = "28px"; ControlMd = "32px"; ControlLg = "40px"; Touch = "36px"; TouchDense = "30px";
+               RailW = "232px"; AppBarH = "46px"; AvatarSm = "22px"; AvatarMd = "32px"; }
+  // Surfaces are a step apart, not outlined: a raised card is a one-pixel ring, and only a floating layer has depth.
+  Shadow {
+    Raised   = "none";
+    Floating = "0 8px 24px -8px rgba(8,10,14,.30), 0 0 0 1px rgba(8,10,14,.10)";
+    Deep     = "0 24px 56px -20px rgba(8,10,14,.45), 0 0 0 1px rgba(8,10,14,.10)";
+  }
+  Motion {
+    Fast   = "all 70ms cubic-bezier(.2,.8,.2,1)";
+    Normal = "all 130ms cubic-bezier(.2,.8,.2,1)";
+    Slow   = "all 200ms cubic-bezier(.2,.8,.2,1)";
+  }
+}

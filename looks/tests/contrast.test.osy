@@ -1,0 +1,85 @@
+// The look's UNIT CHECKS — every pair of words and ground the UI kit paints with this theme, in light and in dark, at
+// WCAG AA. They read the RESOLVED tokens (references followed, per mode), so they need no browser and run in seconds:
+//
+//   osy test --file contrast.test.osy                         # the look the specimen wears
+//   osy test --file contrast.test.osy --theme Looks.Relay     # any other
+//
+// An app that derives from a look and changes its accent runs the same pairs against its own theme.
+
+[Test]
+void every_pair_reads_in_light() {
+  // Running text on every ground a page has.
+  Assert.Contrast("Colors.OnBg", "Colors.Bg", mode: "light");
+  Assert.Contrast("Colors.OnSurface", "Colors.Surface", mode: "light");
+  Assert.Contrast("Colors.OnSurface", "Colors.Elevated", mode: "light");
+  Assert.Contrast("Colors.OnSurface", "Colors.Muted", mode: "light");
+  Assert.Contrast("Colors.TextSecondary", "Colors.Surface", mode: "light");
+  Assert.Contrast("Colors.TextSecondary", "Colors.Bg", mode: "light");
+  Assert.Contrast("Colors.TextMuted", "Colors.Surface", mode: "light");
+  Assert.Contrast("Colors.TextMuted", "Colors.Bg", mode: "light");
+  Assert.Contrast("Colors.TextMuted", "Colors.Sunken", mode: "light");
+  Assert.Contrast("Colors.TextMuted", "Colors.Muted", mode: "light");
+  // The accent: a button's words on it, and the accent read as words (a link, a current tab).
+  Assert.Contrast("Colors.OnPrimary", "Colors.Primary", mode: "light");
+  Assert.Contrast("Colors.Primary.Text", "Colors.Surface", mode: "light");
+  Assert.Contrast("Colors.Primary.Text", "Colors.Bg", mode: "light");
+  // A field's error is set in the danger colour itself, under the field.
+  Assert.Contrast("Colors.Danger", "Colors.Surface", mode: "light");
+  // Badges and alerts: each tone's strong words on its own subtle ground.
+  Assert.Contrast("Colors.Primary.Strong", "Colors.Primary.Subtle", mode: "light");
+  Assert.Contrast("Colors.Success.Strong", "Colors.Success.Subtle", mode: "light");
+  Assert.Contrast("Colors.Danger.Strong", "Colors.Danger.Subtle", mode: "light");
+  Assert.Contrast("Colors.Warning.Strong", "Colors.Warning.Subtle", mode: "light");
+  // The chrome — the rail and everything in it.
+  Assert.Contrast("Colors.OnChrome", "Colors.Chrome", mode: "light");
+  Assert.Contrast("Colors.ChromeMuted", "Colors.Chrome", mode: "light");
+  Assert.Contrast("Colors.ChromeFaint", "Colors.Chrome", mode: "light");
+  Assert.Contrast("Colors.ChromeMuted", "Colors.ChromeHover", mode: "light");
+  Assert.Contrast("Colors.OnChromeCurrent", "Colors.ChromeCurrent", mode: "light");
+  Assert.Contrast("Colors.OnChrome", "Colors.ChromeSunken", mode: "light");
+  Assert.Contrast("Colors.ChromeFaint", "Colors.ChromeCurrent", mode: "light");
+  // Not words, but what a person must SEE (WCAG 1.4.11, 3:1): focus everywhere, and a refused field's edge.
+  Assert.Contrast("Colors.Focus", "Colors.Surface", 3, mode: "light");
+  Assert.Contrast("Colors.Focus", "Colors.Bg", 3, mode: "light");
+  Assert.Contrast("Colors.ChromeFocus", "Colors.Chrome", 3, mode: "light");
+  Assert.Contrast("Colors.BorderDanger", "Colors.Surface", 3, mode: "light");
+}
+
+[Test]
+void every_pair_reads_in_dark() {
+  // Running text on every ground a page has.
+  Assert.Contrast("Colors.OnBg", "Colors.Bg", mode: "dark");
+  Assert.Contrast("Colors.OnSurface", "Colors.Surface", mode: "dark");
+  Assert.Contrast("Colors.OnSurface", "Colors.Elevated", mode: "dark");
+  Assert.Contrast("Colors.OnSurface", "Colors.Muted", mode: "dark");
+  Assert.Contrast("Colors.TextSecondary", "Colors.Surface", mode: "dark");
+  Assert.Contrast("Colors.TextSecondary", "Colors.Bg", mode: "dark");
+  Assert.Contrast("Colors.TextMuted", "Colors.Surface", mode: "dark");
+  Assert.Contrast("Colors.TextMuted", "Colors.Bg", mode: "dark");
+  Assert.Contrast("Colors.TextMuted", "Colors.Sunken", mode: "dark");
+  Assert.Contrast("Colors.TextMuted", "Colors.Muted", mode: "dark");
+  // The accent: a button's words on it, and the accent read as words (a link, a current tab).
+  Assert.Contrast("Colors.OnPrimary", "Colors.Primary", mode: "dark");
+  Assert.Contrast("Colors.Primary.Text", "Colors.Surface", mode: "dark");
+  Assert.Contrast("Colors.Primary.Text", "Colors.Bg", mode: "dark");
+  // A field's error is set in the danger colour itself, under the field.
+  Assert.Contrast("Colors.Danger", "Colors.Surface", mode: "dark");
+  // Badges and alerts: each tone's strong words on its own subtle ground.
+  Assert.Contrast("Colors.Primary.Strong", "Colors.Primary.Subtle", mode: "dark");
+  Assert.Contrast("Colors.Success.Strong", "Colors.Success.Subtle", mode: "dark");
+  Assert.Contrast("Colors.Danger.Strong", "Colors.Danger.Subtle", mode: "dark");
+  Assert.Contrast("Colors.Warning.Strong", "Colors.Warning.Subtle", mode: "dark");
+  // The chrome — the rail and everything in it.
+  Assert.Contrast("Colors.OnChrome", "Colors.Chrome", mode: "dark");
+  Assert.Contrast("Colors.ChromeMuted", "Colors.Chrome", mode: "dark");
+  Assert.Contrast("Colors.ChromeFaint", "Colors.Chrome", mode: "dark");
+  Assert.Contrast("Colors.ChromeMuted", "Colors.ChromeHover", mode: "dark");
+  Assert.Contrast("Colors.OnChromeCurrent", "Colors.ChromeCurrent", mode: "dark");
+  Assert.Contrast("Colors.OnChrome", "Colors.ChromeSunken", mode: "dark");
+  Assert.Contrast("Colors.ChromeFaint", "Colors.ChromeCurrent", mode: "dark");
+  // Not words, but what a person must SEE (WCAG 1.4.11, 3:1): focus everywhere, and a refused field's edge.
+  Assert.Contrast("Colors.Focus", "Colors.Surface", 3, mode: "dark");
+  Assert.Contrast("Colors.Focus", "Colors.Bg", 3, mode: "dark");
+  Assert.Contrast("Colors.ChromeFocus", "Colors.Chrome", 3, mode: "dark");
+  Assert.Contrast("Colors.BorderDanger", "Colors.Surface", 3, mode: "dark");
+}

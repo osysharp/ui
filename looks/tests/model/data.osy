@@ -1,0 +1,133 @@
+// The specimen's rows — fixed, in memory, built by plain functions. Nothing is stored: a look is judged on the same
+// words and numbers every time, so two photographs differ only in the look.
+
+using Osysharp.Ui;
+
+app.DefaultCulture = "en-GB";
+
+enum AccountStatus {
+  [Tone(Tone.Success)] Active,
+  [Tone(Tone.Primary)] Trial,
+  [Tone(Tone.Warning)] Overdue,
+  [Label("On hold"), Tone(Tone.Ghost)] OnHold,
+  [Tone(Tone.Danger)] Cancelled,
+}
+
+enum Plan { Starter, Team, Business, Enterprise }
+
+class AccountRow {
+  public string Key;
+  public string Name;
+  public string Owner;
+  public string OwnerInitials;
+  public string City;
+  public Plan Plan;
+  public AccountStatus Status;
+  public decimal Annual;
+  public decimal Balance;
+  public int Seats;
+  public string LastActivity;
+}
+
+List<AccountRow> Accounts() {
+  return [
+    new AccountRow { Key = "brightwater", Name = "Brightwater Dental Group", Owner = "Maya Okafor", OwnerInitials = "MO", City = "Leeds", Plan = Plan.Business, Status = AccountStatus.Active, Annual = 48600m, Balance = 0m, Seats = 42, LastActivity = "2 hours ago" },
+    new AccountRow { Key = "fenwick", Name = "Fenwick & Hale Architects", Owner = "Tomás Reyes", OwnerInitials = "TR", City = "Bristol", Plan = Plan.Team, Status = AccountStatus.Overdue, Annual = 12960m, Balance = 3240m, Seats = 12, LastActivity = "Yesterday" },
+    new AccountRow { Key = "kestrel", Name = "Kestrel Freight", Owner = "Maya Okafor", OwnerInitials = "MO", City = "Felixstowe", Plan = Plan.Enterprise, Status = AccountStatus.Active, Annual = 186000m, Balance = 0m, Seats = 310, LastActivity = "14 minutes ago" },
+    new AccountRow { Key = "linden", Name = "Linden Veterinary", Owner = "Priya Nair", OwnerInitials = "PN", City = "York", Plan = Plan.Starter, Status = AccountStatus.Trial, Annual = 0m, Balance = 0m, Seats = 4, LastActivity = "3 days ago" },
+    new AccountRow { Key = "marlow", Name = "Marlow Print Works", Owner = "Jonas Berg", OwnerInitials = "JB", City = "Reading", Plan = Plan.Team, Status = AccountStatus.Active, Annual = 9720m, Balance = 0m, Seats = 9, LastActivity = "Today" },
+    new AccountRow { Key = "northgate", Name = "Northgate Property Services", Owner = "Priya Nair", OwnerInitials = "PN", City = "Manchester", Plan = Plan.Business, Status = AccountStatus.Overdue, Annual = 38400m, Balance = 9600m, Seats = 36, LastActivity = "6 days ago" },
+    new AccountRow { Key = "orchard", Name = "Orchard Lane Nurseries", Owner = "Tomás Reyes", OwnerInitials = "TR", City = "Canterbury", Plan = Plan.Starter, Status = AccountStatus.OnHold, Annual = 2880m, Balance = 0m, Seats = 3, LastActivity = "2 weeks ago" },
+    new AccountRow { Key = "pemberton", Name = "Pemberton Clinics", Owner = "Jonas Berg", OwnerInitials = "JB", City = "Edinburgh", Plan = Plan.Enterprise, Status = AccountStatus.Active, Annual = 142500m, Balance = 0m, Seats = 220, LastActivity = "1 hour ago" },
+    new AccountRow { Key = "quarry", Name = "Quarry Hill Brewing", Owner = "Maya Okafor", OwnerInitials = "MO", City = "Sheffield", Plan = Plan.Team, Status = AccountStatus.Cancelled, Annual = 0m, Balance = 0m, Seats = 0, LastActivity = "1 month ago" },
+    new AccountRow { Key = "sable", Name = "Sable Logistics", Owner = "Priya Nair", OwnerInitials = "PN", City = "Glasgow", Plan = Plan.Business, Status = AccountStatus.Active, Annual = 52800m, Balance = 1100m, Seats = 48, LastActivity = "Today" },
+  ];
+}
+
+class InvoiceRow {
+  public string Number;
+  public string Issued;
+  public string Due;
+  public decimal Amount;
+  public AccountStatus Status;
+}
+
+List<InvoiceRow> Invoices() {
+  return [
+    new InvoiceRow { Number = "INV-20418", Issued = "1 Oct 2026", Due = "31 Oct 2026", Amount = 15500m, Status = AccountStatus.Trial },
+    new InvoiceRow { Number = "INV-20307", Issued = "1 Sep 2026", Due = "1 Oct 2026", Amount = 15500m, Status = AccountStatus.Active },
+    new InvoiceRow { Number = "INV-20196", Issued = "1 Aug 2026", Due = "31 Aug 2026", Amount = 15500m, Status = AccountStatus.Active },
+    new InvoiceRow { Number = "INV-20085", Issued = "1 Jul 2026", Due = "31 Jul 2026", Amount = 14250m, Status = AccountStatus.Active },
+  ];
+}
+
+enum Stage { Lead, Qualified, Proposal, Won }
+
+class DealCard {
+  public string Title;
+  public string Account;
+  public decimal Value;
+  public string Owner;
+  public Stage Stage;
+  public string Due;
+  public bool Late;
+}
+
+List<DealCard> Deals() {
+  return [
+    new DealCard { Title = "Fleet tracking pilot", Account = "Kestrel Freight", Value = 24000m, Owner = "MO", Stage = Stage.Lead, Due = "18 Oct" },
+    new DealCard { Title = "Second site", Account = "Linden Veterinary", Value = 4800m, Owner = "PN", Stage = Stage.Lead, Due = "22 Oct" },
+    new DealCard { Title = "Records migration", Account = "Pemberton Clinics", Value = 61000m, Owner = "JB", Stage = Stage.Lead, Due = "3 Nov" },
+    new DealCard { Title = "Upgrade to Business", Account = "Marlow Print Works", Value = 7200m, Owner = "JB", Stage = Stage.Qualified, Due = "14 Oct", Late = true },
+    new DealCard { Title = "Regional rollout", Account = "Sable Logistics", Value = 38500m, Owner = "PN", Stage = Stage.Qualified, Due = "29 Oct" },
+    new DealCard { Title = "Renewal, three years", Account = "Brightwater Dental Group", Value = 145800m, Owner = "MO", Stage = Stage.Proposal, Due = "20 Oct" },
+    new DealCard { Title = "Add reporting", Account = "Northgate Property Services", Value = 6000m, Owner = "PN", Stage = Stage.Proposal, Due = "11 Oct", Late = true },
+    new DealCard { Title = "Customs module", Account = "Kestrel Freight", Value = 52000m, Owner = "MO", Stage = Stage.Won, Due = "2 Oct" },
+    new DealCard { Title = "Twenty more seats", Account = "Pemberton Clinics", Value = 13000m, Owner = "JB", Stage = Stage.Won, Due = "28 Sep" },
+  ];
+}
+
+class ConversationRow {
+  public string From;
+  public string Initials;
+  public string Company;
+  public string Subject;
+  public string Snippet;
+  public string When;
+  public bool Unread;
+  public string Tag;
+  public Tone TagTone;
+}
+
+List<ConversationRow> Conversations() {
+  return [
+    new ConversationRow { From = "Hannah Lowe", Initials = "HL", Company = "Kestrel Freight", Subject = "Export to the customs portal fails at row 1,204", Snippet = "We tried again this morning and it stops at the same row. The file is attached.", When = "09:41", Unread = true, Tag = "Urgent", TagTone = Tone.Danger },
+    new ConversationRow { From = "Daniel Osei", Initials = "DO", Company = "Pemberton Clinics", Subject = "Can we add twelve seats before Monday?", Snippet = "Our new intake starts on Monday and they will need access from the first day.", When = "09:12", Unread = true, Tag = "Billing", TagTone = Tone.Primary },
+    new ConversationRow { From = "Sofia Marin", Initials = "SM", Company = "Brightwater Dental Group", Subject = "Renewal paperwork", Snippet = "Thanks for the proposal. Legal has two small questions about clause 7.", When = "08:55", Unread = false, Tag = "Sales", TagTone = Tone.Success },
+    new ConversationRow { From = "Ravi Shah", Initials = "RS", Company = "Sable Logistics", Subject = "Single sign-on for the Glasgow office", Snippet = "Our identity team is ready to set it up. Which certificate do you need?", When = "Yesterday", Unread = false, Tag = "Setup", TagTone = Tone.Default },
+    new ConversationRow { From = "Ellen Price", Initials = "EP", Company = "Northgate Property Services", Subject = "Invoice INV-20311 is not what we agreed", Snippet = "The September invoice charges for 40 seats, but we reduced to 36 in August.", When = "Yesterday", Unread = false, Tag = "Billing", TagTone = Tone.Primary },
+    new ConversationRow { From = "Marcus Webb", Initials = "MW", Company = "Marlow Print Works", Subject = "Thank you", Snippet = "Just a note to say the new scheduling view has saved us an hour a day.", When = "Tue", Unread = false, Tag = "", TagTone = Tone.Default },
+    new ConversationRow { From = "Aiko Tanaka", Initials = "AT", Company = "Linden Veterinary", Subject = "Trial ends on Friday", Snippet = "We would like to continue. Can the trial be extended until our board meets?", When = "Mon", Unread = false, Tag = "Sales", TagTone = Tone.Success },
+    new ConversationRow { From = "Lucas Moreau", Initials = "LM", Company = "Fenwick & Hale Architects", Subject = "Payment reminder received", Snippet = "Our accounts team paid this on the 3rd. Could you check the remittance?", When = "Mon", Unread = false, Tag = "Billing", TagTone = Tone.Primary },
+  ];
+}
+
+class ActivityRow {
+  public string Who;
+  public string Initials;
+  public string What;
+  public string When;
+}
+
+List<ActivityRow> AccountActivity() {
+  return [
+    new ActivityRow { Who = "Maya Okafor", Initials = "MO", What = "logged a call: agreed the renewal terms in principle", When = "Today, 11:20" },
+    new ActivityRow { Who = "System", Initials = "··", What = "issued invoice INV-20418 for £15,500.00", When = "1 Oct" },
+    new ActivityRow { Who = "Sofia Marin", Initials = "SM", What = "opened the renewal proposal (3rd time)", When = "29 Sep" },
+    new ActivityRow { Who = "Jonas Berg", Initials = "JB", What = "added 20 seats for the Pemberton contract", When = "28 Sep" },
+  ];
+}
+
+string[] Months() { return ["May", "Jun", "Jul", "Aug", "Sep", "Oct"]; }
+double[] Revenue() { return [182.0, 194.5, 201.2, 188.9, 226.4, 241.8]; }
+double[] Target() { return [180.0, 190.0, 200.0, 210.0, 220.0, 230.0]; }

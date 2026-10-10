@@ -1,0 +1,16 @@
+// The specimen — the producer's test project for Osysharp.Ui.Looks. A small, synthetic business app with fixed rows
+// and no logic: one page per shape a business app is made of (an overview with charts, a filtered table, a record, a
+// board, an inbox, a form in every validation state, settings, empty states, a dialog and a toast), so a look is
+// judged on every one of them at once.
+//
+// It wears ONE look by its own theme (`model/theme.osy`); every other look is photographed by handing the same tests
+// that look's name:
+//
+//   osy test --pixels --theme Looks.Relay
+app UiLooksSpecimen {
+  model "model/**/*.osy";
+  tests "**/*.test.osy";
+  use Osysharp.Ui;
+  use Osysharp.Ui.Looks@0;
+  use Osysharp.Charts@1;
+}

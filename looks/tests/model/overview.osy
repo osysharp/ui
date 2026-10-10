@@ -1,0 +1,45 @@
+// The overview — a dashboard: figures, a chart, a list of what needs somebody.
+
+using Osysharp.Ui;
+using Osysharp.Charts;
+
+[Route("/")] [Layout(SpecimenShell)] [Title("Overview")] [Render(CSR)] [AllowAnonymous]
+component OverviewPage() {
+  action Export() { }
+  action NewInvoice() { }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Good morning, Maya", subtitle: "Thursday 9 October · 3 accounts need you today") {
+        Button("Export", onPress: Export);
+        Button("New invoice", onPress: NewInvoice, tone: Tone.Primary);
+      }
+      Box(display: Display.Grid, cols: "repeat(auto-fit, minmax(160px, 1fr))", gap: 4) {
+        Card { Metric("recurring revenue", text: "£241,800", change: "up 6.8% on September", changeIsGood: true); }
+        Card { Metric("outstanding", text: "£13,940", change: "2 accounts overdue", changeIsGood: false); }
+        Card { Metric("seats in use", text: "684", change: "up 31 this month", changeIsGood: true); }
+        Card { Metric("median reply", text: "1h 12m", change: "down from 1h 40m", changeIsGood: true); }
+      }
+      Box(display: Display.Grid, cols: Layout.AtLeast(Laptop) ? "minmax(0, 2fr) minmax(0, 1fr)" : "minmax(0, 1fr)", gap: 4) {
+        Chart(title: "Revenue against plan", subtitle: "Thousands of pounds, by month", labels: Months()) {
+          Column(label: "Revenue", values: Revenue());
+          Line(label: "Plan", values: Target());
+          Axis(side: AxisSide.Left);
+        }
+        Card("Needs you", subtitle: "Oldest first") {
+          foreach (var a in Accounts().Where(a => a.Status == AccountStatus.Overdue || a.Status == AccountStatus.Trial)) {
+            ListRow {
+              Avatar(a.OwnerInitials, size: Size.Sm);
+              Stack(gap: 0, grow: 1, minW: "0") {
+                Text(a.Name, fontWeight: FontWeight.Medium, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+                Text(a.Status == AccountStatus.Trial ? "Trial ends Friday" : $"{a.Balance.ToString("C0")} overdue",
+                     fontSize: FontSize.Caption, color: Colors.TextMuted);
+              }
+              Badge(a.Status.Label, tone: a.Status);
+            }
+          }
+        }
+      }
+    }
+  }
+}

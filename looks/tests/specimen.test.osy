@@ -1,0 +1,125 @@
+// The specimen, photographed. `osy test --pixels` writes every shot below — each page wide and on a phone, light and
+// dark — for whichever look the run wears (`--theme looks/<look>.osy`). The assertions only make sure the page being
+// photographed is the one meant, and that its words can be read on the ground the look painted.
+
+[Test]
+void overview() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/");
+  Assert.Visible("Revenue against plan");
+  Assert.Readable("Good morning, Maya");
+  Assert.Readable("recurring revenue");
+  Ui.Shot("overview · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/");
+  Assert.Readable("Good morning, Maya");
+  Ui.Shot("overview · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/");
+  Ui.Shot("overview · phone · light");
+}
+
+[Test]
+void accounts_table() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/accounts");
+  Assert.Visible("Kestrel Freight");
+  Assert.Readable("Northgate Property Services");
+  Ui.Shot("accounts · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/accounts");
+  Assert.Readable("Northgate Property Services");
+  Ui.Shot("accounts · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/accounts");
+  Ui.Shot("accounts · phone · light");
+}
+
+[Test]
+void record() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/accounts/kestrel");
+  Assert.Visible("INV-20418");
+  Assert.Readable("Account owner");
+  Ui.Shot("record · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/accounts/kestrel");
+  Assert.Readable("Account owner");
+  Ui.Shot("record · wide · dark");
+}
+
+[Test]
+void board() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/pipeline");
+  Assert.Visible("Renewal, three years");
+  Ui.Shot("board · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/pipeline");
+  Ui.Shot("board · wide · dark");
+}
+
+[Test]
+void inbox() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/inbox");
+  Assert.Visible("Export to the customs portal fails at row 1,204");
+  Assert.Readable("Daniel Osei");
+  Ui.Shot("inbox · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/inbox");
+  Assert.Readable("Daniel Osei");
+  Ui.Shot("inbox · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/inbox");
+  Ui.Shot("inbox · phone · light");
+}
+
+[Test]
+void form_in_every_state() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/accounts/new");
+  Assert.Visible("Required for companies in the UK.");
+  Assert.Readable("Required for companies in the UK.");
+  Ui.Shot("form · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/accounts/new");
+  Assert.Readable("Required for companies in the UK.");
+  Ui.Shot("form · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/accounts/new");
+  Ui.Shot("form · phone · light");
+}
+
+[Test]
+void settings() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/settings");
+  Assert.Visible("Send payment reminders");
+  Ui.Shot("settings · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/settings");
+  Ui.Shot("settings · wide · dark");
+}
+
+[Test]
+void empty_states_dialog_and_toast() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/imports");
+  Assert.Dialog("Replace existing accounts?");
+  Ui.Shot("imports · dialog · wide · light");
+  Ui.Click("Keep existing");
+  Assert.Visible("No imports yet");
+  Ui.Shot("imports · empty · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/imports");
+  Ui.Shot("imports · dialog · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/imports");
+  Ui.Shot("imports · dialog · phone · light");
+}

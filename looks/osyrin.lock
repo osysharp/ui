@@ -1,0 +1,109 @@
+{
+  "platform": {
+    "version": "0.9.0"
+  },
+  "entries": [
+    {
+      "name": "Osysharp.Ui",
+      "kind": "package",
+      "version": "2.19.0",
+      "hash": "sha256:e6bd3827545a764c5de31da34609c317c76778531a4de4864b670ca3530b5ca4",
+      "minPlatform": "0.9.0",
+      "shadow": "app-forkable",
+      "source": "workspace:Platform.Core/Dsl/OsySharp/Baseline/Capabilities/Ui"
+    }
+  ],
+  "fonts": [
+    {
+      "family": "Atkinson Hyperlegible Mono",
+      "hash": "a96152b51f0399f38a2b5210697f2cdd17d2a14620b796094a22c23423f13cd0",
+      "file": "fonts/AtkinsonHyperlegibleMono.woff2",
+      "contentType": "font/woff2",
+      "weight": "200 800"
+    },
+    {
+      "family": "Atkinson Hyperlegible Next",
+      "hash": "cc5e385750a2effb40846e3f729e9b4beabeef7fde131cde56c08f397de8837b",
+      "file": "fonts/AtkinsonHyperlegibleNext.woff2",
+      "contentType": "font/woff2",
+      "weight": "200 800"
+    },
+    {
+      "family": "DM Mono",
+      "hash": "d2dd938860c30a69108906661b293272df6b8c6edf16e7344e91104e5b284e28",
+      "file": "fonts/DMMono-Regular.woff2",
+      "contentType": "font/woff2",
+      "weight": "400"
+    },
+    {
+      "family": "DM Mono",
+      "hash": "a9dd54d3633f454a325bfe7a8ffb80bfe7fd7cf3fb6c9afdf4736b8bf088072f",
+      "file": "fonts/DMMono-Medium.woff2",
+      "contentType": "font/woff2",
+      "weight": "500"
+    },
+    {
+      "family": "Figtree",
+      "hash": "78475306d945b92f6326664ef3e7d734a915f179d33b0cbf7fd856e8a704deed",
+      "file": "fonts/Figtree.woff2",
+      "contentType": "font/woff2",
+      "weight": "300 900"
+    },
+    {
+      "family": "Fragment Mono",
+      "hash": "d350f3311f87ea9f56d5e701bd493b22c7d36fa5141619801253bc6b5290a161",
+      "file": "fonts/FragmentMono-Regular.woff2",
+      "contentType": "font/woff2",
+      "weight": "400"
+    },
+    {
+      "family": "Reddit Mono",
+      "hash": "db98ea00e239633371810938896005f82adceeac561160e6a93d8fd12c00bd21",
+      "file": "fonts/RedditMono.woff2",
+      "contentType": "font/woff2",
+      "weight": "200 900"
+    },
+    {
+      "family": "Reddit Sans",
+      "hash": "56eb6dd5357799f27e11ed6162cce1f13b4466fb9d71089ab9d9a31b16a18905",
+      "file": "fonts/RedditSans.woff2",
+      "contentType": "font/woff2",
+      "weight": "200 900"
+    },
+    {
+      "family": "Sofia Sans",
+      "hash": "1ca5f564e41d4f1a473433e4e9351abc9a6ddefb9ed42bf2df403079cd220f3f",
+      "file": "fonts/SofiaSans.woff2",
+      "contentType": "font/woff2",
+      "weight": "1 1000"
+    },
+    {
+      "family": "Sofia Sans Condensed",
+      "hash": "da73cd597e633e42f4b07c9d6e7d94774e923588c5f0299016e231fff23ae3b9",
+      "file": "fonts/SofiaSansCondensed.woff2",
+      "contentType": "font/woff2",
+      "weight": "1 1000"
+    },
+    {
+      "family": "Spline Sans Mono",
+      "hash": "33c99e8ad8f280a52c95d8e88023f5618ffb7b6322a369ce137fddced40716a0",
+      "file": "fonts/SplineSansMono.woff2",
+      "contentType": "font/woff2",
+      "weight": "300 700"
+    },
+    {
+      "family": "Wix Madefor Display",
+      "hash": "ffea19d91d544e686bda62c1efc413fc43fe34eb63f26f508d2e487becbd6b1c",
+      "file": "fonts/WixMadeforDisplay.woff2",
+      "contentType": "font/woff2",
+      "weight": "400 800"
+    },
+    {
+      "family": "Wix Madefor Text",
+      "hash": "22350aa9995065b83dcba69e8339e9a9961f960209e9d9b0d3c5ebae31cd076b",
+      "file": "fonts/WixMadeforText.woff2",
+      "contentType": "font/woff2",
+      "weight": "400 800"
+    }
+  ]
+}

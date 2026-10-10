@@ -1,0 +1,119 @@
+// A form in every state a field can be in, settings, empty states, a dialog and a toast.
+
+using Osysharp.Ui;
+
+[Route("/accounts/new")] [Layout(SpecimenShell)] [Title("New account")] [Render(CSR)] [AllowAnonymous]
+component NewAccountPage() {
+  string name = "Alder Glass";
+  string email = "accounts@alder-glass";
+  string vat = "";
+  string notes = "";
+  string reference = "HAL-2291";
+  Plan plan = Plan.Team;
+  int seats = 12;
+  DateOnly? starts = new DateOnly(2026, 11, 1);
+  bool invoiceByPost = false;
+  bool welcome = true;
+  action Save() { }
+  action Cancel() { Navigation.Go("/accounts"); }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("New account", subtitle: "Billing starts on the first day of the plan.");
+      Stack(gap: 4, maxW: "760px") {
+        Alert("Two fields need a look before this can be saved.", title: "Check the form", tone: Tone.Danger);
+        Card("Company") {
+          Stack(gap: 4) {
+            Field("Company name", value: name, hint: "As it should appear on invoices.");
+            Field("Billing email", value: email, error: "That is not a whole address — it needs a domain such as .com.", type: "email");
+            Field("VAT number", value: vat, placeholder: "GB 123 4567 89", error: "Required for companies in the UK.");
+            Field("Customer reference", value: reference, disabled: true, hint: "Set by the system.");
+          }
+        }
+        Card("Plan") {
+          Stack(gap: 4) {
+            Box(display: Display.Grid, cols: Layout.AtLeast(Tablet) ? "1fr 1fr" : "1fr", gap: 4) {
+              Dropdown("Plan", value: plan);
+              NumberField("Seats", value: seats, min: 1, max: 500, hint: "£90 a seat a month on Team.");
+            }
+            DatePicker("First day", value: starts, clearable: true);
+            TextAreaField("Notes for the account team", value: notes, placeholder: "Anything the next person should know", rows: 3);
+            Checkbox("Send invoices by post as well", value: invoiceByPost);
+            Switch("Send the welcome email", value: welcome);
+          }
+          slot footer {
+            Button("Cancel", onPress: Cancel, tone: Tone.Ghost);
+            Button("Save account", onPress: Save, tone: Tone.Primary);
+          }
+        }
+      }
+    }
+  }
+}
+
+[Route("/settings")] [Layout(SpecimenShell)] [Title("Settings")] [Render(CSR)] [AllowAnonymous]
+component SettingsPageSpecimen() {
+  bool reminders = true;
+  bool weekly = false;
+  bool twoStep = true;
+  string sender = "Halyard Billing";
+  int days = 14;
+
+  render {
+    Stack(gap: 5) {
+      SettingsPage("Billing", description: "How invoices are sent and chased.") {
+        SettingsSection("Invoices", description: "What a customer receives each month.") {
+          SettingRow(hint: "Shown as the sender of every invoice email.") { Field("Sender name", value: sender); }
+          SettingRow(hint: "Days a customer has to pay.") { NumberField("Payment terms", value: days, min: 0, max: 90, unit: "days"); }
+        }
+        SettingsSection("Reminders", description: "When an invoice is late.", changed: "Changed by Jonas Berg on 2 Oct") {
+          SettingRow(hint: "Three days after the due date, then weekly.") { Switch("Send payment reminders", value: reminders); }
+          SettingRow(hint: "Every Monday at 08:00.") { Switch("Weekly summary to account owners", value: weekly); }
+        }
+        SettingsSection("Security", description: "Who may change billing.", locked: true, lockedBecause: "Only owners change security.") {
+          SettingRow(hint: "Asked when anybody signs in.") { Switch("Require two-step sign-in", value: twoStep); }
+        }
+      }
+    }
+  }
+}
+
+[Route("/imports")] [Layout(SpecimenShell)] [Title("Imports")] [Render(CSR)] [AllowAnonymous]
+component ImportsPage() {
+  bool open = true;
+  action Close() { open = false; }
+  action Upload() { }
+
+  render {
+    Stack(gap: 5) {
+      PageHead("Imports", subtitle: "Bring accounts in from a spreadsheet.") {
+        Button("Upload a file", onPress: Upload, tone: Tone.Primary);
+      }
+      Card {
+        EmptyState("No imports yet", body: "Upload a CSV with one account per row. We check every row before anything is saved.");
+      }
+      Card("Recent files") {
+        Stack(gap: 3) {
+          Skeleton(shape: SkeletonShape.Line);
+          Skeleton(shape: SkeletonShape.Line);
+          Skeleton(shape: SkeletonShape.Line);
+        }
+      }
+      Stack(gap: 3) {
+        Alert("Imports run overnight between 01:00 and 03:00.", tone: Tone.Default);
+        Alert("The last file had 3 rows with no email address; they were skipped.", title: "Imported with warnings", tone: Tone.Warning);
+        Alert("204 accounts imported.", title: "Done", tone: Tone.Success);
+      }
+      Toast("Saved — the file will be checked overnight", tone: Tone.Success);
+      if (open) {
+        Dialog("Replace existing accounts?", onDismiss: Close, subtitle: "12 accounts in the file already exist.") {
+          Text("Their plan, seats and owner will be replaced with the values in the file. Invoices already sent are not changed.");
+          slot actions {
+            Button("Keep existing", onPress: Close, tone: Tone.Ghost);
+            Button("Replace 12 accounts", onPress: Close, tone: Tone.Danger);
+          }
+        }
+      }
+    }
+  }
+}
