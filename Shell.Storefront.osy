@@ -251,7 +251,7 @@ component StorefrontHeader(
 component StorefrontBrand(AppChrome chrome, Action onNavigated) {
   variants {
     base { Color = Colors.OnSurface; TextDecoration = TextDecoration.None;
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: chrome.Home, label: chrome.Product, onClick: onNavigated) {
@@ -285,7 +285,7 @@ component StorefrontCategoryLink(string label, string to, NavState state, Action
            FontSize = FontSize.Body; LetterSpacing = "0.01em"; Color = Colors.TextSecondary; WhiteSpace = WhiteSpace.Nowrap;
            TextDecoration = TextDecoration.None; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
       Trail   { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
@@ -308,7 +308,7 @@ component StorefrontCategoryButton(string label, NavState state, bool open, Acti
            FontSize = FontSize.Body; LetterSpacing = "0.01em"; Color = Colors.TextSecondary; WhiteSpace = WhiteSpace.Nowrap;
            Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
       Trail   { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
@@ -354,7 +354,7 @@ component StorefrontPanelLink(string label, string to, bool isCurrent, Action on
     base { Display = Display.InlineFlex; MinH = Length.Touch; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; TextDecoration = TextDecoration.None; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; TextDecoration = TextDecoration.Underline; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: to, label: StoreLinkName(label, to), current: isCurrent, onClick: onNavigated) {
@@ -374,7 +374,7 @@ component StorefrontBagButton(int count, string label, bool open, Action onPress
            MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Pill; Color = Colors.OnSurface;
            Transition = Motion.Fast; Position = Position.Relative;
            Hover { Bg = Colors.Muted; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: count > 0 ? $"{label}, {count} item(s)" : label, expanded: open) {
@@ -462,7 +462,7 @@ component StorefrontMenuButton(bool open, Action onPress) {
     base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Pill;
            Color = Colors.OnSurface; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: "Menu", expanded: open) {
@@ -503,7 +503,7 @@ component StorefrontPhoneButton(string label, Icons icon, bool open, Action onPr
   variants {
     base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; MinH = Length.Touch;
            Color = Colors.TextMuted; Transition = Motion.Fast;
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: label, expanded: open) {
@@ -555,7 +555,7 @@ component StorefrontDrawerLink(string label, string to, bool isCurrent, bool nes
     base { Display = Display.Flex; MinH = Length.Touch; Px = 3; Rounded = Radius.Md;
            TextDecoration = TextDecoration.None; Color = Colors.OnSurface; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: to, label: StoreLinkName(label, to), current: isCurrent, onClick: onNavigated) {

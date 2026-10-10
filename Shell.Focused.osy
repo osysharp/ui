@@ -416,7 +416,7 @@ component FocusedExit(string home, bool isPhone, bool dirty, Action onAskBeforeE
     base { Display = Display.InlineFlex; MinH = Length.Touch; MinW = Length.Touch; Px = 2; Shrink = 0;
            Rounded = Radius.Md; Color = Colors.TextMuted; FontSize = FontSize.Body; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     if (!dirty) {
@@ -570,7 +570,7 @@ component FocusedSubstep(NavItem item) {
     base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Sm; MinW = "0";
            FontSize = FontSize.Caption; Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: item.To, label: item.Label) {

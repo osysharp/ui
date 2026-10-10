@@ -428,7 +428,7 @@ component TabbedTabLink(NavItem item, string to, NavState state, Action onNaviga
     base { Display = Display.Flex; MinH = Length.Touch; Px = 3; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; Rounded = Radius.Sm;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
       Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
@@ -490,7 +490,7 @@ component TabbedSubTab(NavItem item, NavState state, bool nested, Action onNavig
     base { Display = Display.Flex; Shrink = 0; MinH = Length.TouchDense; Px = 2; FontSize = FontSize.Caption;
            BorderBW = 2; Border = Colors.Transparent; Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Border = Colors.Primary; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
       Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
@@ -517,7 +517,7 @@ component TabbedMenuRow(NavItem item, NavState state, bool nested, Action onNavi
     base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Sm; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
       Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
@@ -617,7 +617,7 @@ component TabbedPhoneTab(NavItem item, NavState state, Action onNavigated) {
   variants {
     base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; MinH = Length.Touch;
            Color = Colors.TextMuted; Transition = Motion.Fast;
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Primary.Strong; }
       Trail   { Color = Colors.OnSurface; }
@@ -645,7 +645,7 @@ component TabbedPhoneMoreButton(bool open, Action onPress) {
   variants {
     base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; MinH = Length.Touch;
            Color = Colors.TextMuted; Transition = Motion.Fast;
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: "More", expanded: open) {

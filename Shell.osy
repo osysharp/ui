@@ -751,7 +751,7 @@ component ShellShortcutRow(NavItem item, NavState state, Action onNavigated) {
     base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Md; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
       Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
@@ -777,7 +777,7 @@ component ShellShortcutMarkRow(NavItem item, NavState state, Action onNavigated)
     base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
            Color = Colors.TextSecondary; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Primary.Strong; }
       Trail   { Color = Colors.OnSurface; }
@@ -802,7 +802,7 @@ component ShellPinButton(bool pinned, Action onPress) {
     base { Display = Display.InlineFlex; W = Length.ControlSm; H = Length.ControlSm; Rounded = Radius.Md; Shrink = 0;
            Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: name, pressed: pinned) {
@@ -829,7 +829,7 @@ component ShellSearch(string placeholder, Action onPress, string shortcut = "Mod
            Bg = Colors.Bg; BorderW = 1; Border = Colors.Border; Rounded = Radius.Md; Color = Colors.TextMuted;
            Transition = Motion.Fast;
            Hover { Border = Colors.TextMuted; Bg = Colors.Surface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: placeholder, shortcut: shortcut) {
@@ -863,7 +863,7 @@ component ShellCountButton(string label, int count, Action onPress, Tone tone = 
     base { Display = Display.InlineFlex; Position = Position.Relative; MinW = Length.Touch; MinH = Length.Touch;
            Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: name) {
@@ -941,7 +941,7 @@ component ShellUserChip(ShellUser user, bool hasMenu, Action onPress, bool markO
     base { Display = Display.Flex; MinW = "0"; MinH = Length.Touch; Px = 2; Rounded = Radius.Md;
            Color = Colors.OnSurface; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     // The two forms repeat their contents rather than sharing a sub-component: a shared "…Face" is one more link in

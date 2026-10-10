@@ -156,7 +156,7 @@ component CatalogueLink(string label, string to, bool isCurrent, bool isDepartme
   variants {
     base { Display = Display.Flex; TextDecoration = TextDecoration.None; Color = Colors.OnBg; Transition = Motion.Fast;
            Hover { TextDecoration = TextDecoration.Underline; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: to, label: label, current: isCurrent, onClick: onNavigated) {

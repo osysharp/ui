@@ -784,39 +784,57 @@ public sealed class GridBand<T> {
       //    `admin-costs.mjs`'s clickable-target floor, which is the only tier that could have seen it: happy-dom
       //    has no layout, so every existing DataGrid test passes on a 5-pixel button.
       //    ⚑ The INTERIOR grows, not the row: 22×22 is inside the 24px header line, so no grid changes height.
-      Pressable(onClick: () => onMove(col.Name, -1), label: "Move " + col.Label + " left",
-                w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
-        Text("‹", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true);
-      }
-      Pressable(onClick: () => onMove(col.Name, 1), label: "Move " + col.Label + " right",
-                w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
-        Text("›", fontSize: FontSize.Caption, color: Colors.TextMuted, decorative: true);
-      }
-      Pressable(onClick: () => onGroup(col.Name), label: (grouping ? "Ungroup " : "Group by ") + col.Label,
-                w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
-        Text(grouping ? "⊟" : "⊞", fontSize: FontSize.Caption,
-             color: grouping ? Colors.Primary : Colors.TextMuted, decorative: true);
-      }
+      HeaderTool("Move " + col.Label + " left", "‹", () => onMove(col.Name, -1));
+      HeaderTool("Move " + col.Label + " right", "›", () => onMove(col.Name, 1));
+      HeaderTool((grouping ? "Ungroup " : "Group by ") + col.Label, grouping ? "⊟" : "⊞", () => onGroup(col.Name), lit: grouping);
       Box(drag: col.Width, dragAxis: DragAxis.Horizontal, dragStep: 8, dragMin: 72, dragMax: 640, w: "6px", cursor: "col-resize");
+    }
+  }
+}
+
+/// One of a column header's tools — move it left or right, group by it. QUIET UNTIL WANTED: drawn only while the
+/// header is under the pointer or the tool itself has the keyboard (and always while it is ON — a grouping is a state
+/// the reader must see), so a table reads as its columns' names rather than as a row of glyphs between them. It keeps
+/// its 22×22 box and its name the whole time, so it is exactly as reachable by a keyboard, a screen reader or a test.
+[Composable][Part] component HeaderTool(string label, string glyph, Action onPress, bool lit = false) {
+  variants {
+    base { Opacity = "0"; Transition = Motion.Fast;
+           inside HeaderCell.Hover { Opacity = "1"; }
+           Focus { Opacity = "1"; } }
+    lit { Opacity = "1"; }
+  }
+  render {
+    Pressable(onClick: onPress, label: label, w: 22, h: 22, align: Align.Center, justify: Justify.Center) {
+      Text(glyph, fontSize: FontSize.Caption, color: lit ? Colors.Primary : Colors.TextMuted, decorative: true);
     }
   }
 }
 
 /// ONE DATA CELL, DECLARED — the body's answer to `HeaderCell`, and structurally its twin: the sizing wrapper
 /// outside, the semantic element inside.
-[Composable][Part] component BodyCell() {
-  render { Row(role: UiRole.GridCell, align: Align.Center, w: "100%") { Slot; } }
+/// ⭐ `figure` — a NUMBER column's cell is set in the theme's figure face (`Font.Figure`) with tabular digits, so a
+///    column of amounts lines up digit under digit and a look can give its figures a face of their own.
+/// ⚠ `justify` IS THE COLUMN'S ALIGNMENT, and it has to reach THIS row: the cell fills its column (`w: "100%"`), so
+///   the column wrapper's own `justify` has nothing to move — a `right` column's figures sat at the left edge, under a
+///   header that promised otherwise, until the alignment was handed down to the row that holds them.
+[Composable][Part] component BodyCell(bool figure = false, string? justify = null) {
+  variants { figure { FontFamily = Font.Figure; FontFeatureSettings = "\"tnum\" 1"; } }
+  render {
+    Row(role: UiRole.GridCell, align: Align.Center, w: "100%",
+        justify: justify == "right" ? Justify.End : (justify == "center" ? Justify.Center : Justify.Start)) { Slot; }
+  }
 }
 
 /// One cell at this column's width — it neither shrinks under a long neighbour nor grows past its container.
 [Composable][Part] component FixedCell(int px, string? justify) {
-  variants { base { Display = Display.Flex; Shrink = 0; Overflow = Overflow.Hidden; } }
+  // `Px`: a gutter on both sides of every cell, so a right-aligned figure never runs into the next column's first word.
+  variants { base { Display = Display.Flex; Shrink = 0; Overflow = Overflow.Hidden; Px = 2; } }
   render { Row(w: px, align: Align.Center, justify: justify) { Slot; } }
 }
 
 /// The column that ABSORBS the leftover width — a long value ellipses inside it.
 [Composable][Part] component FillCell(string? justify) {
-  variants { base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; Overflow = Overflow.Hidden; } }
+  variants { base { Display = Display.Flex; Grow = 1; Basis = "0"; MinW = "0"; Overflow = Overflow.Hidden; Px = 2; } }
   render { Row(align: Align.Center, justify: justify) { Slot; } }
 }
 
@@ -887,8 +905,8 @@ public sealed class GridBand<T> {
       foreach (var slot in cols) {
         foreach (var c in cols) {
           if (order.IndexOf(c.Name) == cols.IndexOf(slot) && !hidden.Contains(c.Name)) {
-            if (c.Fill) { FillCell(justify: c.Align) { BodyCell { Slot(c.Name, row) { Text(c.Value(row)); } } } }
-            else { FixedCell(px: c.Width, justify: c.Align) { BodyCell { Slot(c.Name, row) { Text(c.Value(row)); } } } }
+            if (c.Fill) { FillCell(justify: c.Align) { BodyCell(figure: c.Kind == GridColumnKind.Number, justify: c.Align) { Slot(c.Name, row) { Text(c.Value(row)); } } } }
+            else { FixedCell(px: c.Width, justify: c.Align) { BodyCell(figure: c.Kind == GridColumnKind.Number, justify: c.Align) { Slot(c.Name, row) { Text(c.Value(row)); } } } }
           }
         }
       }

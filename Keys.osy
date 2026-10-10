@@ -93,7 +93,7 @@ component KeyboardSheetTrigger(string title, Action onPress) {
            PointerEvents = PointerEvents.None; Display = Display.InlineFlex; Px = 3; Py = 1;
            Rounded = Radius.Md; Bg = Colors.Elevated; Color = Colors.OnSurface;
            Shadow = Shadow.Floating; FontSize = FontSize.Caption;
-           Focus { Opacity = "1"; PointerEvents = PointerEvents.Auto; OutlineW = 2; OutlineColor = Colors.Primary;
+           Focus { Opacity = "1"; PointerEvents = PointerEvents.Auto; OutlineW = 2; OutlineColor = Colors.Focus;
                    OutlineStyle = OutlineStyle.Solid; } }
   }
   render {

@@ -13,7 +13,7 @@ component Card(string title = "", string subtitle = "") {
   variants {
     base {
       Bg = Colors.Surface; Color = Colors.OnSurface; Rounded = Radius.Lg; Shadow = Shadow.Raised;
-      BorderW = 1; Border = Colors.Border; P = 5;
+      BorderW = 1; Border = Colors.CardLine; P = 5;
     }
   }
 
@@ -24,7 +24,7 @@ component Card(string title = "", string subtitle = "") {
       if (title != "") {
         Row(align: Align.Center, justify: Justify.Between) {
           Stack(gap: 1) {
-            Text(title, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
+            Text(title, fontFamily: Font.Display, fontSize: FontSize.Subhead, fontWeight: FontWeight.Headings);
             if (subtitle != "") { Text(subtitle, fontSize: FontSize.Label, color: Colors.TextMuted); }
           }
           Slot("actions");

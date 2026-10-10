@@ -37,13 +37,15 @@ namespace Osysharp.Ui;
     // refusal listed the head's button as "inside nothing that carries a `label:`" — unreachable — so the only way
     // out was renaming one of them. `Card` and `Dialog` already do this and their buttons were reachable; the head
     // was the hole. It is an accessibility name too, not only a test affordance.
-    Row(align: Align.Center, gap: 3, label: title) {
-      Stack(gap: 1) {
+    // ⚠ IT WRAPS: on a phone, or in a look with large type, the actions move under the title rather than pushing the
+    //   page sideways — measured, a 32px title and two buttons ran 40px past a 390px screen with nothing to scroll to.
+    //   The title takes the room that is left (`grow`), so on a wide screen the actions still sit at the far end.
+    Row(align: Align.Center, gap: 3, wrap: Wrapping.Wrap, label: title) {
+      Stack(gap: 1, grow: 1, minW: "min(100%, 14rem)") {
         PageTitle(title);
         if (subtitle != "") { Hint(subtitle); }
       }
-      Spacer();
-      Slot;
+      Row(align: Align.Center, gap: 2, wrap: Wrapping.Wrap) { Slot; }
     }
   }
 }

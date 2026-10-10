@@ -184,7 +184,7 @@ component EditorialHeader(
 component EditorialBrand(AppChrome chrome, Action onNavigated) {
   variants {
     base { TextDecoration = TextDecoration.None;
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: chrome.Home, label: chrome.Product, onClick: onNavigated) {
@@ -205,7 +205,7 @@ component EditorialNavLink(string label, string to, bool isCurrent, Action onNav
     base { Display = Display.InlineFlex; MinH = Length.Touch; TextDecoration = TextDecoration.None;
            Transition = Motion.Fast;
            Hover { TextDecoration = TextDecoration.Underline; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "4px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: to, label: label, current: isCurrent, onClick: onNavigated) {
@@ -223,7 +223,7 @@ component EditorialMenuButton(bool open, Action onPress) {
   variants {
     base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Pill;
            Transition = Motion.Fast;
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onPress, label: "Menu", expanded: open) {

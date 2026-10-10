@@ -32,7 +32,7 @@ component Badge(string label = "", Tone tone = Tone.Default) {
       //    overrode the row's own alignment and floated above every control beside it. An explicit width overrides
       //    `align-items: stretch` just as well and says nothing about POSITION, so the parent's alignment applies
       //    in both directions — otherwise an overdue pill in a row of buttons sits about 6px above them.
-      Display = Display.InlineFlex; W = "fit-content"; H = "22px"; Px = 2; Rounded = Radius.Pill;
+      Display = Display.InlineFlex; W = "fit-content"; H = "22px"; Px = 2; Rounded = Radius.Tag;
       FontSize = FontSize.Caption; FontWeight = FontWeight.Medium; WhiteSpace = WhiteSpace.Nowrap;
     }
     tone {

@@ -9,7 +9,7 @@ namespace Osysharp.Ui;
 //   condensed-display hero (salon S0 run 2). The kit's `Display` is `Font.Sans` until an app overrides it, so an
 //   undesigned app looks exactly as before.
 [Composable] component PageTitle(string text) {
-  variants { base { FontFamily = Font.Display; FontSize = FontSize.Title; FontWeight = FontWeight.Semibold; Color = Colors.OnSurface; LineHeight = "1.15"; } }
+  variants { base { FontFamily = Font.Display; FontSize = FontSize.Title; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.15"; } }
   render { Text(text); }
 }
 
@@ -17,7 +17,7 @@ namespace Osysharp.Ui;
 /// In a test it is read as text: `Assert.Visible("Billing")`.
 /// e.g. `CardTitle("Billing")`
 [Composable] component CardTitle(string text) {
-  variants { base { FontSize = FontSize.Subhead; FontWeight = FontWeight.Semibold; Color = Colors.OnSurface; LineHeight = "1.25"; } }
+  variants { base { FontFamily = Font.Display; FontSize = FontSize.Subhead; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.25"; } }
   render { Text(text); }
 }
 
@@ -69,11 +69,12 @@ namespace Osysharp.Ui;
 /// e.g. `Metric("invoiced this quarter", text: "£12,480")`
 /// e.g. `Metric("done by agents", text: "18%", change: "up from 5%", changeIsGood: true)`
 [Composable] component Metric(string label, string text, string? change = null, bool changeIsGood = true) {
-  variants { base { FontSize = FontSize.Title; FontWeight = FontWeight.Semibold; Color = Colors.OnSurface; LineHeight = "1.1"; } }
+  variants { base { FontSize = FontSize.Title; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.1"; } }
   render {
     Stack(gap: "2px") {
       // The caption names the figure, so a reader hears "lent out right now: 7" rather than a bare "7".
-      Text(text, label: label + ": " + text);
+      // In the theme's FIGURE face, with tabular digits: a look can give its numbers a face of their own.
+      Text(text, label: label + ": " + text, fontFamily: Font.Figure, fontFeatureSettings: "\"tnum\" 1");
       FieldLabel(label);
       // ⭐ THE CHANGE BELONGS IN THIS CALL, for the same reason the caption does: a reader wants a figure over time
       //   and its total over that time. A figure with no comparison is a

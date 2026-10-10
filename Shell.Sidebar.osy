@@ -239,8 +239,9 @@ component SidebarRail(
     // ⚠ `Shrink = 0` at Tablet: a rail that shrinks is a rail that moves the whole page sideways whenever a wide
     //   table lands in it. Measured on `admin` before it was set — 264px beside an empty page, 202px beside a full
     //   one, and the content column jumping on every navigation.
-    base { Position = Position.Fixed; Top = "0"; Bottom = "0"; Left = "0"; Z = ZIndex.Drawer;
-           Bg = Colors.Surface; BorderRW = 1; Border = Colors.Border; Shadow = Shadow.Deep;
+    // `Ground.Chrome`: the rail and everything in it stand on the theme's chrome palette (`Chrome`, `OnChrome`, …).
+    base { Position = Position.Fixed; Top = "0"; Bottom = "0"; Left = "0"; Z = ZIndex.Drawer; Ground = Ground.Chrome;
+           Bg = Colors.Surface; Color = Colors.OnSurface; BorderRW = 1; Border = Colors.Border; Shadow = Shadow.Deep;
            Transition = "transform 180ms cubic-bezier(.2,.8,.2,1), width 160ms cubic-bezier(.2,.8,.2,1)";
            TranslateX = "-100%";
            Tablet { Position = Position.Static; TranslateX = "0"; Z = "auto"; Shrink = 0; Shadow = "none"; } }
@@ -310,7 +311,7 @@ component SidebarCollapseButton(bool iconOnly, Action onToggle) {
     base { Display = Display.None; Laptop { Display = Display.InlineFlex; } W = Length.ControlSm; H = Length.ControlSm;
            Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast; Shrink = 0;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     // ⚑ `expanded:` — the state, not only the NAME. The label already changes ("Expand"/"Collapse navigation"), and
@@ -504,7 +505,7 @@ component SidebarSplitLink(NavItem item, NavState state, Action onNavigated) {
   variants {
     base { Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense; Rounded = Radius.Md;
            Color = "inherit";
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
@@ -527,7 +528,7 @@ component SidebarSplitChevron(NavItem item, bool open, Action onToggle) {
     base { Display = Display.InlineFlex; Shrink = 0; W = Length.ControlSm; MinH = Length.TouchDense;
            Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onToggle, label: name, expanded: open) {
@@ -593,7 +594,7 @@ component SidebarNavRow(
     base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Md; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       // CURRENT is a filled row: the strongest signal, and the only one that uses the accent as a background.
       Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
@@ -653,7 +654,7 @@ component SidebarNavMarkRow(
     base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
            Color = Colors.TextSecondary; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     // ⚠ NO `FontWeight` ARM, unlike its labelled twin. There is no text in this row to embolden — a weight here is
     //   a declaration that cannot show, which is the kind of dead style that later reads as a missing feature.
     state {
@@ -731,7 +732,7 @@ component SidebarMenuButton(Action onPress) {
     base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Md; Shrink = 0;
            Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; }
            Tablet { Display = Display.None; } }
   }
   render {

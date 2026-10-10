@@ -229,7 +229,8 @@ component RailBar(
     //    hairline and the slide. See `RailForm` for why this is not layered as base + media query + flag.
     // ⚠ `Shrink = 0` while docked: a rail that shrinks is a rail that moves the whole page sideways whenever a
     //   wide table lands beside it.
-    base { Bg = Colors.Surface; BorderRW = 1; Border = Colors.Border;
+    // `Ground.Chrome`: the rail and everything in it stand on the theme's chrome palette (`Chrome`, `OnChrome`, …).
+    base { Ground = Ground.Chrome; Bg = Colors.Surface; Color = Colors.OnSurface; BorderRW = 1; Border = Colors.Border;
            Transition = "transform 180ms cubic-bezier(.2,.8,.2,1)"; }
     form {
       DrawerShut { Position = Position.Fixed; Top = "0"; Bottom = "0"; Left = "0"; Z = ZIndex.Drawer;
@@ -413,7 +414,7 @@ component RailNavLink(NavItem item, NavState state, Action onNavigated) {
     base { Position = Position.Relative; Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense;
            Rounded = Radius.Md; Color = Colors.TextSecondary; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Bg = Primary.Subtle; Color = Primary.Strong; }
       Trail   { Color = Colors.OnSurface; }
@@ -449,7 +450,7 @@ component RailNavMarkLink(NavItem item, NavState state, Action onNavigated) {
     base { Position = Position.Relative; Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense;
            Color = Colors.TextSecondary; Transition = Motion.Fast; Rounded = Radius.Md;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Primary.Strong; }
       Trail   { Color = Colors.OnSurface; }
@@ -475,7 +476,7 @@ component RailNavDiscloser(NavItem item, NavState state, bool open, Action onTog
     base { Position = Position.Relative; Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense;
            Rounded = Radius.Md; Color = Colors.TextSecondary; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Bg = Primary.Subtle; Color = Primary.Strong; }
       Trail   { Color = Colors.OnSurface; }
@@ -503,7 +504,7 @@ component RailNavMarkDiscloser(NavItem item, NavState state, bool open, Action o
     base { Position = Position.Relative; Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense;
            Color = Colors.TextSecondary; Transition = Motion.Fast; Rounded = Radius.Md;
            Hover { Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Color = Primary.Strong; }
       Trail   { Color = Colors.OnSurface; }
@@ -529,7 +530,7 @@ component RailNavChevron(NavItem item, bool labelled, bool open, Action onToggle
     base { Display = Display.InlineFlex; Shrink = 0; MinH = Length.TouchDense; Rounded = Radius.Sm;
            Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     // ⚠ 16px WHILE COLLAPSED, 18 WHEN LABELLED, and the two pixels are load-bearing. The nav column is 44px wide
@@ -606,7 +607,7 @@ component RailFlyoutRow(NavItem item, NavState state, bool nested, Action onNavi
     base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Sm; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
     state {
       Current { Bg = Primary.Subtle; Color = Primary.Strong; FontWeight = FontWeight.Semibold; }
       Trail   { Color = Colors.OnSurface; FontWeight = FontWeight.Medium; }
@@ -641,7 +642,7 @@ component RailExpandButton(bool expanded, bool labelled, Action onToggle) {
     base { Position = Position.Relative; Display = Display.Flex; MinH = Length.TouchDense; Mx = 2; My = 2;
            Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
     Pressable(onClick: onToggle, label: name, expanded: expanded) {
@@ -741,7 +742,7 @@ component RailMenuButton(Action onPress) {
     base { Display = Display.InlineFlex; MinW = Length.Touch; MinH = Length.Touch; Rounded = Radius.Md; Shrink = 0;
            Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
-           Focus { OutlineW = 2; OutlineColor = Colors.Primary; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; }
            Tablet { Display = Display.None; } }
   }
   render {
