@@ -101,7 +101,7 @@ component AccountPage() {
             Detail("Billing contact", "accounts@kestrel-freight.example");
           }
           Card("Seats", subtitle: "310 of 320 in use") {
-            ProgressBar(97, tone: Tone.Warning);
+            ProgressBar(97, tone: Tone.Warning, label: "Quota used");
             Text("Ten left before the next band.", fontSize: FontSize.Caption, color: Colors.TextMuted);
           }
         }
