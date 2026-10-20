@@ -1,0 +1,18 @@
+// `QrCode` — one picture to a screen reader, found by its label, and drawn dark on white in either theme.
+// `osy test --pixels` photographs it (`Ui.Shot`): the only way to see the modules.
+
+[Test]
+void a_qr_code_is_one_labelled_picture_in_the_light_theme() {
+  Ui.Visit("/slip/A-1042");
+  Assert.Visible("Your frame is ready");
+  Assert.Visible("QR code to collect your frame");
+  Ui.Shot("qrcode-light");
+}
+
+[Test]
+void a_qr_code_stays_dark_on_white_in_the_dark_theme() {
+  Ui.Theme("dark");
+  Ui.Visit("/slip/A-1042");
+  Assert.Visible("QR code to collect your frame");
+  Ui.Shot("qrcode-dark");
+}

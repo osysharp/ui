@@ -300,18 +300,26 @@ component CalendarPanel(string label) {
 }
 
 /// The month bar — a filled header, the month centred, a step either side.
+///
+/// ⛔ EACH STEP IS A FULL TARGET (ControlSm square). They were bare glyph buttons, as wide as the glyph — `‹` is 7px —
+///   under WCAG 2.2's 24px minimum (SC 2.5.8) with no space around them either; the kits' UX sweep (axe, test:visual)
+///   named all four on every date field it opened.
 [Composable][Part]
 component MonthHeader(DateOnly month, Action onPrev, Action onNext, Action onPrevYear, Action onNextYear) {
   render {
     Row(align: Align.Center, justify: Justify.Between, bg: Colors.Primary, color: Colors.OnPrimary, px: 3, py: 2) {
       Row(gap: 1, align: Align.Center) {
-        Pressable(onClick: onPrevYear, label: "Previous year") { Text("«", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
-        Pressable(onClick: onPrev, label: "Previous month") { Text("‹", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+        Pressable(onClick: onPrevYear, label: "Previous year", w: Length.ControlSm, h: Length.ControlSm, rounded: Radius.Sm,
+                  align: Align.Center, justify: Justify.Center) { Text("«", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+        Pressable(onClick: onPrev, label: "Previous month", w: Length.ControlSm, h: Length.ControlSm, rounded: Radius.Sm,
+                  align: Align.Center, justify: Justify.Center) { Text("‹", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
       }
       Text(month.ToString("MMMM yyyy"), fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.OnPrimary);
       Row(gap: 1, align: Align.Center) {
-        Pressable(onClick: onNext, label: "Next month") { Text("›", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
-        Pressable(onClick: onNextYear, label: "Next year") { Text("»", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+        Pressable(onClick: onNext, label: "Next month", w: Length.ControlSm, h: Length.ControlSm, rounded: Radius.Sm,
+                  align: Align.Center, justify: Justify.Center) { Text("›", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
+        Pressable(onClick: onNextYear, label: "Next year", w: Length.ControlSm, h: Length.ControlSm, rounded: Radius.Sm,
+                  align: Align.Center, justify: Justify.Center) { Text("»", fontSize: FontSize.Subhead, color: Colors.OnPrimary); }
       }
     }
   }
@@ -351,8 +359,12 @@ component MonthGrid(DateOnly month, DateOnly? selected, Action<DateOnly> onPick)
   /// 2026-08-28 — stamped every cell 0–6, and `Ui.Fill("Due", "2026-04-20")` had nothing to aim at.
   DateOnly[] Week(int w) { return Enumerable.Range(0, 7).Select(c => Start().AddDays(w * 7 + c)); }
 
+  // ⛔ THE DAYS ARE OPTIONS, SO THE GRID IS THEIR LISTBOX. Each day is `role: Option` (a choice among the month's
+  //   days, with `selected`), and an option belongs to a listbox: without one, every day was an option with no owner
+  //   (aria-required-parent, 42 per open calendar in the kits' UX sweep). The week rows are plain boxes in between,
+  //   which ARIA looks through.
   render {
-    Stack(gap: 0, px: 2, pb: 2) {
+    Stack(gap: 0, px: 2, pb: 2, role: UiRole.ListBox, label: month.ToString("MMMM yyyy")) {
       foreach (var w in weeks) {
         Row(gap: 0) {
           foreach (var day in Week(w)) {
@@ -396,7 +408,10 @@ component TimeStrip(int hour, int minute, int minuteStep, Action<int> onHour, Ac
         Row(align: Align.Center, justify: Justify.Center, gap: 2, bg: Colors.Muted, rounded: Radius.Md, py: 2) {
           Text(hour < 10 ? $"0{hour}" : $"{hour}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
           Text(":", color: Colors.TextMuted, decorative: true);
-          Text(minute < 10 ? $"0{minute}" : $"{minute}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold, color: Colors.Primary.Text);
+          // Both halves in the surface's own ink. The minutes were in `Primary.Text` — the accent used as text, on the
+          // `Muted` wash it sits on: 4.31:1 under the kit's default palette, under AA (the a11ykit UX sweep). Nothing
+          // here asks for emphasis on one half of a time.
+          Text(minute < 10 ? $"0{minute}" : $"{minute}", fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold);
         }
       }
       if (picking) {
@@ -416,7 +431,8 @@ component TimeColumn(string heading, int[] values, int selected, Action<int> onP
   render {
     Stack(gap: 0, w: Length.TimeColW) {
       Text(heading, fontSize: FontSize.Caption, color: Colors.TextMuted, textAlign: TextAlign.Center, decorative: true);
-      Stack(gap: 0, maxH: Length.TimeColH, overflow: Overflow.Auto) {
+      // The values are options, so the column is their listbox (see MonthGrid).
+      Stack(gap: 0, maxH: Length.TimeColH, overflow: Overflow.Auto, role: UiRole.ListBox, label: heading) {
         foreach (var v in values) {
           Pressable(onClick: () => onPick(v), label: $"{heading} {v}", role: UiRole.Option, selected: v == selected) {
             Box(rounded: Radius.Sm, py: 1, bg: v == selected ? Colors.Primary : Colors.Transparent) {

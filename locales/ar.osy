@@ -158,6 +158,12 @@ translations ar {
   /// also in DataGrid
   text "Clear" => "مسح";
 
+  // ── Dialog ──
+  /// Dialog · a control's name for screen readers
+  /// placeholders: {title} = title (string)
+  /// beside: "actions"
+  accessibleName "{title} — content" => "{title} — المحتوى";
+
   // ── Dock ──
   /// Dock · a control's name for screen readers
   /// shown through Dock.rightTitle
@@ -388,6 +394,11 @@ translations ar {
   /// shown through Osysharp.Ui.ShellPresence.Online
   /// beside: "None", "Away", "Do not disturb"
   label "Online" => "متصل";
+
+  // ── QrCode ──
+  /// QrCode · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through QrCode.label
+  label "QR code" => "رمز QR";
 
   // ── RailBar ──
   /// RailBar · a control's name for screen readers

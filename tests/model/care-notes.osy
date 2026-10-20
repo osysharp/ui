@@ -1,0 +1,21 @@
+// The care notes handed over with a frame: a short one shown whole, and a long one that opens on demand (`MoreText`).
+
+[Route("/care"), AllowAnonymous]
+component CareNotes() {
+  render {
+    Stack(gap: 4, p: 6, maxW: "480px") {
+      Stack(gap: 1, label: "Glass") { Text("Glass"); MoreText("Wipe with a dry cloth."); }
+      Stack(gap: 1, label: "Gilding") {
+        Text("Gilding");
+        MoreText("Water gilding is burnished gold leaf over gesso and bole; it lifts if it is cleaned with anything wet, "
+               + "so dust it with a soft brush only, keep it out of a bathroom, and bring it back to the workshop for any repair.",
+                 summary: "Dust only — never wet.");
+      }
+      Stack(gap: 1, label: "Mount") {
+        Text("Mount");
+        MoreText("Acid-free mount board yellows far more slowly than ordinary card, but it still fades in direct sun; hang the frame away from a south-facing window.",
+                 about: "the mount");
+      }
+    }
+  }
+}

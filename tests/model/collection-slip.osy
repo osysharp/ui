@@ -1,0 +1,17 @@
+// The slip a customer is handed when a frame is ready: a QR code that opens the order on their phone.
+
+/// The rows of a code for the order's collection link.
+[AllowAnonymous]
+List<string> CollectionCode(string order) => Qr.Encode("https://frames.test/collect/" + order);
+
+[Route("/slip/{order}"), AllowAnonymous]
+component CollectionSlip(string order) {
+  List<string> rows = [];
+  on mount { rows = CollectionCode(order); }
+  render {
+    Stack(gap: 4, p: 6) {
+      Text("Your frame is ready");
+      QrCode(rows, module: 5, label: "QR code to collect your frame");
+    }
+  }
+}

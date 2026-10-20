@@ -87,6 +87,8 @@ component SidebarShell(AppChrome chrome) {
   // The reader's own choice, honoured only where there is room to expand — and REMEMBERED in their browser,
   // so a rail collapsed on one page is collapsed on the next and on the next visit.
   [Remembered] bool collapsed = false;
+  // The app asked for the strip (`chrome.Narrow`) and the reader opened the rail anyway. Theirs wins, for this visit.
+  bool overruled = false;
   bool userMenuOpen = false;
   // EXPANSION MEMORY, as two sets rather than one. A group is open when it holds the current page — which is what
   // makes a deep link arrive with its parent already open — so a single "open" set could not express "I closed the
@@ -105,7 +107,9 @@ component SidebarShell(AppChrome chrome) {
 
   action OpenDrawer() { drawerOpen = true; }
   action CloseDrawer() { drawerOpen = false; flyout = ""; }
-  action ToggleCollapse() { collapsed = !collapsed; flyout = ""; }
+  // `asked`: the rail is a strip because the APP asked (`chrome.Narrow`), not because the reader collapsed it — so
+  // the control undoes the app's asking for this visit and leaves the reader's remembered choice alone.
+  action ToggleCollapse(bool asked) { if (asked) { overruled = !overruled; } else { collapsed = !collapsed; } flyout = ""; }
   action CloseUserMenu() { userMenuOpen = false; }
   // ⭐ ONE ACT, NOT TWO. Opening the identity menu on a phone CLOSES the drawer first — a sheet over an open drawer
   //    would sit above the drawer and below its scrim, which is the exact "trapped under the scrim" failure a
@@ -148,8 +152,8 @@ component SidebarShell(AppChrome chrome) {
     // ⚠ THE BAND IS READ HERE AND NOWHERE ELSE. `Layout.AtLeast` measures a RENDERED container, so it is legal in
     //   `render` and refused in a `live var` or an action — which is right, and is why the two band facts travel as
     //   parameters instead of as state. One read, one answer, passed down.
-    SidebarFrame(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), current, hasUser, hasMenu,
-                 collapsed, drawerOpen, userMenuOpen, opened, closed, flyout,
+    SidebarFrame(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), Layout.AtLeast(Widescreen), current, hasUser, hasMenu,
+                 collapsed, overruled, drawerOpen, userMenuOpen, opened, closed, flyout,
                  OpenDrawer, CloseDrawer, ToggleCollapse, ToggleUserMenu, CloseUserMenu, DismissAll,
                  ToggleGroup, ToggleFlyout, CloseFlyout, Navigated) {
       slot page { Slot; }
@@ -167,21 +171,69 @@ component SidebarShell(AppChrome chrome) {
 /// computed alongside the state they interact with.
 [Composable, Part]
 component SidebarFrame(
-    AppChrome chrome, bool isPhone, bool isWide, string current, bool hasUser, bool hasMenu,
-    bool collapsed, bool drawerOpen, bool userMenuOpen,
+    AppChrome chrome, bool isPhone, bool isWide, bool isRoomy, string current, bool hasUser, bool hasMenu,
+    bool collapsed, bool overruled, bool drawerOpen, bool userMenuOpen,
     List<string> opened, List<string> closed, string flyout,
-    Action onOpenDrawer, Action onCloseDrawer, Action onToggleCollapse, Action onToggleUserMenu,
+    Action onOpenDrawer, Action onCloseDrawer, Action<bool> onToggleCollapse, Action onToggleUserMenu,
     Action onCloseUserMenu, Action onDismissAll,
     Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
   // ICON-ONLY is the BAND and the reader's choice together. On a phone the rail is a full-width drawer and is never
   // an icon strip; in the cozy band it always is; in the wide band the reader decides.
-  live var iconOnly = !isPhone && (collapsed || !isWide);
+  // …and between `Laptop` and `Widescreen` the APP may ask for the strip (`chrome.Narrow`: the page needs the room).
+  // There the reader's control answers the app's asking, not their own remembered choice.
+  live var asked = chrome.Narrow && isWide && !isRoomy;
+  live var iconOnly = !isPhone && (!isWide || (asked ? !overruled : collapsed));
+
+  // ── LEAVING A PAGE THAT HOLDS UNSAVED EDITS ─────────────────────────────────────────────────────────────────
+  //
+  // ⭐ THE SHELL ASKS `Navigation` DIRECTLY, as `FocusedFrame` does: `Navigation.IsDirty` is bound into every
+  //    component's render scope, so no app declares a handler, a slot or a field on `AppChrome` to get the guard.
+  //    While the page is dirty every nav row is a button that lands here (see `SidebarNavRow`); clean, it is a
+  //    `Link` and costs one press and no dialog.
+  // ⚠ THE STATE LIVES HERE, NOT ON `SidebarShell`, for `FocusedFrame`'s reason: `SidebarShell` carries a
+  //   `variants` block that every top-level element of its render would wear, prompt included.
+  string leaving = "";          // the dirty route being left ("" = nothing held)
+  string target = "";           // where the reader asked to go
+  bool canSaveLeaving = false;  // snapshot of `Navigation.CanSave` — a render expression cannot call a client verb
+  string leaveError = "";       // a refused save, in the words the server used
+
+  // ⛔ ASKED AGAIN HERE, AGAINST THE ROUTER AS IT IS NOW — the row chose Link or button at render time, and a guard
+  //    that acts on a snapshot is the bug it exists to prevent.
+  action AskBeforeLeave(string to) {
+    if (!Navigation.IsDirty || to == Navigation.CurrentPath) { Navigation.Go(to); onNavigated(); }
+    else {
+      leaveError = "";
+      canSaveLeaving = Navigation.CanSave(Navigation.CurrentPath);
+      leaving = Navigation.CurrentPath;
+      target = to;
+    }
+  }
+  action KeepEditing() { leaving = ""; target = ""; leaveError = ""; }
+  // Discard: force-close the dirty route so its unit of work is really dropped — not hidden by `retain` — and only
+  // THEN go, so the close's own fallback navigation cannot override the one asked for.
+  action DiscardAndLeave() {
+    Navigation.Close(leaving, true);
+    Navigation.Go(target);
+    leaving = ""; target = "";
+    onNavigated();
+  }
+  // Save & leave: a save CAN be refused, so the prompt stays up saying why, with the edits intact.
+  action SaveAndLeave() {
+    leaveError = "";
+    try {
+      Navigation.Save(leaving);
+      Navigation.Go(target);
+      leaving = ""; target = "";
+      onNavigated();
+    }
+    catch (ValidationException ex) { leaveError = ex.Message; }
+  }
 
   render {
     Row(align: Align.Stretch, minH: Length.Screen) {
       SidebarRail(chrome, iconOnly, isPhone, current, opened, closed, flyout,
                   drawerOpen ? RailDrawer.Open : RailDrawer.Closed,
-                  onToggleCollapse, onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated) {
+                  () => onToggleCollapse(asked), onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, AskBeforeLeave) {
         slot railFoot { Slot("railFoot"); }
       }
       // The scrim behind the drawer — phone only, and only while it is open. Its own component hides it at Tablet,
@@ -194,7 +246,7 @@ component SidebarFrame(
       // scrollbar — the one thing that must never happen at any width.
       Stack(gap: 0, grow: 1, minW: "0", h: chrome.Panes ? Length.Screen : "auto") {
         SidebarTopBar(chrome, isPhone, hasUser, hasMenu, userMenuOpen, onOpenDrawer, onToggleUserMenu,
-                      onCloseUserMenu, onDismissAll) {
+                      onCloseUserMenu, onDismissAll, AskBeforeLeave) {
           slot search { Slot("search"); }
           slot actions { Slot("actions"); }
         }
@@ -217,8 +269,12 @@ component SidebarFrame(
       ShellSheet("Account", onCloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, onDismissAll);
+        ShellMenuItems(chrome.User.Menu, onDismissAll, AskBeforeLeave);
       }
+    }
+
+    if (leaving != "") {
+      LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing);
     }
   }
 }
@@ -232,7 +288,7 @@ component SidebarRail(
     AppChrome chrome, bool iconOnly, bool isPhone, string current,
     List<string> opened, List<string> closed, string flyout, RailDrawer drawer,
     Action onToggleCollapse, Action<string, bool> onToggleGroup, Action<string> onToggleFlyout,
-    Action onCloseFlyout, Action onNavigated) {
+    Action onCloseFlyout, Action onNavigated, Action<string> onAsk) {
   variants {
     // MOBILE: a fixed off-canvas drawer, slid out on a transform (which animates on the compositor and, unlike
     // `left`, costs no layout). At Tablet it becomes an ordinary in-flow column.
@@ -269,7 +325,7 @@ component SidebarRail(
           w: isPhone ? Length.RailDrawerW : (iconOnly ? Length.RailNarrowW : Length.RailW),
           pt: "env(safe-area-inset-top)") {
       Row(gap: 2, align: Align.Center, minW: "0", px: 2, py: 2, minH: Length.AppBarH) {
-        ShellBrand(chrome, markOnly: iconOnly);
+        ShellBrand(chrome, markOnly: iconOnly, onGo: onAsk);
         if (!iconOnly) { Spacer(); }
         // The collapse control belongs only where collapsing means something. On a phone the rail is a drawer (you
         // close it, you do not narrow it) and in the cozy band it is already as narrow as it goes — an affordance
@@ -289,7 +345,7 @@ component SidebarRail(
           if (chrome.Nav.Length == 0) { SidebarNavEmpty(iconOnly); }
           foreach (var item in chrome.Nav) {
             SidebarNavNode(item, iconOnly, current, opened, closed, flyout,
-                           onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated);
+                           onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
           }
         }
       }
@@ -375,7 +431,7 @@ component SidebarNavEmpty(bool iconOnly) {
 component SidebarNavNode(
     NavItem item, bool iconOnly, string current,
     List<string> opened, List<string> closed, string flyout,
-    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated, Action<string> onAsk) {
   live var shape = item.Shape();
   live var onTrail = item.HasRoute(current);
   // OPEN BY DEFAULT WHEN IT HOLDS THE CURRENT PAGE. This is the line that makes a deep link arrive with its parent
@@ -393,14 +449,14 @@ component SidebarNavNode(
       if (iconOnly) { Box(py: 2) { Divider(); } }
       foreach (var child in item.Children) {
         SidebarNavBranch(child, iconOnly, current, opened, closed, flyout,
-                         onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated);
+                         onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
       }
     }
 
     // A GROUP or a LINK at the top level — the same two presentations the level below has.
     if (shape != NavKind.Section) {
       SidebarNavBranch(item, iconOnly, current, opened, closed, flyout,
-                       onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated);
+                       onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
     }
   }
 }
@@ -414,7 +470,7 @@ component SidebarNavNode(
 component SidebarNavBranch(
     NavItem item, bool iconOnly, string current,
     List<string> opened, List<string> closed, string flyout,
-    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated, Action<string> onAsk) {
   live var shape = item.Shape();
   live var onTrail = item.HasRoute(current);
   live var isOpen = opened.Contains(item.Key()) || (onTrail && !closed.Contains(item.Key()));
@@ -431,27 +487,27 @@ component SidebarNavBranch(
         //    this, and the chevron takes its own accessible name so the two do not answer to the same words.
         if (item.To != "") {
           SidebarNavSplit(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
-                          isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated);
+                          isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated, onAsk);
         }
         if (item.To == "") {
           SidebarNavRow(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
-                        true, isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated);
+                        true, isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated, onAsk);
         }
         if (isOpen) {
           foreach (var child in item.Children) {
-            SidebarNavLeaf(child, current, onNavigated);
+            SidebarNavLeaf(child, current, onNavigated, onAsk);
           }
         }
       }
       if (iconOnly) {
         Box(position: Position.Relative) {
           SidebarNavMarkRow(item, onTrail ? NavState.Trail : NavState.Idle, true,
-                            flyout == item.Key(), () => onToggleFlyout(item.Key()), onNavigated);
+                            flyout == item.Key(), () => onToggleFlyout(item.Key()), onNavigated, onAsk);
           if (flyout == item.Key()) {
             Backdrop(onCloseFlyout);
             SidebarFlyout(item.Label) {
               foreach (var child in item.Children) {
-                SidebarNavLeaf(child, current, onNavigated);
+                SidebarNavLeaf(child, current, onNavigated, onAsk);
               }
             }
           }
@@ -462,11 +518,11 @@ component SidebarNavBranch(
     if (shape != NavKind.Group) {
       if (!iconOnly) {
         SidebarNavRow(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
-                      false, false, onNavigated, onNavigated);
+                      false, false, onNavigated, onNavigated, onAsk);
       }
       if (iconOnly) {
         SidebarNavMarkRow(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
-                          false, false, onNavigated, onNavigated);
+                          false, false, onNavigated, onNavigated, onAsk);
       }
     }
   }
@@ -479,7 +535,7 @@ component SidebarNavBranch(
 /// `flex-grow` stretches them VERTICALLY instead of filling the width. This file already duplicates row contents on
 /// purpose (see `SidebarNavRow`), so the shape is the house style rather than an exception to it.
 [Composable, Part]
-component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisclose, Action onNavigated) {
+component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisclose, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
@@ -492,7 +548,7 @@ component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisc
   }
   render {
     Row(align: Align.Center, gap: 0, w: "100%", minW: "0") {
-      SidebarSplitLink(item, state, onNavigated);
+      SidebarSplitLink(item, state, onNavigated, onAsk);
       SidebarSplitChevron(item, open, onDisclose);
     }
   }
@@ -501,19 +557,34 @@ component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisc
 /// The navigating half. A `Link`, never a `Pressable` calling `Navigation.Go` — a link is what gives middle-click,
 /// open-in-new-tab, a status-bar preview and the "current page" a screen reader announces.
 [Composable, Part]
-component SidebarSplitLink(NavItem item, NavState state, Action onNavigated) {
+component SidebarSplitLink(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense; Rounded = Radius.Md;
            Color = "inherit";
            Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
-    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
-      Row(gap: 3, align: Align.Center, w: "100%", h: "100%", minW: "0", pl: 2) {
-        Icon(item.Icon, size: 18);
-        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
-             textOverflow: TextOverflow.Ellipsis);
-        if (item.Badge != "") { ShellNavBadge(item); }
+    if (!Navigation.IsDirty) {
+      Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+        Row(gap: 3, align: Align.Center, w: "100%", h: "100%", minW: "0", pl: 2) {
+          Icon(item.Icon, size: 18);
+          Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+               textOverflow: TextOverflow.Ellipsis);
+          if (item.Badge != "") { ShellNavBadge(item); }
+        }
+      }
+    }
+    // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT (leave guard). A `Link` cannot decline to go — the
+    //    router follows it before any `onClick` runs — so while the page is dirty the row is a button that raises
+    //    the shell's `LeavePrompt` instead (the same two arms as `FocusedExit`).
+    if (Navigation.IsDirty) {
+      Pressable(label: item.Label, onClick: () => onAsk(item.To)) {
+        Row(gap: 3, align: Align.Center, w: "100%", h: "100%", minW: "0", pl: 2) {
+          Icon(item.Icon, size: 18);
+          Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+               textOverflow: TextOverflow.Ellipsis);
+          if (item.Badge != "") { ShellNavBadge(item); }
+        }
       }
     }
   }
@@ -542,14 +613,14 @@ component SidebarSplitChevron(NavItem item, bool open, Action onToggle) {
 /// LEVEL 2 — a row inside an open group, and the flattened tail of anything deeper. A child of a child renders
 /// here too, at this indent: the tree may be deeper than the rail draws, and nothing in it disappears.
 [Composable, Part]
-component SidebarNavLeaf(NavItem item, string current, Action onNavigated) {
+component SidebarNavLeaf(NavItem item, string current, Action onNavigated, Action<string> onAsk) {
   live var isCurrent = item.To == current && current != "";
   live var onTrail = item.HasRoute(current);
 
   render {
     SidebarNavRow(item, true,
                   isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
-                  false, false, onNavigated, onNavigated);
+                  false, false, onNavigated, onNavigated, onAsk);
     // ⭐ EVERYTHING BELOW THIS LEVEL, AT ANY DEPTH, flattened to this indent rather than dropped — which is what
     //    makes "nothing a caller declares is silently lost" true rather than aspirational. It read
     //    `item.Children`, one level, so a FIFTH level vanished: declared, never rendered, and not even current
@@ -558,7 +629,7 @@ component SidebarNavLeaf(NavItem item, string current, Action onNavigated) {
     //    cannot disagree about how deep the nav goes.
     foreach (var deeper in item.Descendants()) {
       SidebarNavRow(deeper, true, deeper.To == current && current != "" ? NavState.Current : NavState.Idle,
-                    false, false, onNavigated, onNavigated);
+                    false, false, onNavigated, onNavigated, onAsk);
     }
   }
 }
@@ -589,7 +660,7 @@ component SidebarFlyout(string label) {
 [Composable, Part]
 component SidebarNavRow(
     NavItem item, bool isNested, NavState state, bool discloses, bool open,
-    Action onPress, Action onNavigated) {
+    Action onPress, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; MinH = Length.TouchDense; Px = 2; Rounded = Radius.Md; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
@@ -623,12 +694,27 @@ component SidebarNavRow(
     if (!discloses) {
       // `current:` is what a reader hears as "current page"; the fill above is what a sighted reader sees. Both,
       // or the row is only half-marked.
-      Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
-        Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
-          Icon(item.Icon, size: 18);
-          Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
-               textOverflow: TextOverflow.Ellipsis);
-          if (item.Badge != "") { ShellNavBadge(item); }
+      if (!Navigation.IsDirty) {
+        Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+          Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
+            Icon(item.Icon, size: 18);
+            Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+                 textOverflow: TextOverflow.Ellipsis);
+            if (item.Badge != "") { ShellNavBadge(item); }
+          }
+        }
+      }
+      // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT (leave guard). A `Link` cannot decline to go — the
+      //    router follows it before any `onClick` runs — so while the page is dirty the row is a button that raises
+      //    the shell's `LeavePrompt` instead (the same two arms as `FocusedExit`).
+      if (Navigation.IsDirty) {
+        Pressable(label: item.Label, onClick: () => onAsk(item.To)) {
+          Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
+            Icon(item.Icon, size: 18);
+            Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
+                 textOverflow: TextOverflow.Ellipsis);
+            if (item.Badge != "") { ShellNavBadge(item); }
+          }
         }
       }
     }
@@ -649,7 +735,7 @@ component SidebarNavRow(
 ///   off the centre of its own highlight.
 [Composable, Part]
 component SidebarNavMarkRow(
-    NavItem item, NavState state, bool discloses, bool open, Action onPress, Action onNavigated) {
+    NavItem item, NavState state, bool discloses, bool open, Action onPress, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
            Color = Colors.TextSecondary; Transition = Motion.Fast;
@@ -667,14 +753,28 @@ component SidebarNavMarkRow(
     if (discloses) {
       Pressable(onClick: onPress, label: item.Label, expanded: open) {
         Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
-          ShellNavMark(item.Icon, state);
+          ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
         }
       }
     }
     if (!discloses) {
-      Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
-        Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
-          ShellNavMark(item.Icon, state);
+      // With no words on the row, its badge is a dot — so the badge's words go in the row's name, where a screen
+      // reader and the tip say them.
+      if (!Navigation.IsDirty) {
+        Link(href: item.To, label: item.Badge == "" ? item.Label : item.Label + " — " + item.Badge, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+          Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
+            ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
+          }
+        }
+      }
+      // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT (leave guard). A `Link` cannot decline to go — the
+      //    router follows it before any `onClick` runs — so while the page is dirty the row is a button that raises
+      //    the shell's `LeavePrompt` instead (the same two arms as `FocusedExit`).
+      if (Navigation.IsDirty) {
+        Pressable(label: item.Badge == "" ? item.Label : item.Label + " — " + item.Badge, onClick: () => onAsk(item.To)) {
+          Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
+            ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
+          }
         }
       }
     }
@@ -689,7 +789,8 @@ component SidebarNavMarkRow(
 [Composable, Part]
 component SidebarTopBar(
     AppChrome chrome, bool isPhone, bool hasUser, bool hasMenu, bool userMenuOpen,
-    Action onOpenDrawer, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll) {
+    Action onOpenDrawer, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll,
+    Action<string> onAsk = null) {
   live var path = Navigation.CurrentPath ?? "";
   variants {
     base { Position = Position.Sticky; Top = "0"; Z = ZIndex.Sticky; Bg = Colors.Surface; BorderBW = 1;
@@ -717,7 +818,7 @@ component SidebarTopBar(
           // because a panel hung off the top-right corner is where a thumb cannot reach.
           if (userMenuOpen && !isPhone && hasMenu) {
             Backdrop(onCloseUserMenu);
-            SidebarUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+            SidebarUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll, onAsk); }
           }
         }
       }

@@ -145,7 +145,8 @@ component MarqueeNavRow(NavItem[] items, string current, Action onNavigated) {
            BorderTW = 2; BorderBW = 2; Border = Colors.OnBg; Px = 8;
            // ONE line, always: at poster size eight shelves do not fit, and a second row doubled the sticky band
            // (measured on thrift-store/loud). The row scrolls sideways instead, without a gutter.
-           OverflowX = Overflow.Auto; ScrollbarWidth = ScrollbarWidth.None; }
+           // …and FADES at its end, so a shelf cut at the page edge reads as "more this way".
+           OverflowX = Overflow.Auto; ScrollbarWidth = ScrollbarWidth.None; EdgeFade = EdgeFade.End; }
   }
   render {
     // The band (this Box, which the variants above style) is the page's width and scrolls; the Row inside it is as wide

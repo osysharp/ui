@@ -137,12 +137,18 @@ component DecimalField(
   }
 }
 
-/// The two stacked arrows beside a numeric box — the `<input type="number">` spinner, drawn by the kit because the
-/// kit's numeric fields are text inputs now (see the header of this file).
+/// The two arrows beside a numeric box — the `<input type="number">` spinner, drawn by the kit because the kit's
+/// numeric fields are text inputs now (see the header of this file).
 ///
 /// ⭐ IT IS NOT POLISH. The arrows are a real affordance people use, and they were visible on a shipped app's
 /// meals-limit field the day this changed; dropping them silently along with `type="number"` would have been a
-/// worse control delivered as a bug fix. Two chevrons at the box's right edge, the size the native pair was.
+/// worse control delivered as a bug fix.
+///
+/// ⛔ SIDE BY SIDE, A FULL TARGET EACH — NOT THE NATIVE STACKED PAIR. Stacked, each arrow was half the box's height
+///   (19px) and 20px wide: under WCAG 2.2's 24 × 24 minimum target (SC 2.5.8, AA), with no room around it either,
+///   on every NumberField and DecimalField in every app. The `ux · admin` sweep (axe, test:visual) named it on the
+///   first page that had one. A minus and a plus, each the box's full height and `StepperW` wide, clear it with room
+///   to spare, and are what a finger needs on a phone anyway.
 ///
 /// ⚠ EACH ARROW IS NAMED. There is no text in it, so `label:` is the only thing a screen reader can announce and
 /// the only handle a test has: `Ui.Click("Increase Price")`.
@@ -153,14 +159,14 @@ component DecimalField(
 component Stepper(string label, Action onUp, Action onDown, bool disabled = false) {
   render {
     if (!disabled) {
-      Stack(gap: 0, ml: 1) {
-        Pressable(label: "Increase " + label, onClick: onUp, px: 1, borderW: 1, border: Colors.Border,
-                  bg: Colors.Surface, color: Colors.TextMuted, h: Length.StepperHalf) {
-          Icon(Icons.ChevronUp, size: Length.StepperGlyph);
+      Row(gap: 1, ml: 1) {
+        Pressable(label: "Decrease " + label, onClick: onDown, borderW: 1, border: Colors.Border, rounded: Radius.Sm,
+                  bg: Colors.Surface, color: Colors.TextMuted, w: Length.StepperW, h: Length.ControlMd) {
+          Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") { Icon(Icons.Minus, size: Length.StepperGlyph); }
         }
-        Pressable(label: "Decrease " + label, onClick: onDown, px: 1, borderW: 1, border: Colors.Border,
-                  bg: Colors.Surface, color: Colors.TextMuted, h: Length.StepperHalf) {
-          Icon(Icons.ChevronDown, size: Length.StepperGlyph);
+        Pressable(label: "Increase " + label, onClick: onUp, borderW: 1, border: Colors.Border, rounded: Radius.Sm,
+                  bg: Colors.Surface, color: Colors.TextMuted, w: Length.StepperW, h: Length.ControlMd) {
+          Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") { Icon(Icons.Plus, size: Length.StepperGlyph); }
         }
       }
     }

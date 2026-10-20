@@ -1,0 +1,71 @@
+// THE BENCH — the workshop's pages inside the kit's `SidebarShell`, so the shell's own behaviour has a page to be
+// tested on: here, that leaving a page with unsaved edits through the rail asks first (`LeavePrompt`).
+
+[Layout]
+[Authorize(IsFramer)]
+component BenchShell() {
+  render {
+    SidebarShell(new AppChrome { Product = "Workshop", Home = "/bench", Nav = [
+      new NavItem { Label = "Bench", To = "/bench", Icon = Icons.Home, Exact = true },
+      new NavItem { Label = "Quote", To = "/bench/quote", Icon = Icons.Tag },
+    ],
+    // A switcher behind the brand, so leaving through it has a page to be tested on too.
+    Apps = [ new AppLink { Label = "Quotes desk", To = "/bench/quote" } ],
+    // The person's menu, with a row that LEADS somewhere (`To`), so leaving through it has a page to be tested on too.
+    User = new ShellUser { Name = "Tom Framer", Initials = "T",
+                           Menu = [ new MenuAction { Label = "Your quotes", To = "/bench/quote", Icon = Icons.Tag } ] } }) { Outlet(retain: 4); }
+  }
+}
+
+/// The bench's own list — the first order's artwork, edited in place with Save beside it.
+[Route("/bench")] [Layout(BenchShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Bench")]
+component BenchPage() {
+  live var order = FrameOrder.OrderBy(o => o.Customer).FirstOrDefault();
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(order.Customer) { SaveActions(saved: "Job saved."); }
+        Field("Artwork", value: order.Artwork);
+      }
+    }
+  }
+}
+
+/// Somewhere else to go.
+[Route("/bench/quote")] [Layout(BenchShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Quote")]
+component BenchQuotePage() {
+  render { Stack(gap: 4, p: 6) { PageHead("Quote"); Text("Prices by the metre."); } }
+}
+
+// THE DESK — the same two pages inside the kit's `WorkbenchShell`, whose activity bar is its own way out of a page.
+
+[Layout]
+[Authorize(IsFramer)]
+component DeskShell() {
+  render {
+    WorkbenchShell(new AppChrome { Product = "Workshop", Home = "/desk", Nav = [
+      new NavItem { Label = "Bench", To = "/desk", Icon = Icons.Home, Exact = true },
+      new NavItem { Label = "Quote", To = "/desk/quote", Icon = Icons.Tag },
+    ] }) { Outlet(retain: 4); }
+  }
+}
+
+/// The desk's own list — the first order's artwork, edited in place with Save beside it.
+[Route("/desk")] [Layout(DeskShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Bench")]
+component DeskPage() {
+  live var order = FrameOrder.OrderBy(o => o.Customer).FirstOrDefault();
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(order.Customer) { SaveActions(saved: "Job saved."); }
+        Field("Artwork", value: order.Artwork);
+      }
+    }
+  }
+}
+
+/// Somewhere else to go.
+[Route("/desk/quote")] [Layout(DeskShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Quote")]
+component DeskQuotePage() {
+  render { Stack(gap: 4, p: 6) { PageHead("Quote"); Text("Prices by the metre."); } }
+}

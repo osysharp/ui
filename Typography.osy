@@ -107,6 +107,56 @@ namespace Osysharp.Ui;
   render { Text(text); }
 }
 
+/// LONG TEXT THAT OPENS ON DEMAND — one line, cut with an ellipsis, and "More" beside it; pressed, the whole text
+/// wraps and "Less" closes it again. Reach for it wherever a paragraph would otherwise set the height of a table row
+/// or push the page's real content below the fold: an alert's explanation, a deploy's reason, a caveat above figures.
+/// `summary` is the line shown while closed — a short sentence of your own; without one the text itself is cut.
+/// ⚑ A TABLE CELL IS THE COMMON HOME: in a `DataGrid` `slot`, each row keeps one line until its reader opens it, so
+///   the table stays scannable and nothing is lost. Short text (no summary and under ~90 characters) shows whole,
+///   with no "More" — a control that opens onto the same words is noise.
+/// `about` names what the text is about, and the toggle with it — "More about Disk full" — which a table of them needs:
+/// ten buttons all called "More" are ten identical announcements to a screen reader, and ambiguous to a test.
+/// In a test the closed line is read as text and the toggle is a button: `Ui.Click("More", within: "Held")`, or
+/// `Ui.Click("More about Disk full")` when it has an `about`; then `Assert.Visible("the whole reason")`. Its state is
+/// `Assert.Expanded("More", false)` while closed.
+/// need: a one-line summary with more on demand, read more, collapse a long explanation, truncate long text in a table cell, show the full text when opened
+/// e.g. `MoreText(alert.Message ?? "", about: alert.Title)` · `MoreText(d.Reason, summary: "Held: a destructive schema change")`
+[Composable]
+component MoreText(string text, string summary = "", bool muted = false, string about = "") {
+  bool open = false;
+  action Toggle() { open = !open; }
+  /// Whether there is anything more to show than the closed line already does.
+  bool HasMore() { return (summary != "" && summary != text) || text.Length > 90; }
+  render {
+    if (open) {
+      Stack(gap: 1, minW: "0", w: "100%") {
+        Text(text, color: muted ? Colors.TextSecondary : Colors.OnSurface, whiteSpace: WhiteSpace.PreWrap, wordBreak: WordBreak.BreakWord);
+        Row {
+          MoreTextToggle("Less", about == "" ? "Less" : "Less about " + about, true, Toggle);
+        }
+      }
+    } else if (HasMore()) {
+      Row(gap: 2, align: Align.Center, minW: "0", w: "100%") {
+        Text(summary != "" ? summary : text, color: muted ? Colors.TextSecondary : Colors.OnSurface,
+             whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis, minW: "0", grow: 1, shrink: 1);
+        MoreTextToggle("More", about == "" ? "More" : "More about " + about, false, Toggle);
+      }
+    } else {
+      Text(text, color: muted ? Colors.TextSecondary : Colors.OnSurface);
+    }
+  }
+}
+
+/// `MoreText`'s own "More"/"Less" control: link-coloured, with the disclosure state a screen reader announces.
+[Composable, Part]
+component MoreTextToggle(string text, string label, bool open, Action onPress) {
+  variants {
+    base { FontSize = FontSize.Label; FontWeight = FontWeight.Medium; Color = Primary.Text; WhiteSpace = WhiteSpace.Nowrap;
+           Rounded = Radius.Sm; Hover { TextDecoration = TextDecoration.Underline; } Focus { Shadow = Shadow.Ring; } }
+  }
+  render { Pressable(onClick: onPress, label: label, expanded: open) { Text(text); } }
+}
+
 /// Emphasised body text — a name, a selected value, the one word in a row that matters.
 /// In a test it is read as text: `Assert.Visible("overdue")`.
 /// need: emphasise a word inside a sentence

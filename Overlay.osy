@@ -20,29 +20,77 @@ namespace Osysharp.Ui;
   render { Pressable(onClick: onDismiss, onEscape: onDismiss, decorative: true) { Box(w: "100%", h: "100%"); } }
 }
 
+/// How wide a `Dialog` is. The width follows what is IN it: a question is `Small` or `Medium`, a form is `Large`,
+/// and something to read — notes, a table, a page of details — is `Wide`. Every size is capped to the window.
+public enum DialogSize {
+  /// 400px — a yes or no.
+  Small,
+  /// 480px — a confirmation with a sentence or two, a short form. The default.
+  Medium,
+  /// 720px — a form with several fields, a list to pick from.
+  Large,
+  /// 1040px — something to READ or to work in: a document, a wide table, a comparison.
+  Wide
+}
+
 /// A modal dialog. Render it conditionally — `if (confirming) { Dialog("Delete this order?", onDismiss: Cancel) { … } }`.
 /// The body is the default slot; put the buttons in `slot actions { … }` and they land in the footer row.
+/// `size:` says how wide it is (`DialogSize.Small` · `Medium` · `Large` · `Wide`) — `Wide` for something to read.
 /// It is MODAL (`role: UiRole.ModalDialog`): the keyboard goes to its first control as it opens, Tab stays inside it, and
 /// the keyboard goes back to whatever opened it as it closes — the platform does all three.
+/// It sits in the MIDDLE of the window, both ways. A press on the dim outside it, or Escape, runs `onDismiss`.
+/// ⭐ IT NEVER GROWS PAST THE WINDOW. A body taller than the window SCROLLS INSIDE the dialog, with the title above it
+/// and the `actions` row below it both staying in view; the page behind does not scroll while it is open (the platform
+/// holds it still for every modal, and it is where it was when the dialog closes).
 /// ⚠ IT CARRIES NO UNIT OF WORK. Being Composable it inlines into the page's own render tree, so it has no mount of its own and nothing it could savepoint: what you edit inside it is edited in the PAGE's unit of work, and the page's Save is what decides.
 /// ⭐ The overlay that DOES own one is `Dialog.Open(SomeComponent(…), unitOfWork: Inherit|Root)`, with `Dialog.Ask` / `Confirm` / `Discard` — run `osy docs ui-dialogs`, which is where that choice is explained.
 /// In a test assert it is open with `Assert.Dialog("Delete order?")`, and drive its buttons with `Ui.Click(...)` — scope with `within:` when the label also appears behind it.
-/// need: a modal over the page, ask before doing something, a popup form, confirm or cancel
+/// need: a modal over the page, ask before doing something, a popup form, confirm or cancel, a sheet to read
 /// e.g. `Dialog("Delete this order?", onDismiss: Cancel) { slot actions { Button("Delete", onPress: Delete, tone: Tone.Danger); } }`
-[Composable] component Dialog(string title, Action onDismiss, string subtitle = "") {
+[Composable] component Dialog(string title, Action onDismiss, string subtitle = "", DialogSize size = DialogSize.Medium) {
   render {
     Box {
       Scrim(onDismiss);
-      Box(position: Position.Fixed, top: "10%", left: "0", right: "0", z: ZIndex.Modal, display: Display.Flex, justify: Justify.Center) {
-        Stack(role: UiRole.ModalDialog, label: title, gap: 4, w: Length.DialogW, maxW: "92%", bg: Colors.Surface, color: Colors.OnSurface, rounded: Radius.Lg, shadow: Shadow.Deep, p: 5) {
-          Stack(gap: 1) {
+      // CENTRED BOTH WAYS IN THE WINDOW. This layer covers the whole viewport so that it can centre, and so it IGNORES
+      // the pointer (`PointerEvents.None`): a press outside the panel falls through to the `Scrim` beneath, which is
+      // what dismisses. The panel takes the pointer back (`DialogPanel`). The panel is never taller than the window,
+      // so this layer has nothing to scroll; the dialog's own body scrolls instead.
+      Box(position: Position.Fixed, top: "0", left: "0", right: "0", bottom: "0", z: ZIndex.Modal, display: Display.Flex,
+          align: Align.Center, justify: Justify.Center, pointerEvents: PointerEvents.None) {
+        DialogPanel(title, size) {
+          Stack(gap: 1, shrink: 0) {
             CardTitle(title);
             if (subtitle != "") { Hint(subtitle); }
           }
-          Slot;
-          Row(align: Align.Center, gap: 2) { Spacer(); Slot("actions"); }
+          // The body is what scrolls. `minH: "0"` is what lets a flex child be SHORTER than its content — without it
+          // the body pushes the panel past its cap and the window scrolls instead. The small inline padding keeps a
+          // focus ring at the body's edge from being clipped by the scroller.
+          Stack(gap: 4, grow: 1, minH: "0", overflowY: Overflow.Auto, mx: "-4px", px: "4px", py: "2px", label: title + " — content") {
+            Slot;
+          }
+          Row(align: Align.Center, gap: 2, shrink: 0) { Spacer(); Slot("actions"); }
         }
       }
+    }
+  }
+}
+
+/// The dialog's own surface: as wide as its size says, never wider or taller than the window allows.
+[Composable, Part] component DialogPanel(string title, DialogSize size) {
+  variants {
+    // `dvh`, so a phone's collapsing address bar does not hide the foot of the dialog.
+    // `PointerEvents.Auto` because the centring layer around it lets the pointer through to the scrim.
+    base { MaxW = "94%"; MaxH = "90dvh"; PointerEvents = PointerEvents.Auto; }
+    size {
+      Small  { W = Length.DialogSmW; }
+      Medium { W = Length.DialogW; }
+      Large  { W = Length.DialogLgW; }
+      Wide   { W = Length.DialogWideW; }
+    }
+  }
+  render {
+    Stack(role: UiRole.ModalDialog, label: title, gap: 4, bg: Colors.Surface, color: Colors.OnSurface, rounded: Radius.Lg, shadow: Shadow.Deep, p: 5) {
+      Slot;
     }
   }
 }

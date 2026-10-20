@@ -1,0 +1,52 @@
+// Ui — Facts, information about one thing as a key/value table (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// Information about one thing, as a two-column table — what each fact is on the left, its value on the right, one
+/// line per fact with a rule under it. Each line is a `Fact`. On a phone the label sits over its value.
+/// Reach for it where a card would otherwise hold lines of "Label: value" prose: a record's details, a server's state,
+/// what a plan includes. Put it in a `Card` for a titled block, with the card's status chips in `slot actions`.
+/// In a test it is a container — read a value through its fact: `Assert.Visible("Managed", within: "Hosting")`.
+/// need: show the details of a record, key value pairs, a description list, label and value rows, a properties table, information as a table
+/// e.g. `Card("Database") { Facts { Fact("Engine", value: "Postgres 16"); Fact("Storage", value: "63 of 200 GiB"); } }`
+[Composable]
+component Facts(string label = "") {
+  render {
+    Stack(gap: 0, w: "100%", label: label) { Slot; }
+  }
+}
+
+/// One line of a `Facts` table: its label, its value, and a muted line under the value when the value needs saying
+/// where it came from or what it means. The block holds whatever belongs beside the value — a status chip (`Badge`),
+/// a mark, a link, a small button — so a status reads as a chip, not as a word in a sentence.
+/// The line is a NAMED GROUP: a test reads a value by its label (`Assert.Visible("Healthy", within: "Gateway")`).
+/// ⚑ Say a missing figure in words (`"not reported"`), never as an empty value — an empty value is a line that
+///   promises a figure and shows nothing.
+/// e.g. `Fact("Status", value: zone.Status.Label) { Badge("Running", tone: Tone.Success); }`
+/// e.g. `Fact("Backups", value: "every night, kept 7 days", hint: "As its provider states it, 2m ago.")`
+[Composable]
+component Fact(string label, string value = "", string hint = "") {
+  variants {
+    base {
+      // ⚑ ONE GRID PER LINE, WITH THE SAME TRACKS ON EVERY LINE, is what lines the values up down the table: a grid
+      //   whose cells came from several components cannot span them, and the same `Cols` on every row aligns them
+      //   exactly as a header and its rows do (`osy docs ui-styling#grid`). Phone first: one column, the label over
+      //   the value; from a tablet up, the label's column and the value's.
+      Display = Display.Grid; Cols = "minmax(0, 1fr)"; Gap = 1; Py = 2; W = "100%";
+      BorderBW = 1; Border = Colors.Border;
+      Tablet { Cols = "minmax(140px, 30%) minmax(0, 1fr)"; Gap = 4; }
+    }
+  }
+  render {
+    Box(label: label) {
+      Text(label, fontSize: FontSize.Label, color: Colors.TextMuted);
+      Stack(gap: 1, minW: "0") {
+        Row(gap: 2, align: Align.Center, wrap: Wrapping.Wrap, minW: "0") {
+          if (value != "") { Text(value); }
+          Slot;
+        }
+        if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+// Ui — QrCode, a QR code a phone can scan (`using Osysharp.Ui;`).
+
+namespace Osysharp.Ui;
+
+/// A QR code, drawn from the rows `Qr.Encode(text)` answers — `QrCode(Qr.Encode(link))`, or rows a server function
+/// sent the page. Dark modules on WHITE whatever the theme, inside a white margin four modules wide: a reader looks for
+/// three dark finder squares on a light ground, and a code drawn light-on-dark, or cropped tight against a dark card,
+/// reads on nothing. `module` is the side of one module in pixels (4 draws a 25-module code 132px across with its
+/// margin); `label` is what a screen reader says it is.
+/// In a test it is found by its label: `Assert.Visible("QR code for your authenticator app")`.
+/// need: show a QR code to scan — an authenticator app's key, a payment, a link to open on a phone, a ticket
+[Composable]
+component QrCode(List<string> rows, int module = 4, string label = "QR code") {
+  render {
+    // ⚠ THE COLOURS ARE LITERALS ON PURPOSE — the one control that must NOT take the theme's: a dark theme's ink
+    //   is light, and a QR code inverted is not read by most cameras.
+    // ONE picture to a screen reader (`Graphic` is ARIA's img), named by `label`, rather than hundreds of empty boxes.
+    Box(role: UiRole.Graphic, label: label, bg: "#ffffff", p: $"{module * 4}px", w: "fit-content", maxW: "100%",
+        shrink: 0, rounded: Radius.Sm) {
+      Stack(gap: 0) {
+        foreach (var row in rows) {
+          // Each row is drawn as its RUNS — a 45-module row is a dozen boxes, not 45.
+          Row(gap: 0, h: $"{module}px") {
+            foreach (var run in Runs(row)) {
+              Box(w: $"{Math.Abs(run) * module}px", h: $"{module}px", shrink: 0, bg: run > 0 ? "#111111" : "#ffffff");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /// A row of modules as its runs, left to right: a dark run's length positive, a light one's negative.
+  List<int> Runs(string row) {
+    List<int> runs = [];
+    var i = 0;
+    while (i < row.Length) {
+      var c = row.Substring(i, 1);
+      var j = i;
+      while (j < row.Length && row.Substring(j, 1) == c) { j = j + 1; }
+      runs.Add(c == "1" ? j - i : i - j);
+      i = j;
+    }
+    return runs;
+  }
+}

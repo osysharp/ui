@@ -667,7 +667,7 @@ component RailExpandButton(bool expanded, bool labelled, Action onToggle) {
 ///   frame's root — it passes `hasMenu: false` there. Folding the two into one flag silently loses the expanded
 ///   panel's own menu, because the chip is labelled there and a `!labelled` guard would refuse to draw it.
 component RailIdentity(ShellUser user, bool labelled, bool hasMenu, bool open,
-                       Action onToggle, Action onClose, Action onDismissAll) {
+                       Action onToggle, Action onClose, Action onDismissAll, Action<string> onGo = null) {
   render {
     Box(position: Position.Relative, px: 2, py: 2) {
       ShellUserChip(user, hasMenu, onToggle, markOnly: !labelled, open: open);
@@ -675,7 +675,7 @@ component RailIdentity(ShellUser user, bool labelled, bool hasMenu, bool open,
       // off the bottom-left corner is where a thumb cannot reach.
       if (open && hasMenu) {
         Backdrop(onClose);
-        RailUserMenu(user) { ShellMenuItems(user.Menu, onDismissAll); }
+        RailUserMenu(user) { ShellMenuItems(user.Menu, onDismissAll, onGo); }
       }
     }
   }

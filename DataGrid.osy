@@ -815,7 +815,7 @@ public sealed class GridBand<T> {
                       GridRowCells(cols: columns, order: order, hidden: hidden, row: r, pickable: true, isPicked: IsPicked(r), pickName: PickName(r),
                                    onPick: () => TogglePick(r), opens: rowSelected != null, onOpen: () => rowSelected(r));
                     } else if (rowSelected != null) {
-                      Pressable(onClick: () => rowSelected(r)) { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
+                      GridRowCells(cols: columns, order: order, hidden: hidden, row: r, opens: true, onOpen: () => rowSelected(r));
                     } else { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
                   }
                 }
@@ -826,7 +826,7 @@ public sealed class GridBand<T> {
                   GridRowCells(cols: columns, order: order, hidden: hidden, row: r, pickable: true, isPicked: IsPicked(r), pickName: PickName(r),
                                onPick: () => TogglePick(r), opens: rowSelected != null, onOpen: () => rowSelected(r));
                 } else if (rowSelected != null) {
-                  Pressable(onClick: () => rowSelected(r)) { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
+                  GridRowCells(cols: columns, order: order, hidden: hidden, row: r, opens: true, onOpen: () => rowSelected(r));
                 } else { GridRowCells(cols: columns, order: order, hidden: hidden, row: r); }
               }
             }
@@ -1095,6 +1095,20 @@ public sealed class GridBand<T> {
                                          bool pickable = false, bool isPicked = false, Action? onPick = null, string pickName = "row",
                                          bool opens = false, Action? onOpen = null) {
   render {
+    // ⛔ A ROW THAT OPENS IS ITSELF THE PRESS, WITH THE ROW'S ROLE. It was a bare `Pressable` WRAPPED round the row —
+    //   `grid > button > row > gridcell` — so the grid owned a button where it may own only rows, the row's parent was
+    //   a button, and a link in a cell (Admin's organizations: "Applications · Users") was a control inside a control.
+    //   axe named all three on Admin's first page (aria-required-children, aria-required-parent, nested-interactive,
+    //   and the link's target size, which the enclosing button shrank to 19.6px). Now `grid > button[role=row] >
+    //   gridcell`: still one Tab stop that Enter and Space open, announced as the row it is. A pickable row keeps its
+    //   check outside any press (a button inside a button is invalid markup), so it hands the press to its cells.
+    if (opens && !pickable) {
+      Pressable(onClick: onOpen, role: UiRole.GridRow, w: "100%", textAlign: TextAlign.Start) {
+        Row(gap: 0, px: 3, py: 2, borderBW: 1, border: Colors.Border, bg: Colors.Transparent) {
+          GridCells(cols: cols, order: order, hidden: hidden, row: row);
+        }
+      }
+    } else {
     Row(gap: 0, px: 3, py: 2, borderBW: 1, border: Colors.Border, role: UiRole.GridRow,
         bg: isPicked ? Colors.Primary.Subtle : Colors.Transparent) {
       if (pickable) { PickCell("Select " + pickName, isPicked, onPick); }
@@ -1103,6 +1117,7 @@ public sealed class GridBand<T> {
       } else {
         GridCells(cols: cols, order: order, hidden: hidden, row: row);
       }
+    }
     }
   }
 }

@@ -419,6 +419,9 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
       justSaved = true;
       if (onSaved != null) { onSaved(); }
     }
+    // A lost race is the platform's to show: the conflict notice gives the person both values and Keep theirs /
+    // Apply mine. Caught here it would read only "Not saved — …" with nothing to choose (`osy docs ui-conflict-notice`).
+    catch (ConflictException) { throw; }
     catch (Exception ex) { problem = ex.Message; }
   }
   action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }

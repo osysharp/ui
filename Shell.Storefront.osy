@@ -79,7 +79,7 @@ component StorefrontShell(AppChrome chrome, int bagCount = -1, string bagLabel =
   //
   //    ⚑ AND IT IS OPEN ONLY ON THAT PAGE. The bag and the drawer hold the APP's content, and that content navigates:
   //      a "Check out" button calling `Navigation.Go("/checkout")` inside the bag moved the page and left the bag
-  //      open OVER it, the checkout form inert behind a modal (measured 2026-09-26 by `demo/rust-and-chrome`'s own UI
+  //      open OVER it, the checkout form inert behind a modal (measured 2026-09-26 by `Apps/rust-and-chrome`'s own UI
   //      test). The shell's own links closed it; nobody else's could. Deriving "open" from the route closes it on any
   //      navigation, whoever made it — and needs no reaction, which could not write this state anyway.
   string overlay = "";
@@ -220,7 +220,8 @@ component StorefrontHeader(
     Row(role: UiRole.Banner, label: "Site header", align: Align.Center, gap: 4, px: 6, minH: Length.StoreHeaderH,
         cols: "1fr auto 1fr", display: Display.Grid) {
       Row(role: UiRole.Navigation, label: "Categories", align: Align.Center, gap: 1, minW: "0", overflowX: Overflow.Auto,
-          scrollbarWidth: ScrollbarWidth.None) {
+          // A category past the edge FADES out rather than stopping dead at it, so a cut row says it scrolls.
+          scrollbarWidth: ScrollbarWidth.None, edgeFade: EdgeFade.End) {
         foreach (var c in categories) {
           StorefrontCategory(c, c.State(current), openCategory == c.Key(), onToggleCategory, onNavigated);
         }

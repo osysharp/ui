@@ -1,0 +1,34 @@
+// `MoreText` — a long explanation keeps ONE line until its reader asks for the rest, and a short one shows whole.
+
+[Test]
+void a_long_note_shows_its_summary_and_opens_to_the_whole_text_on_more() {
+  Ui.Visit("/care");
+  Assert.Visible("Dust only — never wet.", within: "Gilding");
+  // Closed: the whole text is not on the page, only the one line.
+  Assert.Hidden("bring it back to the workshop for any repair");
+  Assert.Expanded("More", false);
+
+  Ui.Click("More", within: "Gilding");
+  Assert.Visible("bring it back to the workshop for any repair", within: "Gilding");
+  Ui.Click("Less", within: "Gilding");
+  Assert.Hidden("bring it back to the workshop for any repair");
+}
+
+// Two notes on one screen: with `about`, each toggle says which note it opens, so neither a screen reader nor a test
+// hears two buttons called "More".
+[Test]
+void a_note_with_about_names_its_toggle_after_what_it_opens() {
+  Ui.Visit("/care");
+  Ui.Click("More about the mount");
+  Assert.Expanded("Less about the mount", true);
+  Assert.Visible("hang the frame away from a south-facing window", within: "Mount");
+  // The other note is still closed.
+  Assert.Expanded("More", false);
+}
+
+[Test]
+void a_short_note_shows_whole_and_offers_no_more() {
+  Ui.Visit("/care");
+  Assert.Visible("Wipe with a dry cloth.", within: "Glass");
+  Assert.Hidden("More", within: "Glass");
+}

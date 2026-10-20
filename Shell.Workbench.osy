@@ -54,6 +54,51 @@ component WorkbenchShell(AppChrome chrome) {
   action DismissAll() { userMenuOpen = false; drawerOpen = false; }
   action Navigated() { drawerOpen = false; }
 
+  // ── LEAVING A PAGE THAT HOLDS UNSAVED EDITS ─────────────────────────────────────────────────────────────────
+  //
+  // ⭐ THE SAME GUARD AS `SidebarFrame` AND `FocusedFrame`: the shell asks `Navigation` directly, so no app declares
+  //    anything to get it. While the page is dirty every way out the shell draws — an activity-bar mark, an explorer
+  //    row, a row in the phone's drawer — is a button that lands in `AskBeforeLeave` instead of a `Link`.
+  // ⚠ THE PROMPT IS RENDERED INSIDE EACH BAND'S ROOT `Stack`, NOT AS A SIBLING OF IT. This component carries a
+  //   `variants` block, and every TOP-LEVEL element of its render wears those root classes — a sibling prompt would
+  //   inherit `Display = Flex; Bg = Colors.Bg` and paint a block into the page's flow.
+  string leaving = "";          // the dirty route being left ("" = nothing held)
+  string target = "";           // where the reader asked to go
+  bool canSaveLeaving = false;  // snapshot of `Navigation.CanSave` — a render expression cannot call a client verb
+  string leaveError = "";       // a refused save, in the words the server used
+
+  // ⛔ ASKED AGAIN HERE, AGAINST THE ROUTER AS IT IS NOW — the row chose Link or button at render time, and a guard
+  //    that acts on a snapshot is the bug it exists to prevent.
+  action AskBeforeLeave(string to) {
+    if (!Navigation.IsDirty || to == Navigation.CurrentPath) { Navigation.Go(to); drawerOpen = false; }
+    else {
+      leaveError = "";
+      canSaveLeaving = Navigation.CanSave(Navigation.CurrentPath);
+      leaving = Navigation.CurrentPath;
+      target = to;
+    }
+  }
+  action KeepEditing() { leaving = ""; target = ""; leaveError = ""; }
+  // Discard: force-close the dirty route so its unit of work is really dropped, and only THEN go, so the close's own
+  // fallback navigation cannot override the one asked for.
+  action DiscardAndLeave() {
+    Navigation.Close(leaving, true);
+    Navigation.Go(target);
+    leaving = ""; target = "";
+    drawerOpen = false;
+  }
+  // Save & leave: a save CAN be refused, so the prompt stays up saying why, with the edits intact.
+  action SaveAndLeave() {
+    leaveError = "";
+    try {
+      Navigation.Save(leaving);
+      Navigation.Go(target);
+      leaving = ""; target = "";
+      drawerOpen = false;
+    }
+    catch (ValidationException ex) { leaveError = ex.Message; }
+  }
+
   /// The top-level section the current page belongs to — the one whose pages the explorer lists.
   NavItem SectionOf(string here) {
     foreach (var item in chrome.Nav) {
@@ -90,16 +135,16 @@ component WorkbenchShell(AppChrome chrome) {
                   // The section you are in: its mark folds the explorer, the way it does in every editor.
                   WorkbenchMark(item, NavState.Current, explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer);
                 } else {
-                  WorkbenchMarkLink(item, item.HasRoute(current) ? NavState.Trail : NavState.Idle, Navigated);
+                  WorkbenchMarkLink(item, item.HasRoute(current) ? NavState.Trail : NavState.Idle, Navigated, AskBeforeLeave);
                 }
               }
             }
             if (hasUser) {
-              RailIdentity(chrome.User, false, hasMenu, userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll);
+              RailIdentity(chrome.User, false, hasMenu, userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll, AskBeforeLeave);
             }
           }
           if (!explorerShut && SectionOf(current) != null) {
-            WorkbenchExplorer(SectionOf(current), current, Navigated) { Slot("explorer"); }
+            WorkbenchExplorer(SectionOf(current), current, Navigated, AskBeforeLeave) { Slot("explorer"); }
           }
           Stack(gap: 0, grow: 1, minW: "0", minH: "0") {
             RailTopBar(chrome, false, OpenDrawer) {
@@ -118,6 +163,7 @@ component WorkbenchShell(AppChrome chrome) {
         }
         WorkbenchStatus() { Slot("status"); }
         KeyboardSheet();
+        if (leaving != "") { LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing); }
       }
     } else {
       Stack(gap: 0, minH: Length.Screen, w: "100%", minW: "0") {
@@ -130,19 +176,20 @@ component WorkbenchShell(AppChrome chrome) {
           WorkbenchPhoneDrawer(label: "Main navigation") {
             Row(gap: 2, align: Align.Center, px: 3, minH: Length.AppBarH) { ShellBrand(chrome); }
             Stack(gap: 1, px: 2, py: 2, grow: 1, minH: "0", overflowY: Overflow.Auto) {
-              foreach (var item in Marks()) { SidebarNavLeaf(item, current, Navigated); }
+              foreach (var item in Marks()) { SidebarNavLeaf(item, current, Navigated, AskBeforeLeave); }
             }
           }
         }
         Stack(gap: 0, grow: 1, minW: "0", role: UiRole.Main, label: "Page") { Slot; }
         WorkbenchStatus() { Slot("status"); }
+        if (leaving != "") { LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing); }
       }
     }
     if (userMenuOpen && !Layout.AtLeast(Tablet) && hasMenu) {
       ShellSheet("Account", CloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, DismissAll);
+        ShellMenuItems(chrome.User.Menu, DismissAll, AskBeforeLeave);
       }
     }
   }
@@ -160,7 +207,7 @@ component WorkbenchActivityBar(string label) {
 
 /// One section's mark that LEADS somewhere — to the section's first page.
 [Composable, Part]
-component WorkbenchMarkLink(NavItem item, NavState state, Action onNavigated) {
+component WorkbenchMarkLink(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Position = Position.Relative; Display = Display.Flex; W = Length.ActivityW; MinH = Length.TouchDense;
            Color = Colors.TextMuted; Transition = Motion.Fast;
@@ -169,9 +216,19 @@ component WorkbenchMarkLink(NavItem item, NavState state, Action onNavigated) {
     state { Current { Color = Colors.OnSurface; } Trail { Color = Colors.OnSurface; } Idle { } }
   }
   render {
-    Link(href: item.FirstRoute(), label: item.Label, current: false, onClick: onNavigated, shortcut: item.Shortcut) {
-      Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state); }
-      WorkbenchTip(item.Label, item.Badge);
+    if (!Navigation.IsDirty) {
+      Link(href: item.FirstRoute(), label: item.Label, current: false, onClick: onNavigated, shortcut: item.Shortcut) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state); }
+        WorkbenchTip(item.Label, item.Badge);
+      }
+    }
+    // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT: a `Link` cannot decline to go, so while the page is dirty
+    //    the mark is a button that raises the shell's `LeavePrompt` (the same two arms as `SidebarNavRow`).
+    if (Navigation.IsDirty) {
+      Pressable(label: item.Label, onClick: () => onAsk(item.FirstRoute())) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state); }
+        WorkbenchTip(item.Label, item.Badge);
+      }
     }
   }
 }
@@ -215,7 +272,7 @@ component WorkbenchTip(string text, string badge = "") {
 
 /// The explorer: the current section's name, its pages, and what the app adds under them (the `explorer` slot).
 [Composable, Part]
-component WorkbenchExplorer(NavItem section, string current, Action onNavigated) {
+component WorkbenchExplorer(NavItem section, string current, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Ground = Ground.Chrome; Bg = Colors.Sunken; Color = Colors.OnSurface; BorderRW = 1; Border = Colors.Border;
            W = Length.ExplorerW; Shrink = 0; MinH = "0"; OverflowY = Overflow.Auto; }
@@ -224,8 +281,8 @@ component WorkbenchExplorer(NavItem section, string current, Action onNavigated)
     Stack(gap: 0, role: UiRole.Navigation, label: section.Label) {
       Row(align: Align.Center, px: 4, minH: Length.AppBarH) { SectionLabel(section.Label); }
       Stack(gap: 1, px: 2) {
-        if (section.Children.Length == 0) { SidebarNavLeaf(section, current, onNavigated); }
-        foreach (var c in section.Children) { SidebarNavLeaf(c, current, onNavigated); }
+        if (section.Children.Length == 0) { SidebarNavLeaf(section, current, onNavigated, onAsk); }
+        foreach (var c in section.Children) { SidebarNavLeaf(c, current, onNavigated, onAsk); }
       }
       Stack(gap: 1, px: 2, pt: 4) { Slot; }
     }

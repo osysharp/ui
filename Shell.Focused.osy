@@ -280,16 +280,10 @@ component FocusedFrame(
 ///   `retain` hiding the page, and there is no undo behind it.
 [Composable, Part]
 component FocusedLeavePrompt(bool canSave, string error, Action onSave, Action onDiscard, Action onKeep) {
+  // The kit's one leave prompt (`LeavePrompt`, Saving.osy), in a task's words.
   render {
-    Dialog("Leave without saving?", onDismiss: onKeep,
-           subtitle: "This step has changes that have not been saved yet.") {
-      if (error != "") { Alert(error, title: "That could not be saved", tone: Tone.Danger); }
-      slot actions {
-        Button("Keep editing", onPress: onKeep, tone: Tone.Ghost);
-        if (canSave) { Button("Save and exit", onPress: onSave, tone: Tone.Primary); }
-        Button("Discard and exit", onPress: onDiscard, tone: Tone.Danger);
-      }
-    }
+    LeavePrompt(canSave, error, onSave, onDiscard, onKeep, subtitle: "This step has changes that have not been saved yet.",
+                saveLabel: "Save and exit", discardLabel: "Discard and exit");
   }
 }
 
@@ -476,8 +470,11 @@ component FocusedStepper(FlowStep[] steps, FlowStep active) {
            Laptop { W = "232px"; } }
   }
   render {
+    // Each step is a LIST ITEM. The steps were the list's direct children with no role of their own (one carrying
+    // `aria-current`, a link carrying a name), so the list owned no item at all — aria-required-children on every
+    // page of a focused shell, found by the UX sweep on demo/shell-arrangements.
     Stack(gap: 0, role: UiRole.List, label: "Progress", minW: "0") {
-      foreach (var step in steps) { FocusedStep(step, step.Number == total); }
+      foreach (var step in steps) { Box(role: UiRole.ListItem) { FocusedStep(step, step.Number == total); } }
     }
   }
 }
@@ -558,7 +555,8 @@ component FocusedStepMark(int number, bool done, bool active) {
 component FocusedSubsteps(NavItem step) {
   render {
     Stack(gap: 0, minW: "0", role: UiRole.List, label: step.Label + " parts") {
-      foreach (var child in step.Children) { FocusedSubstep(child); }
+      // A list owns list items only — a bare link straight under it is `aria-required-children` (WCAG 1.3.1).
+      foreach (var child in step.Children) { Box(role: UiRole.ListItem) { FocusedSubstep(child); } }
     }
   }
 }

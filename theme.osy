@@ -132,14 +132,17 @@ theme Ui {
     StoreHeaderH = "68px";   // a storefront's header — taller than an app bar, because it carries a wordmark
     EditorialHeaderH = "80px";   // an editorial header — room to breathe over a hero
     DialogW   = "480px";
+    DialogSmW = "400px";     // `DialogSize.Small` — a yes or no
+    DialogLgW = "720px";     // `DialogSize.Large` — a form
+    DialogWideW = "1040px";  // `DialogSize.Wide` — something to read
     MenuW     = "200px";
     NumberW   = "88px";      // the box a stepper's digits sit in — wide enough for four and a sign
     // ⭐ THE SPINNER, DRAWN RATHER THAN INHERITED (I-77). A numeric field is a text input now — so that its digits
     //    mean what the APP's culture says and not what the browser's locale does — and a text input has no arrows.
-    //    Half of `ControlMd` each, so the stacked pair is exactly as tall as the box it sits beside, which is what
-    //    the native pair was. A single token would be off by a rounding: 38px does not halve into two whole pixels.
-    StepperHalf  = "19px";   // one arrow — half a ControlMd box
-    StepperGlyph = "10px";   // the chevron inside it
+    //    A minus and a plus beside the box, each its full height and this wide: at least WCAG 2.2's 24px target
+    //    (SC 2.5.8), which the native-style stacked pair (two 19px halves) was not.
+    StepperW     = "28px";   // one arrow's width; its height is ControlMd
+    StepperGlyph = "12px";   // the glyph inside it
     DayCell   = "34px";      // one day in a calendar month grid
     CalendarW = "252px";
     TimeColW  = "56px";      // one column of a time picker — two digits with room to tap
@@ -190,5 +193,5 @@ theme Ui {
   //    over the dialog that a nav item opened.
   ZIndex { Sticky = 100; Popover = 200; Overlay = 300; Drawer = 320; Modal = 400; Notification = 500; Tooltip = 600; }
 
-  Breakpoints { Base = 0; Phone = 480; Tablet = 768; Laptop = 1100; Desktop = 1440; }
+  Breakpoints { Base = 0; Phone = 480; Tablet = 768; Laptop = 1100; Desktop = 1440; Widescreen = 1680; }
 }

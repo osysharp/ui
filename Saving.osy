@@ -37,6 +37,9 @@ component SaveActions(string saved = "Saved", string blockedBy = "", Action onSa
       justSaved = true;
       if (onSaved != null) { onSaved(); }
     }
+    // A lost race is the platform's to show: the conflict notice gives the person both values and Keep theirs /
+    // Apply mine. Caught here it would read only "Not saved — …" with nothing to choose (`osy docs ui-conflict-notice`).
+    catch (ConflictException) { throw; }
     catch (Exception ex) { problem = ex.Message; }
   }
   action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }
@@ -96,6 +99,7 @@ component AutoSave(int after = 2, string saved = "All changes saved") {
       everSaved = true;
       waited = 0;
     }
+    catch (ConflictException) { waited = 0; throw; }   // the conflict notice is the platform's — see SaveActions.Save
     catch (Exception ex) { problem = ex.Message; waited = 0; }
   }
   action TakeBack() {
@@ -126,6 +130,35 @@ component AutoSave(int after = 2, string saved = "All changes saved") {
       } else if (everSaved) {
         Icon(Icons.Check, size: 14, color: Colors.Success);
         Text(saved, color: Colors.TextMuted, fontSize: FontSize.Caption, role: UiRole.Status);
+      }
+    }
+  }
+}
+
+/// THE THREE ANSWERS TO "this page has unsaved changes" — Keep editing, Save and leave, Discard and leave — raised by
+/// a shell when the reader asks to go somewhere else (`SidebarShell`'s rail, `FocusedShell`'s exit). One prompt for the
+/// whole kit, so every shell asks in the same words and with the same safety rules.
+///
+/// ⭐ SAVE IS OFFERED ONLY WHEN THE PAGE SAYS IT CAN BE SAVED — `canSave` is `Navigation.CanSave(path)`, the page's own
+///    `derived canSave` guard (true when it declares none), snapshotted by the action that raises the prompt.
+/// ⚠ KEEP EDITING IS THE DISMISS, so Escape and a backdrop click do it too: the safe answer is the one reached by doing
+///   nothing. THE DESTRUCTIVE ANSWER IS LAST AND TONED `Danger` — Discard drops the page's unit of work for real.
+/// ⚠ A REFUSED SAVE KEEPS THE PROMPT UP with the server's words in `error`; a prompt that closed on a failed save
+///   would look exactly like one that worked.
+/// need: warn before leaving a page with unsaved changes, ask save or discard before navigating away, leave guard
+/// e.g. `if (leaving != "") { LeavePrompt(canSave, error, SaveAndLeave, DiscardAndLeave, KeepEditing); }`
+/// in a test: `Assert.Dialog("Leave without saving?")`, then `Ui.Click("Keep editing")`.
+[Composable]
+component LeavePrompt(bool canSave, string error, Action onSave, Action onDiscard, Action onKeep,
+                      string subtitle = "This page has changes that have not been saved yet.",
+                      string saveLabel = "Save and leave", string discardLabel = "Discard and leave") {
+  render {
+    Dialog("Leave without saving?", onDismiss: onKeep, subtitle: subtitle) {
+      if (error != "") { Alert(error, title: "That could not be saved", tone: Tone.Danger); }
+      slot actions {
+        Button("Keep editing", onPress: onKeep, tone: Tone.Ghost);
+        if (canSave) { Button(saveLabel, onPress: onSave, tone: Tone.Primary); }
+        Button(discardLabel, onPress: onDiscard, tone: Tone.Danger);
       }
     }
   }

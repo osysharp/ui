@@ -6,6 +6,7 @@ namespace Osysharp.Ui;
 /// the bound field directly. Pass `error` to mark it invalid and show the message; pass `hint` for help text
 /// (the error replaces the hint while it is present, so the row never grows). Pass `type` for the kinds of text a
 /// browser knows about — `"password"` masks what is typed, `"email"`/`"tel"` change the keyboard a phone shows.
+/// `autoFocus: true` gives it the keyboard as it appears — the next thing to type in a step that just opened.
 /// In a test it is filled by its label: `Ui.Fill("Email", "ada@example.com")`.
 /// ⚠ FOR A NUMBER, REACH FOR `NumberField` (whole) or `DecimalField` (money, a measurement, a rate) — they bind a
 /// number DIRECTLY, and their range reaches the input itself. `type:` is the browser's input type, not a value
@@ -28,7 +29,10 @@ component Field(
     //   `demo/kanban`, the sample `osy docs sample kanban` serves: it writes a bare `Input(value:, label:,
     //   placeholder:, onEnter:)` for exactly this reason, and every reader of that sample learns the atom.
     Action onEnter = null,
-    bool disabled = false)
+    bool disabled = false,
+    // `autoFocus:` — take the keyboard when it BECOMES true (and as it appears, when it starts true): the field a step
+    //   of a form wants typed next, such as the code a confirmation asks for after the change it confirms.
+    bool autoFocus = false)
 {
   variants {
     // ⭐ `W`/`MinW`, SO A FIELD TAKES ITS SHARE OF A ROW. Without them a `Field` in a `Row` is sized by the browser's
@@ -58,7 +62,7 @@ component Field(
       //   mid-word and leaves nothing on screen to say so. Degrading gracefully means the reader gets less, not that
       //   they get something that looks complete and is not.
       Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, type: type,
-            label: label, invalid: error != "", onEnter: onEnter, textOverflow: TextOverflow.Ellipsis);
+            label: label, invalid: error != "", onEnter: onEnter, autoFocus: autoFocus, textOverflow: TextOverflow.Ellipsis);
       if (error != "" || hint != "") {
         Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
              color: error != "" ? Colors.Danger : Colors.TextMuted);

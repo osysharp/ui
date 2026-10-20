@@ -1,0 +1,131 @@
+// LEAVING A PAGE WITH UNSAVED EDITS, THROUGH THE SIDEBAR SHELL'S RAIL — the kit's leave guard (`LeavePrompt`).
+// Each answer is checked on the ROW, because a prompt that says "Discarded" and kept the edit, or "Saved" and kept
+// nothing, is exactly what the guard exists to rule out.
+
+/// A clean page is left with one press and no question.
+[Test(Workshop)]
+void a_clean_page_is_left_without_a_question() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Click("Quote", within: "Main navigation");
+  Assert.OnPage("/bench/quote");
+  Assert.Hidden("Leave without saving?");
+}
+
+/// Keep editing stays on the page with the edit still there, and writes nothing.
+[Test(Workshop)]
+void keep_editing_stays_with_the_edit() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Quote", within: "Main navigation");
+  Assert.Dialog("Leave without saving?");
+  Ui.Click("Keep editing");
+  Assert.OnPage("/bench");
+  Assert.Value("Artwork", "Harbour at dawn");
+  runas (Tom) { Assert.Equal("Harbour at dusk, oil on board", FrameOrder.Single(o => o.Customer == "Ada Byrne").Artwork); }
+}
+
+/// Save and leave keeps the edit, then goes where the reader asked.
+[Test(Workshop)]
+void save_and_leave_keeps_the_edit_and_goes() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Quote", within: "Main navigation");
+  Ui.Click("Save and leave");
+  Assert.OnPage("/bench/quote");
+  runas (Tom) { Assert.Equal("Harbour at dawn", FrameOrder.Single(o => o.Customer == "Ada Byrne").Artwork); }
+}
+
+/// Discard and leave drops the edit for real — coming back shows the row as it was.
+[Test(Workshop)]
+void discard_and_leave_drops_the_edit() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Quote", within: "Main navigation");
+  Ui.Click("Discard and leave");
+  Assert.OnPage("/bench/quote");
+  Ui.Click("Bench", within: "Main navigation");
+  Assert.Value("Artwork", "Harbour at dusk, oil on board");
+  runas (Tom) { Assert.Equal("Harbour at dusk, oil on board", FrameOrder.Single(o => o.Customer == "Ada Byrne").Artwork); }
+}
+
+/// The app switcher behind the brand is a way out of the page too, and asks the same question (S14: Admin's
+/// organization switcher is this switcher).
+[Test(Workshop)]
+void the_app_switcher_asks_before_leaving_a_page_with_unsaved_edits() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Workshop");
+  Ui.Click("Quotes desk");
+  Assert.Dialog("Leave without saving?");
+  Ui.Click("Keep editing");
+  Assert.OnPage("/bench");
+  Assert.Value("Artwork", "Harbour at dawn");
+}
+
+/// The person's menu is a way out too: a row with a `To` asks the same question while the page holds unsaved edits
+/// (card rail-unsaved-changes-warning — it went straight there and left the edits behind without a word)…
+[Test(Workshop)]
+void the_persons_menu_asks_before_leaving_a_page_with_unsaved_edits() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Tom Framer");
+  Ui.Click("Your quotes");
+  Assert.Dialog("Leave without saving?");
+  Ui.Click("Keep editing");
+  Assert.OnPage("/bench");
+  Assert.Value("Artwork", "Harbour at dawn");
+}
+
+/// …and from a clean page it goes at once, with no question.
+[Test(Workshop)]
+void the_persons_menu_leaves_a_clean_page_without_a_question() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bench");
+  Ui.Click("Tom Framer");
+  Ui.Click("Your quotes");
+  Assert.OnPage("/bench/quote");
+  Assert.Hidden("Leave without saving?");
+}
+
+// ── the same guard in the WORKBENCH shell, whose activity bar is a way out of the page too ────────────────────────────
+
+/// A clean page is left from the activity bar with one press and no question.
+[Test(Workshop)]
+void a_clean_page_is_left_from_the_workbench_without_a_question() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk");
+  Ui.Click("Quote", within: "Main navigation");
+  Assert.OnPage("/desk/quote");
+  Assert.Hidden("Leave without saving?");
+}
+
+/// A dirty page asks before the activity bar leaves it, and Keep editing stays with the edit.
+[Test(Workshop)]
+void the_workbench_asks_before_leaving_a_page_with_unsaved_edits() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Quote", within: "Main navigation");
+  Assert.Dialog("Leave without saving?");
+  Ui.Click("Keep editing");
+  Assert.OnPage("/desk");
+  Assert.Value("Artwork", "Harbour at dawn");
+}
+
+/// Discard and leave drops the edit for real and goes where the reader asked.
+[Test(Workshop)]
+void the_workbench_discards_and_leaves() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Quote", within: "Main navigation");
+  Ui.Click("Discard and leave");
+  Assert.OnPage("/desk/quote");
+  runas (Tom) { Assert.Equal("Harbour at dusk, oil on board", FrameOrder.Single(o => o.Customer == "Ada Byrne").Artwork); }
+}

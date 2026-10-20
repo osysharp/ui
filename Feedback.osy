@@ -18,8 +18,11 @@ namespace Osysharp.Ui;
       Ghost   { Bg = Colors.Transparent;    Color = Colors.TextMuted;      Border = Colors.Border; }
     }
   }
+  // ANNOUNCED, not only painted: a Danger or Warning banner interrupts a screen reader (`Alert`), any other is said when
+  // it is next idle (`Status`). It had no role at all, so "That did not work" reached nobody who could not see the red
+  // box — and neither could `osy drill`, which read Admin's own failure banner as "nothing told the person".
   render {
-    Stack(gap: 1) {
+    Stack(gap: 1, role: tone == Tone.Danger || tone == Tone.Warning ? UiRole.Alert : UiRole.Status) {
       if (title != "") { Text(title, fontWeight: FontWeight.Semibold); }
       Text(message);
       Slot;
@@ -53,14 +56,18 @@ animation KitSpin {
   100% { Rotate = "360deg"; }
 }
 
-/// A determinate progress bar. `percent` is 0-100 and drives the fill's width.
+/// A determinate progress bar. `percent` is 0-100 and drives the fill's width; `label` is what it measures.
 /// In a test its progress is its VALUE: `Assert.Value("Uploading", 40)`.
 /// need: show how far through something is, a percentage bar, a determinate progress indicator
-/// e.g. `ProgressBar(percent: 72, tone: Tone.Success)`
-[Composable] component ProgressBar(int percent = 0, Tone tone = Tone.Primary) {
+/// e.g. `ProgressBar(percent: 72, tone: Tone.Success, label: "Travel budget")`
+///
+/// ⚠ NAME IT. A progress bar's whole content is a number nobody can see, so without `label:` a screen reader hears
+///   "progress bar, 72 percent" and not OF WHAT — WCAG's aria-progressbar-name, which the UX sweep found on every
+///   bar in demo/shell-arrangements. Optional only so a bar under a heading that already says it can stay quiet.
+[Composable] component ProgressBar(int percent = 0, Tone tone = Tone.Primary, string label = "") {
   render {
     Box(w: "100%", h: "6px", rounded: Radius.Pill, bg: Colors.Muted, overflow: Overflow.Hidden,
-        role: UiRole.Progress, value: percent) {
+        role: UiRole.Progress, value: percent, label: label) {
       ProgressFill(percent: percent, tone: tone);
     }
   }

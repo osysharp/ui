@@ -126,6 +126,10 @@ public sealed class NavItem {
   /// children — `/` is exempt already (see `Matches`), so this is for the "/orders" that must not light up on
   /// "/orders/42" because "/orders/42" has a nav row of its own.
   public bool Exact = false;
+  /// ONE OR TWO LETTERS drawn in place of the glyph where the row has no words — a sidebar collapsed to its icon
+  /// strip. For rows that are THINGS OF ONE KIND (projects, workspaces, customers): five of the same glyph in a
+  /// strip say nothing, and their initials tell them apart. Empty draws the glyph. The labelled row is unchanged.
+  public string Monogram = "";
 
   /// This entry's identity for expansion memory. `To` when it has one — routes are unique — else the label.
   /// ⚠ Two sibling groups with no route and the same label share a key and open together. Give one a `To`.
@@ -248,8 +252,12 @@ public sealed class NavItem {
 public sealed class MenuAction {
   /// The row's words, and its accessible name.
   public string Label;
-  /// What pressing it does. Runs with the menu already closed.
+  /// What pressing it does. Runs with the menu already closed. Leave it unset on a row that has a `To`.
   public Action OnPress;
+  /// A ROUTE this row leads to, instead of an `OnPress` — "Your account", "Settings". The shell goes there through
+  /// its leave guard, so a page holding unsaved changes asks first (`LeavePrompt`) exactly as a nav row does. An
+  /// `OnPress` that calls `Navigation.Go` leaves such a page without a word, which is why a navigating row says `To`.
+  public string To = "";
   /// The leading glyph — `Icons.X`, a built-in or one of the app's own, exactly as on a nav row.
   public Icons Icon = Icons.ChevronRight;
   /// `Tone.Danger` for the destructive one — sign out, delete. The one distinction a menu genuinely needs.
@@ -384,6 +392,12 @@ public sealed class AppChrome {
   /// its panes scrolls on its own (`h: "100%"`, `overflowY: Overflow.Auto`) while the shell's bars stay put. Off (the
   /// default), the page is a document that scrolls as a whole. The work shells — Sidebar and Rail — honour it.
   public bool Panes = false;
+  /// ⭐ THE PAGE NEEDS THE ROOM RIGHT NOW — a board, a live view, two columns of work. A sidebar then stays an icon
+  /// strip up to `Widescreen` (1680) instead of opening its labels at `Laptop` (1100): the band where a labelled rail
+  /// and a wide page cannot both fit. The reader's own control still expands it, and from `Widescreen` up it is theirs
+  /// to decide as always. A row that carries a `Badge` keeps a dot on its mark, so nothing waiting on the reader is
+  /// hidden by narrowing. An app sets it from what the page is doing (`Narrow = building`), not once.
+  public bool Narrow = false;
   /// Who is signed in, or null for nobody.
   public ShellUser User;
   /// The nav is still loading. Every shell draws skeleton rows instead of an empty column — the one loading state
@@ -577,7 +591,7 @@ public sealed class AppChrome {
 ///   asks for it: a workspace subtitle is a fact about the APPLICATION, and that shell's whole claim is that the
 ///   task matters more than the application. Defaulted true, so no other call site changes.
 component ShellBrand(AppChrome chrome, bool markOnly = false, bool tagline = true, bool switcher = true,
-                    bool shortcuts = false) {
+                    bool shortcuts = false, Action<string> onGo = null) {
   bool appsOpen = false;
   // THE APP SWITCHER, when the app lists other applications (`chrome.Apps`): the brand stops being a link home and
   // opens a connected menu — Home first, then the apps, then (for a shell with no rail to show them in) the reader's
@@ -615,7 +629,7 @@ component ShellBrand(AppChrome chrome, bool markOnly = false, bool tagline = tru
         }
         if (appsOpen) {
           Backdrop(CloseApps);
-          ShellAppMenu(chrome, shortcuts, CloseApps);
+          ShellAppMenu(chrome, shortcuts, CloseApps, onGo);
         }
       }
     }
@@ -672,11 +686,15 @@ component ShellBrandFace(AppChrome chrome, bool markOnly, bool tagline, string i
 /// route in this app, or another app's full address in the same tab.
 /// In a test open it by the brand and press a row: `Ui.Click("Fulcrum"); Ui.Click("Billing")`.
 [Composable, Part]
-component ShellAppMenu(AppChrome chrome, bool shortcuts, Action onClose) {
+component ShellAppMenu(AppChrome chrome, bool shortcuts, Action onClose, Action<string> onGo = null) {
   live var path = Navigation.CurrentPath ?? "";
+  // ⚑ THROUGH THE SHELL'S LEAVE GUARD when it has one (`onGo`): switching to another app, a pin or a recent page from
+  //   here leaves the page exactly as a nav row does, so a page holding unsaved edits asks first. It went straight to
+  //   `Navigation.Go`, so the switcher was the one way out of a dirty page that did not ask.
   action Go(string to) {
     onClose();
     if (to.StartsWith("https://") || to.StartsWith("http://")) { Navigation.Open(to, true); }
+    else if (onGo != null) { onGo(to); }
     else { Navigation.Go(to); }
   }
   live var recent = chrome.RecentFor(path);
@@ -1023,12 +1041,13 @@ component ShellPresenceWord(ShellUser user) {
 /// inside whichever container the width calls for: a floating `Menu` on a pointer, a bottom sheet on a phone.
 /// One definition, so the two presentations can never offer different items.
 [Composable, Part]
-component ShellMenuItems(MenuAction[] items, Action onPick) {
+/// `onGo` is the shell's leave guard: a row with a `To` goes through it, so a dirty page asks before it is left.
+component ShellMenuItems(MenuAction[] items, Action onPick, Action<string> onGo = null) {
   render {
     Stack(gap: 0) {
       foreach (var item in items) {
         if (item.Divided) { Divider(); }
-        ShellMenuRow(item, item.Tone, onPick);
+        ShellMenuRow(item, item.Tone, onPick, onGo);
       }
     }
   }
@@ -1037,8 +1056,18 @@ component ShellMenuItems(MenuAction[] items, Action onPick) {
 /// One row of it. Closing the menu is the SHELL's job and happens first — an app's action that opens a dialog must
 /// not leave a menu hanging over it.
 [Composable, Part]
-component ShellMenuRow(MenuAction item, Tone tone, Action onPick) {
-  action Pick() { onPick(); item.OnPress(); }
+component ShellMenuRow(MenuAction item, Tone tone, Action onPick, Action<string> onGo = null) {
+  // ⚑ A ROW WITH A `To` LEAVES THE PAGE, so it goes through the shell's leave guard when the shell has one (`onGo`) —
+  //   the person's menu was the one way out of a page with unsaved changes that did not ask (card
+  //   rail-unsaved-changes-warning). A shell with no guard goes straight there, as a link would.
+  action Pick() {
+    onPick();
+    if (item.To != "") {
+      if (onGo != null) { onGo(item.To); }
+      else { Navigation.Go(item.To); }
+    }
+    else { item.OnPress(); }
+  }
   variants {
     // Focus is the HIGHLIGHT, as in a native menu: the platform moves the keyboard through a menu's items (↑/↓,
     // type-ahead) and focuses the first when it opens, so a ring on every open would read as an error.
@@ -1060,7 +1089,7 @@ component ShellMenuRow(MenuAction item, Tone tone, Action onPick) {
         Icon(item.Icon, size: 16);
         Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
              textOverflow: TextOverflow.Ellipsis);
-        KeyHintOf(item.OnPress);
+        if (item.To == "") { KeyHintOf(item.OnPress); }
       }
     }
   }
@@ -1348,7 +1377,7 @@ component ShellBody(bool isWide, int p = 5, int pNarrow = 3, ShellPage arrangeme
 ///   mechanism) — without an arm per row type the mark would light up on `Current` and stay dead under the pointer,
 ///   which reads as a broken control rather than as a styling miss.
 [Composable, Part]
-component ShellNavMark(Icons glyph, NavState state) {
+component ShellNavMark(Icons glyph, NavState state, string monogram = "", string badge = "", Tone badgeTone = Tone.Default) {
   variants {
     base { Display = Display.Flex; W = Length.ShellMark; H = Length.ShellMark; Shrink = 0;
            Rounded = Radius.Md; Transition = Motion.Fast;
@@ -1368,7 +1397,17 @@ component ShellNavMark(Icons glyph, NavState state) {
     //   CSS. So a reflexive `w: "100%", h: "100%"` silently overrode `W = Length.ShellMark` and the mark stretched
     //   back to the full 43x40 row, repainting the exact shape this component was written to replace. It compiled,
     //   it rendered, the glyph was still centred, and only the pill's own width said anything was wrong.
-    Row(align: Align.Center, justify: Justify.Center) { Icon(glyph, size: 18); }
+    Row(align: Align.Center, justify: Justify.Center, position: Position.Relative) {
+      if (monogram == "") { Icon(glyph, size: 18); }
+      if (monogram != "") { Text(monogram, fontSize: FontSize.Caption, fontWeight: FontWeight.Bold, letterSpacing: "0.02em", lineHeight: "1"); }
+      // A row with a badge has something to say, and a strip with no words must not swallow it: a dot in the
+      // badge's own tone. The words themselves are in the row's accessible name and its tip.
+      if (badge != "") {
+        Box(position: Position.Absolute, top: "2px", right: "2px", w: "9px", h: "9px", rounded: Radius.Pill,
+            borderW: 2, border: Colors.Chrome,
+            bg: badgeTone == Tone.Danger ? Colors.Danger : (badgeTone == Tone.Warning ? Colors.Warning : Colors.Primary));
+      }
+    }
   }
 }
 

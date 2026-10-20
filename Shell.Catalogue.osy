@@ -36,7 +36,7 @@ namespace Osysharp.Ui;
 ///   `search`, `aside`, `railFoot`, `primary` — rendered in the page column, so switching from another shell drops nothing
 ///
 /// In a test the regions carry names: `Ui.Click("Shoes", within: "Departments")`, and on a phone `Ui.Click("Menu")`.
-/// need: a shop with a left category column, a department store layout, a catalogue with the shelves always open
+/// need: a shop with a left category column, a department store layout, a catalogue with the shelves always in view
 /// e.g. `CatalogueShell(chrome) { Outlet(retain: 8); slot actions { Button("Bag", onPress: OpenBag); } }`
 [Composable]
 component CatalogueShell(AppChrome chrome) {
