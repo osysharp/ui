@@ -1,0 +1,183 @@
+// Ui — THE SHELL PARTS AS v2.21.1 PUBLISHED THEM, so every call written against that release still compiles.
+//
+// ⭐ WHY THIS FILE EXISTS. 2.22.0 gave the shells a LEAVE GUARD (a page with unsaved edits asks before a nav row, a
+//    menu row or the app switcher takes the reader away) and the sidebar an app-asked narrow rail (`chrome.Narrow`).
+//    Both threaded new parameters through seventeen public parts — and a part's parameters are what a call site
+//    writes, so `osy publish` read each of them as REMOVED and asked for 3.0.0. A major for parts no app calls
+//    would have cut every `Osysharp.Ui@2` consumer off from the kit's fixes for no break at all.
+//
+// So the parts the shells actually draw are now `internal` (`…Guarded`, in the file each always lived in), and each
+// name v2.21.1 offered is here with EXACTLY v2.21.1's parameters, drawing the guarded part with what that release
+// did: no guard (a press goes where it points, as the old `Link` did), and for the sidebar frame no app-asked rail.
+//
+// ⚠ NOTHING IN THE KIT CALLS THESE. A shell calls the `…Guarded` part directly, so these cost a shell no extra depth
+//   in the tree the loader walks. They are surface, kept because it was published.
+// ⚠ ADD NO PARAMETER HERE. A new parameter belongs on the `…Guarded` part; this file is the 2.x promise and changes
+//   only at the next major, when it is deleted.
+
+namespace Osysharp.Ui;
+
+/// v2.21.1's identity chip at the foot of the rail. Draws `RailIdentityGuarded` with no leave guard.
+[Composable, Part]
+component RailIdentity(ShellUser user, bool labelled, bool hasMenu, bool open,
+                       Action onToggle, Action onClose, Action onDismissAll) {
+  render { RailIdentityGuarded(user, labelled, hasMenu, open, onToggle, onClose, onDismissAll, null); }
+}
+
+/// v2.21.1's brand lockup. Draws `ShellBrandGuarded` with no leave guard on the app switcher.
+[Composable, Part]
+component ShellBrand(AppChrome chrome, bool markOnly = false, bool tagline = true, bool switcher = true,
+                    bool shortcuts = false) {
+  render { ShellBrandGuarded(chrome, markOnly, tagline, switcher, shortcuts, null); }
+}
+
+/// v2.21.1's app switcher menu. Draws `ShellAppMenuGuarded` with no leave guard.
+[Composable, Part]
+component ShellAppMenu(AppChrome chrome, bool shortcuts, Action onClose) {
+  render { ShellAppMenuGuarded(chrome, shortcuts, onClose, null); }
+}
+
+/// v2.21.1's identity menu rows. Draws `ShellMenuItemsGuarded` with no leave guard.
+[Composable, Part]
+component ShellMenuItems(MenuAction[] items, Action onPick) {
+  render { ShellMenuItemsGuarded(items, onPick, null); }
+}
+
+/// v2.21.1's single identity menu row. Draws `ShellMenuRowGuarded` with no leave guard.
+[Composable, Part]
+component ShellMenuRow(MenuAction item, Tone tone, Action onPick) {
+  render { ShellMenuRowGuarded(item, tone, onPick, null); }
+}
+
+/// v2.21.1's sidebar frame. Draws `SidebarFrameGuarded` as that release laid it out: the reader's collapse is the
+/// only thing that makes the rail a strip (`isRoomy: true`, so `chrome.Narrow` never asks), and the collapse
+/// control calls `onToggleCollapse` as it did.
+[Composable, Part]
+component SidebarFrame(
+    AppChrome chrome, bool isPhone, bool isWide, string current, bool hasUser, bool hasMenu,
+    bool collapsed, bool drawerOpen, bool userMenuOpen,
+    List<string> opened, List<string> closed, string flyout,
+    Action onOpenDrawer, Action onCloseDrawer, Action onToggleCollapse, Action onToggleUserMenu,
+    Action onCloseUserMenu, Action onDismissAll,
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+  action ToggleCollapse(bool asked) { onToggleCollapse(); }
+  render {
+    SidebarFrameGuarded(chrome, isPhone, isWide, true, current, hasUser, hasMenu,
+                        collapsed, false, drawerOpen, userMenuOpen, opened, closed, flyout,
+                        onOpenDrawer, onCloseDrawer, ToggleCollapse, onToggleUserMenu, onCloseUserMenu, onDismissAll,
+                        onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated) {
+      slot page { Slot("page"); }
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+      slot railFoot { Slot("railFoot"); }
+      slot aside { Slot("aside"); }
+      slot primary { Slot("primary"); }
+    }
+  }
+}
+
+/// v2.21.1's sidebar rail. Draws `SidebarRailGuarded` with no leave guard.
+[Composable, Part]
+component SidebarRail(
+    AppChrome chrome, bool iconOnly, bool isPhone, string current,
+    List<string> opened, List<string> closed, string flyout, RailDrawer drawer,
+    Action onToggleCollapse, Action<string, bool> onToggleGroup, Action<string> onToggleFlyout,
+    Action onCloseFlyout, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render {
+    SidebarRailGuarded(chrome, iconOnly, isPhone, current, opened, closed, flyout, drawer,
+                       onToggleCollapse, onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, Go) {
+      slot railFoot { Slot("railFoot"); }
+    }
+  }
+}
+
+/// v2.21.1's sidebar top bar. Draws `SidebarTopBarGuarded` with no leave guard.
+[Composable, Part]
+component SidebarTopBar(AppChrome chrome, bool isPhone, bool hasUser, bool hasMenu, bool userMenuOpen,
+                        Action onOpenDrawer, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll) {
+  render {
+    SidebarTopBarGuarded(chrome, isPhone, hasUser, hasMenu, userMenuOpen, onOpenDrawer, onToggleUserMenu,
+                         onCloseUserMenu, onDismissAll, null) {
+      slot search { Slot("search"); }
+      slot actions { Slot("actions"); }
+    }
+  }
+}
+
+/// v2.21.1's top-level nav entry. Draws `SidebarNavNodeGuarded` with no leave guard.
+[Composable, Part]
+component SidebarNavNode(
+    NavItem item, bool iconOnly, string current, List<string> opened, List<string> closed, string flyout,
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render {
+    SidebarNavNodeGuarded(item, iconOnly, current, opened, closed, flyout,
+                          onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, Go);
+  }
+}
+
+/// v2.21.1's nav group. Draws `SidebarNavBranchGuarded` with no leave guard.
+[Composable, Part]
+component SidebarNavBranch(
+    NavItem item, bool iconOnly, string current, List<string> opened, List<string> closed, string flyout,
+    Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render {
+    SidebarNavBranchGuarded(item, iconOnly, current, opened, closed, flyout,
+                            onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, Go);
+  }
+}
+
+/// v2.21.1's split row (navigate + disclose). Draws `SidebarNavSplitGuarded` with no leave guard.
+[Composable, Part]
+component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisclose, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { SidebarNavSplitGuarded(item, state, open, onDisclose, onNavigated, Go); }
+}
+
+/// v2.21.1's navigating half of a split row. Draws `SidebarSplitLinkGuarded` with no leave guard.
+[Composable, Part]
+component SidebarSplitLink(NavItem item, NavState state, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { SidebarSplitLinkGuarded(item, state, onNavigated, Go); }
+}
+
+/// v2.21.1's row inside an open group. Draws `SidebarNavLeafGuarded` with no leave guard.
+[Composable, Part]
+component SidebarNavLeaf(NavItem item, string current, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { SidebarNavLeafGuarded(item, current, onNavigated, Go); }
+}
+
+/// v2.21.1's nav row. Draws `SidebarNavRowGuarded` with no leave guard.
+[Composable, Part]
+component SidebarNavRow(
+    NavItem item, bool isNested, NavState state, bool discloses, bool open,
+    Action onPress, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { SidebarNavRowGuarded(item, isNested, state, discloses, open, onPress, onNavigated, Go); }
+}
+
+/// v2.21.1's collapsed-sidebar mark. Draws `SidebarNavMarkRowGuarded` with no leave guard.
+[Composable, Part]
+component SidebarNavMarkRow(
+    NavItem item, NavState state, bool discloses, bool open, Action onPress, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { SidebarNavMarkRowGuarded(item, state, discloses, open, onPress, onNavigated, Go); }
+}
+
+/// v2.21.1's workbench activity-bar mark. Draws `WorkbenchMarkLinkGuarded` with no leave guard.
+[Composable, Part]
+component WorkbenchMarkLink(NavItem item, NavState state, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { WorkbenchMarkLinkGuarded(item, state, onNavigated, Go); }
+}
+
+/// v2.21.1's workbench explorer. Draws `WorkbenchExplorerGuarded` with no leave guard; what the caller puts inside
+/// it lands under the section's pages, as it did.
+[Composable, Part]
+component WorkbenchExplorer(NavItem section, string current, Action onNavigated) {
+  action Go(string to) { Navigation.Go(to); onNavigated(); }
+  render { WorkbenchExplorerGuarded(section, current, onNavigated, Go) { Slot; } }
+}

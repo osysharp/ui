@@ -234,7 +234,7 @@ component TabbedFrame(
       ShellSheet("Account", onCloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, onDismissAll);
+        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
       }
     }
     if (moreOpen && isPhone) {
@@ -262,7 +262,7 @@ component TabbedTopRow(
         minW: "0") {
       // ⭐ THE SWITCHER CARRIES PINNED AND RECENT HERE. A bar has no rail to show them in, so the brand's menu — the
       //    one place a tabbed product keeps "everywhere else you go" — lists them under the apps.
-      ShellBrand(chrome, shortcuts: true);
+      ShellBrandGuarded(chrome, shortcuts: true);
       Spacer();
       Slot("search");
       Row(gap: 2, align: Align.Center, shrink: 0) {
@@ -274,7 +274,7 @@ component TabbedTopRow(
           ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, open: userMenuOpen);
           if (userMenuOpen && hasMenu) {
             Backdrop(onCloseUserMenu);
-            TabbedUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+            TabbedUserMenu(chrome.User) { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
           }
         }
       }
@@ -564,7 +564,7 @@ component TabbedPhoneTopRow(
   render {
     Row(gap: 3, align: Align.Center, minH: Length.AppBarH, py: 2, role: UiRole.Banner, label: "Page header",
         minW: "0") {
-      ShellBrand(chrome, markOnly: true, shortcuts: true);
+      ShellBrandGuarded(chrome, markOnly: true, shortcuts: true);
       Stack(gap: 0, minW: "0", grow: 1) {
         ShellPageTitle("");
         // The same truncation trio the brand lockup uses — a long tenant name must clip, never wrap the bar open.

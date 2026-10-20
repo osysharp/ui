@@ -255,7 +255,7 @@ component FocusedFrame(
       ShellSheet("Account", onCloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, onDismissAll);
+        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
       }
     }
 
@@ -331,7 +331,7 @@ component FocusedBar(
     Row(gap: 3, align: Align.Center, minH: Length.AppBarH, py: 2, role: UiRole.Banner, label: "Page header",
         minW: "0") {
       // `switcher: false` — a focused task is not a place to wander off from; the brand stays a link home.
-      ShellBrand(chrome, markOnly: isPhone, tagline: false, switcher: false);
+      ShellBrandGuarded(chrome, markOnly: isPhone, tagline: false, switcher: false);
       // THE PHONE'S WHOLE STEPPER, IN ONE LINE. Five labelled steps do not fit across 390px, and a stepper
       // squeezed until they do is unreadable in a way a fraction never is — so the phone gets the count and the
       // name of the step it is on, which is the part that actually answers "where am I".
@@ -353,7 +353,7 @@ component FocusedBar(
           ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
           if (userMenuOpen && !isPhone && hasMenu) {
             Backdrop(onCloseUserMenu);
-            FocusedUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+            FocusedUserMenu(chrome.User) { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
           }
         }
       }

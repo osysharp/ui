@@ -200,7 +200,7 @@ component RailFrame(
       ShellSheet("Account", onCloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, onDismissAll);
+        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
       }
     }
   }
@@ -250,7 +250,7 @@ component RailBar(
           pt: "env(safe-area-inset-top)") {
       Row(gap: 2, align: Align.Center, justify: labelled ? Justify.Start : Justify.Center, minW: "0",
           px: 2, py: 2, minH: Length.AppBarH) {
-        ShellBrand(chrome, markOnly: !labelled);
+        ShellBrandGuarded(chrome, markOnly: !labelled);
       }
       Divider();
       // THE SCROLLING REGION. `overflowY` flips to `Visible` while a flyout is pinned, because a flyout is
@@ -291,7 +291,7 @@ component RailBar(
         Divider();
         // ⚠ ON A PHONE THE MENU IS A SHEET AT THE FRAME'S ROOT, so this must not also draw a flyout — `hasMenu`
         //   is handed through as false there and the chip stays a plain button that opens the sheet.
-        RailIdentity(chrome.User, labelled, hasMenu && !isPhone, userMenuOpen,
+        RailIdentityGuarded(chrome.User, labelled, hasMenu && !isPhone, userMenuOpen,
                      onToggleUserMenu, onCloseUserMenu, onDismissAll);
       }
       Box(h: "env(safe-area-inset-bottom)", decorative: true);
@@ -666,7 +666,7 @@ component RailExpandButton(bool expanded, bool labelled, Action onToggle) {
 ///   have the width); the CALLER decides whether the menu opens HERE as a flyout or, on a phone, as a sheet at the
 ///   frame's root — it passes `hasMenu: false` there. Folding the two into one flag silently loses the expanded
 ///   panel's own menu, because the chip is labelled there and a `!labelled` guard would refuse to draw it.
-component RailIdentity(ShellUser user, bool labelled, bool hasMenu, bool open,
+internal component RailIdentityGuarded(ShellUser user, bool labelled, bool hasMenu, bool open,
                        Action onToggle, Action onClose, Action onDismissAll, Action<string> onGo = null) {
   render {
     Box(position: Position.Relative, px: 2, py: 2) {
@@ -675,7 +675,7 @@ component RailIdentity(ShellUser user, bool labelled, bool hasMenu, bool open,
       // off the bottom-left corner is where a thumb cannot reach.
       if (open && hasMenu) {
         Backdrop(onClose);
-        RailUserMenu(user) { ShellMenuItems(user.Menu, onDismissAll, onGo); }
+        RailUserMenu(user) { ShellMenuItemsGuarded(user.Menu, onDismissAll, onGo); }
       }
     }
   }

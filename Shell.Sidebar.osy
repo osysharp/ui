@@ -152,7 +152,7 @@ component SidebarShell(AppChrome chrome) {
     // ⚠ THE BAND IS READ HERE AND NOWHERE ELSE. `Layout.AtLeast` measures a RENDERED container, so it is legal in
     //   `render` and refused in a `live var` or an action — which is right, and is why the two band facts travel as
     //   parameters instead of as state. One read, one answer, passed down.
-    SidebarFrame(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), Layout.AtLeast(Widescreen), current, hasUser, hasMenu,
+    SidebarFrameGuarded(chrome, !Layout.AtLeast(Tablet), Layout.AtLeast(Laptop), Layout.AtLeast(Widescreen), current, hasUser, hasMenu,
                  collapsed, overruled, drawerOpen, userMenuOpen, opened, closed, flyout,
                  OpenDrawer, CloseDrawer, ToggleCollapse, ToggleUserMenu, CloseUserMenu, DismissAll,
                  ToggleGroup, ToggleFlyout, CloseFlyout, Navigated) {
@@ -170,7 +170,7 @@ component SidebarShell(AppChrome chrome) {
 /// is readable only inside a `render` block, so the two band facts have to arrive as parameters rather than being
 /// computed alongside the state they interact with.
 [Composable, Part]
-component SidebarFrame(
+internal component SidebarFrameGuarded(
     AppChrome chrome, bool isPhone, bool isWide, bool isRoomy, string current, bool hasUser, bool hasMenu,
     bool collapsed, bool overruled, bool drawerOpen, bool userMenuOpen,
     List<string> opened, List<string> closed, string flyout,
@@ -231,7 +231,7 @@ component SidebarFrame(
 
   render {
     Row(align: Align.Stretch, minH: Length.Screen) {
-      SidebarRail(chrome, iconOnly, isPhone, current, opened, closed, flyout,
+      SidebarRailGuarded(chrome, iconOnly, isPhone, current, opened, closed, flyout,
                   drawerOpen ? RailDrawer.Open : RailDrawer.Closed,
                   () => onToggleCollapse(asked), onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, AskBeforeLeave) {
         slot railFoot { Slot("railFoot"); }
@@ -245,7 +245,7 @@ component SidebarFrame(
       // sideways. Without it a flex child refuses to shrink below its content and the page gets a horizontal
       // scrollbar — the one thing that must never happen at any width.
       Stack(gap: 0, grow: 1, minW: "0", h: chrome.Panes ? Length.Screen : "auto") {
-        SidebarTopBar(chrome, isPhone, hasUser, hasMenu, userMenuOpen, onOpenDrawer, onToggleUserMenu,
+        SidebarTopBarGuarded(chrome, isPhone, hasUser, hasMenu, userMenuOpen, onOpenDrawer, onToggleUserMenu,
                       onCloseUserMenu, onDismissAll, AskBeforeLeave) {
           slot search { Slot("search"); }
           slot actions { Slot("actions"); }
@@ -269,7 +269,7 @@ component SidebarFrame(
       ShellSheet("Account", onCloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, onDismissAll, AskBeforeLeave);
+        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll, AskBeforeLeave);
       }
     }
 
@@ -284,7 +284,7 @@ component SidebarFrame(
 /// The left rail: brand, nav, and whatever the app pinned at its foot. A `nav` LANDMARK, so a screen reader can
 /// jump straight past it — the cheapest large accessibility win a shell has.
 [Composable, Part]
-component SidebarRail(
+internal component SidebarRailGuarded(
     AppChrome chrome, bool iconOnly, bool isPhone, string current,
     List<string> opened, List<string> closed, string flyout, RailDrawer drawer,
     Action onToggleCollapse, Action<string, bool> onToggleGroup, Action<string> onToggleFlyout,
@@ -325,7 +325,7 @@ component SidebarRail(
           w: isPhone ? Length.RailDrawerW : (iconOnly ? Length.RailNarrowW : Length.RailW),
           pt: "env(safe-area-inset-top)") {
       Row(gap: 2, align: Align.Center, minW: "0", px: 2, py: 2, minH: Length.AppBarH) {
-        ShellBrand(chrome, markOnly: iconOnly, onGo: onAsk);
+        ShellBrandGuarded(chrome, markOnly: iconOnly, onGo: onAsk);
         if (!iconOnly) { Spacer(); }
         // The collapse control belongs only where collapsing means something. On a phone the rail is a drawer (you
         // close it, you do not narrow it) and in the cozy band it is already as narrow as it goes — an affordance
@@ -344,7 +344,7 @@ component SidebarRail(
           ShellShortcuts(chrome, iconOnly, onNavigated);
           if (chrome.Nav.Length == 0) { SidebarNavEmpty(iconOnly); }
           foreach (var item in chrome.Nav) {
-            SidebarNavNode(item, iconOnly, current, opened, closed, flyout,
+            SidebarNavNodeGuarded(item, iconOnly, current, opened, closed, flyout,
                            onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
           }
         }
@@ -428,7 +428,7 @@ component SidebarNavEmpty(bool iconOnly) {
 /// not call itself — hence three components, one per level — but a METHOD can walk any depth with an explicit
 /// index cursor, which needs nothing from the platform. Reach for the cursor before hand-unrolling a loop.
 [Composable, Part]
-component SidebarNavNode(
+internal component SidebarNavNodeGuarded(
     NavItem item, bool iconOnly, string current,
     List<string> opened, List<string> closed, string flyout,
     Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated, Action<string> onAsk) {
@@ -448,14 +448,14 @@ component SidebarNavNode(
       if (!iconOnly) { Row(px: 2, pt: 4, pb: 1) { SectionLabel(item.Label); } }
       if (iconOnly) { Box(py: 2) { Divider(); } }
       foreach (var child in item.Children) {
-        SidebarNavBranch(child, iconOnly, current, opened, closed, flyout,
+        SidebarNavBranchGuarded(child, iconOnly, current, opened, closed, flyout,
                          onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
       }
     }
 
     // A GROUP or a LINK at the top level — the same two presentations the level below has.
     if (shape != NavKind.Section) {
-      SidebarNavBranch(item, iconOnly, current, opened, closed, flyout,
+      SidebarNavBranchGuarded(item, iconOnly, current, opened, closed, flyout,
                        onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
     }
   }
@@ -467,7 +467,7 @@ component SidebarNavNode(
 /// ⛔ THE FLYOUT OPENS ON A CLICK, NOT ON HOVER, and that is not a preference. A hover-only disclosure does not
 ///    exist on a touch screen: the children would be unreachable, which is the same as not shipping them.
 [Composable, Part]
-component SidebarNavBranch(
+internal component SidebarNavBranchGuarded(
     NavItem item, bool iconOnly, string current,
     List<string> opened, List<string> closed, string flyout,
     Action<string, bool> onToggleGroup, Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated, Action<string> onAsk) {
@@ -486,28 +486,28 @@ component SidebarNavBranch(
         //    sequence of clicks in the rail could open. Two targets in one row is how every real product solves
         //    this, and the chevron takes its own accessible name so the two do not answer to the same words.
         if (item.To != "") {
-          SidebarNavSplit(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+          SidebarNavSplitGuarded(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
                           isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated, onAsk);
         }
         if (item.To == "") {
-          SidebarNavRow(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+          SidebarNavRowGuarded(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
                         true, isOpen, () => onToggleGroup(item.Key(), isOpen), onNavigated, onAsk);
         }
         if (isOpen) {
           foreach (var child in item.Children) {
-            SidebarNavLeaf(child, current, onNavigated, onAsk);
+            SidebarNavLeafGuarded(child, current, onNavigated, onAsk);
           }
         }
       }
       if (iconOnly) {
         Box(position: Position.Relative) {
-          SidebarNavMarkRow(item, onTrail ? NavState.Trail : NavState.Idle, true,
+          SidebarNavMarkRowGuarded(item, onTrail ? NavState.Trail : NavState.Idle, true,
                             flyout == item.Key(), () => onToggleFlyout(item.Key()), onNavigated, onAsk);
           if (flyout == item.Key()) {
             Backdrop(onCloseFlyout);
             SidebarFlyout(item.Label) {
               foreach (var child in item.Children) {
-                SidebarNavLeaf(child, current, onNavigated, onAsk);
+                SidebarNavLeafGuarded(child, current, onNavigated, onAsk);
               }
             }
           }
@@ -517,11 +517,11 @@ component SidebarNavBranch(
 
     if (shape != NavKind.Group) {
       if (!iconOnly) {
-        SidebarNavRow(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+        SidebarNavRowGuarded(item, false, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
                       false, false, onNavigated, onNavigated, onAsk);
       }
       if (iconOnly) {
-        SidebarNavMarkRow(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
+        SidebarNavMarkRowGuarded(item, isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
                           false, false, onNavigated, onNavigated, onAsk);
       }
     }
@@ -535,7 +535,7 @@ component SidebarNavBranch(
 /// `flex-grow` stretches them VERTICALLY instead of filling the width. This file already duplicates row contents on
 /// purpose (see `SidebarNavRow`), so the shape is the house style rather than an exception to it.
 [Composable, Part]
-component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisclose, Action onNavigated, Action<string> onAsk) {
+internal component SidebarNavSplitGuarded(NavItem item, NavState state, bool open, Action onDisclose, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; FontSize = FontSize.Body;
            Color = Colors.TextSecondary; Transition = Motion.Fast; MinW = "0";
@@ -548,7 +548,7 @@ component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisc
   }
   render {
     Row(align: Align.Center, gap: 0, w: "100%", minW: "0") {
-      SidebarSplitLink(item, state, onNavigated, onAsk);
+      SidebarSplitLinkGuarded(item, state, onNavigated, onAsk);
       SidebarSplitChevron(item, open, onDisclose);
     }
   }
@@ -557,7 +557,7 @@ component SidebarNavSplit(NavItem item, NavState state, bool open, Action onDisc
 /// The navigating half. A `Link`, never a `Pressable` calling `Navigation.Go` — a link is what gives middle-click,
 /// open-in-new-tab, a status-bar preview and the "current page" a screen reader announces.
 [Composable, Part]
-component SidebarSplitLink(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
+internal component SidebarSplitLinkGuarded(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; Grow = 1; MinW = "0"; MinH = Length.TouchDense; Rounded = Radius.Md;
            Color = "inherit";
@@ -613,12 +613,12 @@ component SidebarSplitChevron(NavItem item, bool open, Action onToggle) {
 /// LEVEL 2 — a row inside an open group, and the flattened tail of anything deeper. A child of a child renders
 /// here too, at this indent: the tree may be deeper than the rail draws, and nothing in it disappears.
 [Composable, Part]
-component SidebarNavLeaf(NavItem item, string current, Action onNavigated, Action<string> onAsk) {
+internal component SidebarNavLeafGuarded(NavItem item, string current, Action onNavigated, Action<string> onAsk) {
   live var isCurrent = item.To == current && current != "";
   live var onTrail = item.HasRoute(current);
 
   render {
-    SidebarNavRow(item, true,
+    SidebarNavRowGuarded(item, true,
                   isCurrent ? NavState.Current : (onTrail ? NavState.Trail : NavState.Idle),
                   false, false, onNavigated, onNavigated, onAsk);
     // ⭐ EVERYTHING BELOW THIS LEVEL, AT ANY DEPTH, flattened to this indent rather than dropped — which is what
@@ -628,7 +628,7 @@ component SidebarNavLeaf(NavItem item, string current, Action onNavigated, Actio
     //    iterative and unbounded, and it is the same walk `BestMatch` uses — so what LIGHTS and what RENDERS
     //    cannot disagree about how deep the nav goes.
     foreach (var deeper in item.Descendants()) {
-      SidebarNavRow(deeper, true, deeper.To == current && current != "" ? NavState.Current : NavState.Idle,
+      SidebarNavRowGuarded(deeper, true, deeper.To == current && current != "" ? NavState.Current : NavState.Idle,
                     false, false, onNavigated, onNavigated, onAsk);
     }
   }
@@ -658,7 +658,7 @@ component SidebarFlyout(string label) {
 /// link is what gives middle-click, open-in-new-tab, a status-bar preview and the `current:` state a screen reader
 /// announces as "current page". A `Pressable` that calls `Navigation.Go` looks identical and has none of them.
 [Composable, Part]
-component SidebarNavRow(
+internal component SidebarNavRowGuarded(
     NavItem item, bool isNested, NavState state, bool discloses, bool open,
     Action onPress, Action onNavigated, Action<string> onAsk) {
   variants {
@@ -734,7 +734,7 @@ component SidebarNavRow(
 ///   how a labelled tree shows depth; with no labels there is no tree to show, and the indent only pushed the glyph
 ///   off the centre of its own highlight.
 [Composable, Part]
-component SidebarNavMarkRow(
+internal component SidebarNavMarkRowGuarded(
     NavItem item, NavState state, bool discloses, bool open, Action onPress, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
@@ -787,7 +787,7 @@ component SidebarNavMarkRow(
 /// landmark, sticky, and separated from the page by a hairline rather than a shadow so it does not compete with
 /// the cards below it.
 [Composable, Part]
-component SidebarTopBar(
+internal component SidebarTopBarGuarded(
     AppChrome chrome, bool isPhone, bool hasUser, bool hasMenu, bool userMenuOpen,
     Action onOpenDrawer, Action onToggleUserMenu, Action onCloseUserMenu, Action onDismissAll,
     Action<string> onAsk = null) {
@@ -818,7 +818,7 @@ component SidebarTopBar(
           // because a panel hung off the top-right corner is where a thumb cannot reach.
           if (userMenuOpen && !isPhone && hasMenu) {
             Backdrop(onCloseUserMenu);
-            SidebarUserMenu(chrome.User) { ShellMenuItems(chrome.User.Menu, onDismissAll, onAsk); }
+            SidebarUserMenu(chrome.User) { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll, onAsk); }
           }
         }
       }

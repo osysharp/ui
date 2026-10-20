@@ -235,7 +235,7 @@ component StorefrontHeader(
             ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
             if (userMenuOpen && hasMenu) {
               Box(position: Position.Absolute, top: "calc(100% + 8px)", right: "0", z: ZIndex.Popover) {
-                Menu { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+                Menu { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
               }
             }
           }
@@ -543,7 +543,7 @@ component StorefrontMenuDrawer(AppChrome chrome, NavItem[] categories, string cu
       if (hasUser && hasMenu) {
         Stack(gap: 0, px: 2, py: 3, borderTW: 1, border: Colors.Border) {
           ShellSheetIdentity(chrome.User);
-          ShellMenuItems(chrome.User.Menu, onDismissAll);
+          ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
         }
       }
     }

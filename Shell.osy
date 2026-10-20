@@ -590,7 +590,7 @@ public sealed class AppChrome {
 /// ⚠ `tagline: false` DROPS THE SECOND LINE while keeping the product name. `FocusedShell` is the one caller that
 ///   asks for it: a workspace subtitle is a fact about the APPLICATION, and that shell's whole claim is that the
 ///   task matters more than the application. Defaulted true, so no other call site changes.
-component ShellBrand(AppChrome chrome, bool markOnly = false, bool tagline = true, bool switcher = true,
+internal component ShellBrandGuarded(AppChrome chrome, bool markOnly = false, bool tagline = true, bool switcher = true,
                     bool shortcuts = false, Action<string> onGo = null) {
   bool appsOpen = false;
   // THE APP SWITCHER, when the app lists other applications (`chrome.Apps`): the brand stops being a link home and
@@ -629,7 +629,7 @@ component ShellBrand(AppChrome chrome, bool markOnly = false, bool tagline = tru
         }
         if (appsOpen) {
           Backdrop(CloseApps);
-          ShellAppMenu(chrome, shortcuts, CloseApps, onGo);
+          ShellAppMenuGuarded(chrome, shortcuts, CloseApps, onGo);
         }
       }
     }
@@ -686,7 +686,7 @@ component ShellBrandFace(AppChrome chrome, bool markOnly, bool tagline, string i
 /// route in this app, or another app's full address in the same tab.
 /// In a test open it by the brand and press a row: `Ui.Click("Fulcrum"); Ui.Click("Billing")`.
 [Composable, Part]
-component ShellAppMenu(AppChrome chrome, bool shortcuts, Action onClose, Action<string> onGo = null) {
+internal component ShellAppMenuGuarded(AppChrome chrome, bool shortcuts, Action onClose, Action<string> onGo = null) {
   live var path = Navigation.CurrentPath ?? "";
   // ⚑ THROUGH THE SHELL'S LEAVE GUARD when it has one (`onGo`): switching to another app, a pin or a recent page from
   //   here leaves the page exactly as a nav row does, so a page holding unsaved edits asks first. It went straight to
@@ -1042,12 +1042,12 @@ component ShellPresenceWord(ShellUser user) {
 /// One definition, so the two presentations can never offer different items.
 [Composable, Part]
 /// `onGo` is the shell's leave guard: a row with a `To` goes through it, so a dirty page asks before it is left.
-component ShellMenuItems(MenuAction[] items, Action onPick, Action<string> onGo = null) {
+internal component ShellMenuItemsGuarded(MenuAction[] items, Action onPick, Action<string> onGo = null) {
   render {
     Stack(gap: 0) {
       foreach (var item in items) {
         if (item.Divided) { Divider(); }
-        ShellMenuRow(item, item.Tone, onPick, onGo);
+        ShellMenuRowGuarded(item, item.Tone, onPick, onGo);
       }
     }
   }
@@ -1056,7 +1056,7 @@ component ShellMenuItems(MenuAction[] items, Action onPick, Action<string> onGo 
 /// One row of it. Closing the menu is the SHELL's job and happens first — an app's action that opens a dialog must
 /// not leave a menu hanging over it.
 [Composable, Part]
-component ShellMenuRow(MenuAction item, Tone tone, Action onPick, Action<string> onGo = null) {
+internal component ShellMenuRowGuarded(MenuAction item, Tone tone, Action onPick, Action<string> onGo = null) {
   // ⚑ A ROW WITH A `To` LEAVES THE PAGE, so it goes through the shell's leave guard when the shell has one (`onGo`) —
   //   the person's menu was the one way out of a page with unsaved changes that did not ask (card
   //   rail-unsaved-changes-warning). A shell with no guard goes straight there, as a link would.

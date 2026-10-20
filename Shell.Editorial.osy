@@ -168,7 +168,7 @@ component EditorialHeader(
             ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
             if (userMenuOpen && hasMenu) {
               Box(position: Position.Absolute, top: "calc(100% + 8px)", right: "0", z: ZIndex.Popover) {
-                Menu { ShellMenuItems(chrome.User.Menu, onDismissAll); }
+                Menu { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
               }
             }
           }

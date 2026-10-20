@@ -128,23 +128,23 @@ component WorkbenchShell(AppChrome chrome) {
       Stack(gap: 0, h: Length.Screen, w: "100%", minW: "0") {
         Row(align: Align.Stretch, gap: 0, grow: 1, minH: "0", minW: "0") {
           WorkbenchActivityBar(label: "Main navigation") {
-            Row(align: Align.Center, justify: Justify.Center, minH: Length.AppBarH) { ShellBrand(chrome, markOnly: true); }
+            Row(align: Align.Center, justify: Justify.Center, minH: Length.AppBarH) { ShellBrandGuarded(chrome, markOnly: true); }
             Stack(gap: 1, grow: 1, minH: "0", py: 1, overflowY: Overflow.Auto, scrollbarWidth: ScrollbarWidth.None) {
               foreach (var item in Marks()) {
                 if (SectionOf(current) != null && SectionOf(current).Key() == item.Key()) {
                   // The section you are in: its mark folds the explorer, the way it does in every editor.
                   WorkbenchMark(item, NavState.Current, explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer);
                 } else {
-                  WorkbenchMarkLink(item, item.HasRoute(current) ? NavState.Trail : NavState.Idle, Navigated, AskBeforeLeave);
+                  WorkbenchMarkLinkGuarded(item, item.HasRoute(current) ? NavState.Trail : NavState.Idle, Navigated, AskBeforeLeave);
                 }
               }
             }
             if (hasUser) {
-              RailIdentity(chrome.User, false, hasMenu, userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll, AskBeforeLeave);
+              RailIdentityGuarded(chrome.User, false, hasMenu, userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll, AskBeforeLeave);
             }
           }
           if (!explorerShut && SectionOf(current) != null) {
-            WorkbenchExplorer(SectionOf(current), current, Navigated, AskBeforeLeave) { Slot("explorer"); }
+            WorkbenchExplorerGuarded(SectionOf(current), current, Navigated, AskBeforeLeave) { Slot("explorer"); }
           }
           Stack(gap: 0, grow: 1, minW: "0", minH: "0") {
             RailTopBar(chrome, false, OpenDrawer) {
@@ -174,9 +174,9 @@ component WorkbenchShell(AppChrome chrome) {
         if (drawerOpen) {
           ShellScrim(CloseDrawer);
           WorkbenchPhoneDrawer(label: "Main navigation") {
-            Row(gap: 2, align: Align.Center, px: 3, minH: Length.AppBarH) { ShellBrand(chrome); }
+            Row(gap: 2, align: Align.Center, px: 3, minH: Length.AppBarH) { ShellBrandGuarded(chrome); }
             Stack(gap: 1, px: 2, py: 2, grow: 1, minH: "0", overflowY: Overflow.Auto) {
-              foreach (var item in Marks()) { SidebarNavLeaf(item, current, Navigated, AskBeforeLeave); }
+              foreach (var item in Marks()) { SidebarNavLeafGuarded(item, current, Navigated, AskBeforeLeave); }
             }
           }
         }
@@ -189,7 +189,7 @@ component WorkbenchShell(AppChrome chrome) {
       ShellSheet("Account", CloseUserMenu) {
         ShellSheetIdentity(chrome.User);
         Divider();
-        ShellMenuItems(chrome.User.Menu, DismissAll, AskBeforeLeave);
+        ShellMenuItemsGuarded(chrome.User.Menu, DismissAll, AskBeforeLeave);
       }
     }
   }
@@ -207,7 +207,7 @@ component WorkbenchActivityBar(string label) {
 
 /// One section's mark that LEADS somewhere — to the section's first page.
 [Composable, Part]
-component WorkbenchMarkLink(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
+internal component WorkbenchMarkLinkGuarded(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Position = Position.Relative; Display = Display.Flex; W = Length.ActivityW; MinH = Length.TouchDense;
            Color = Colors.TextMuted; Transition = Motion.Fast;
@@ -272,7 +272,7 @@ component WorkbenchTip(string text, string badge = "") {
 
 /// The explorer: the current section's name, its pages, and what the app adds under them (the `explorer` slot).
 [Composable, Part]
-component WorkbenchExplorer(NavItem section, string current, Action onNavigated, Action<string> onAsk) {
+internal component WorkbenchExplorerGuarded(NavItem section, string current, Action onNavigated, Action<string> onAsk) {
   variants {
     base { Ground = Ground.Chrome; Bg = Colors.Sunken; Color = Colors.OnSurface; BorderRW = 1; Border = Colors.Border;
            W = Length.ExplorerW; Shrink = 0; MinH = "0"; OverflowY = Overflow.Auto; }
@@ -281,8 +281,8 @@ component WorkbenchExplorer(NavItem section, string current, Action onNavigated,
     Stack(gap: 0, role: UiRole.Navigation, label: section.Label) {
       Row(align: Align.Center, px: 4, minH: Length.AppBarH) { SectionLabel(section.Label); }
       Stack(gap: 1, px: 2) {
-        if (section.Children.Length == 0) { SidebarNavLeaf(section, current, onNavigated, onAsk); }
-        foreach (var c in section.Children) { SidebarNavLeaf(c, current, onNavigated, onAsk); }
+        if (section.Children.Length == 0) { SidebarNavLeafGuarded(section, current, onNavigated, onAsk); }
+        foreach (var c in section.Children) { SidebarNavLeafGuarded(c, current, onNavigated, onAsk); }
       }
       Stack(gap: 1, px: 2, pt: 4) { Slot; }
     }
