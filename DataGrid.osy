@@ -11,24 +11,9 @@ public enum GridColumnKind { Text, Number, Date }
 /// `Kind`, so a filter row never presents an operator that cannot mean anything for that column.
 public enum GridOp { Contains, Equals, StartsWith, GreaterThan, LessThan, IsEmpty, IsNotEmpty }
 
-/// ONE COLUMN'S FILTER — which column, how to compare, and what to compare against. A `GridFilter[]` is the
-/// grid's whole filter model, and it is the same shape whether a person typed it into the filter row or the
-/// page computed it: pass one in `filters:` to constrain the grid from outside, and read the user's own back
-/// Both are ANDed, so a page can pin a constraint the grid cannot widen.
-public sealed class GridFilter {
-  /// The `Name` of the column this applies to. A filter naming no column is ignored rather than refused —
-  /// a saved view outliving a renamed column must not take the page down.
-  public string Column;
-  /// How to compare. `Contains` by default, which is what a filter box does when someone just types.
-  public GridOp Op = GridOp.Contains;
-  /// What to compare against, as typed. Empty means the filter is dormant — which is what an empty filter
-  /// box has to mean, or typing and then clearing it would hide every row.
-  public string Value = "";
-}
-
 /// One column — what to call it, and how to read it off a row. `Value` is a selector over T, checked against the
 /// row type; it may compute (`f => Text.ByteSize(f.Size)`) as well as name a field.
-public sealed class GridColumn<T> {
+public sealed record GridColumn<T> {
   /// This column's IDENTITY, and its slot name: `slot <Name> { row => … }` overrides its cell with a template —
   /// use it to render a badge or a control in place of a string.
   public string Name;
@@ -51,6 +36,11 @@ public sealed class GridColumn<T> {
   public bool Secondary;
   /// Can this column be sorted by? Default yes.
   public bool Sortable = true;
+  /// THE ORDER THE ROWS ARRIVE IN: `Sort = UiSort.Descending` on the column the grid should open sorted by, so an
+  /// incident list opens newest first and a ledger by amount. The reader re-sorts from there. It is said ON the column
+  /// rather than by naming one (`sortColumn: "When"` was a string nothing checked, and a misspelt one silently sorted
+  /// by the first column). The FIRST column claiming it wins; with none, the grid starts on its first column.
+  public UiSort Sort = UiSort.None;
   /// What kind of value this column holds — it chooses the operators its filter offers.
   public GridColumnKind Kind = GridColumnKind.Text;
   /// The NUMBER this column really holds, when `Value` formats it for a reader (`"120 000 kr"`).
@@ -106,11 +96,10 @@ public sealed class GridBand<T> {
 //    rather than a control. (Also gated.)
 [Composable] component DataGrid<T>(string label, T[] rows, GridColumn<T>[] columns,
                                    Action<T>? rowSelected = null,
-                                   bool filterable = false, GridFilter[] filters = [],
+                                   bool filterable = false,
                                    Action<string>? onExport = null,
                                    string view = "", Action<string>? onViewChange = null,
-                                   bool selectable = false, Action<T[]>? onSelectionChange = null,
-                                   string sortColumn = "", bool sortDescending = false) {
+                                   bool selectable = false, Action<T[]>? onSelectionChange = null) {
   // `label:` NAMES THE GRID — for a screen reader, and for a test.
   //
   // ⚠ ADDED BECAUSE THE CONTROL'S OWN DOCUMENTATION WAS FALSE. Its summary says "in a test … count rows with
@@ -121,14 +110,12 @@ public sealed class GridBand<T> {
   //
   //   Empty by default, so nothing about an existing call changes; a grid with two of it on one page is exactly
   //   when you need the name anyway.
-  // THE ORDER THE ROWS ARRIVE IN — `sortColumn:` names the column (by its `Name`) and `sortDescending:` the direction,
-  // so an incident list opens newest first and a ledger by amount. The reader re-sorts from there; a name that matches
-  // no column falls back to the first, as a saved view naming a renamed column does.
+  // THE ORDER THE ROWS ARRIVE IN — the column that says `Sort = UiSort.Ascending/Descending`, else the first.
   GridColumn<T> sortBy = InitialSort();
-  bool descending = sortDescending;
+  bool descending = InitialSort().Sort == UiSort.Descending;
 
   GridColumn<T> InitialSort() {
-    foreach (var c in columns) { if (c.Name == sortColumn) { return c; } }
+    foreach (var c in columns) { if (c.Sort != UiSort.None) { return c; } }
     return columns[0];
   }
 
@@ -225,8 +212,14 @@ public sealed class GridBand<T> {
   //    which is what makes a NULL selector safe to name here. A helper returning the ordered rows reads
   //    better and is now legal (P-27); it is left as a `live var` because that is what keeps it CURRENT,
   //    which a plain helper would not be.
+  //
+  // ⚑ A COLUMN THAT CANNOT BE SORTED BY IS NOT AN ORDER. With no column saying `Sort` the grid starts on its first, and
+  //   when that column says `Sortable = false` its header reads "not sorted" — so the rows keep the order the page
+  //   handed them until the reader picks a column. They used to be sorted by it anyway: a status page's owner-first
+  //   alerts came out alphabetical by severity, and a component tree by its indented names (card infra-status-tabs).
   live var sorted =
-      sortBy.Number != null
+      !sortBy.Sortable ? rows
+    : sortBy.Number != null
         ? (descending ? rows.OrderByDescending(sortBy.Number) : rows.OrderBy(sortBy.Number))
         : (sortBy.Date != null
             ? (descending ? rows.OrderByDescending(sortBy.Date) : rows.OrderBy(sortBy.Date))
@@ -238,7 +231,7 @@ public sealed class GridBand<T> {
   //
   // ⚑ THIS COULD NOT BE WRITTEN UNTIL P-24, and the note that used to sit here explained why: a bound box per
   //   column is a FIELD per column, and `columns` is a prop. Two shapes were tried and both failed — a binding
-  //   into a `List<GridFilter>` element compiled and was INERT, and a child pushing its own text up on
+  //   into a list-of-filter-objects element compiled and was INERT, and a child pushing its own text up on
   //   `on change` killed the client in a remount loop. `Input(value: typed[i])` binds an ELEMENT of this
   //   component's own list, which is a write path that exists.
   //
@@ -318,7 +311,7 @@ public sealed class GridBand<T> {
   }
 
   /// The operator a value carries when it names none. ⚠ NOT ALWAYS `Contains`: `Allows` rejects Contains
-  /// on a Number or Date column, so a plain `GridFilter { Column = "Total", Value = "100" }` was matching
+  /// on a Number or Date column, so a plain `100` typed into a Total column's filter was matching
   /// EVERYTHING — the commonest filter anybody writes, silently doing nothing. On those columns the
   /// unprefixed reading is equality, which is what "100" means about a quantity.
   GridOp DefaultOp(GridColumnKind kind) {
@@ -334,17 +327,10 @@ public sealed class GridBand<T> {
     return Compare(r, c, op, want);
   }
 
-  bool Match(T r, GridFilter f) {
-    bool matched = true;
-    foreach (var c in columns) { if (c.Name == f.Column) { matched = MatchColumn(r, c, f.Value, f.Op); } }
-    return matched;   // a filter naming no column is IGNORED: a saved view outliving a rename must not blank the grid
-  }
-
-  /// Both filter models, ANDed: the `filters:` a page imposes, and the quick search a person typed here.
-  /// So a page can pin a constraint the search cannot widen.
+  /// The quick search and every column's filter box, ANDed. A constraint the PAGE pins is not here: it is the rows the
+  /// page passes — `rows: orders.Where(o => o.Total > 100)` — typed, checked, and impossible for the reader to widen.
   bool Passes(T r) {
     if (!MatchesSearch(r)) { return false; }
-    foreach (var f in filters) { if (!Match(r, f)) { return false; } }
     foreach (var c in columns) {
       if (!MatchColumn(r, c, typed[columns.IndexOf(c)], GridOp.Contains)) { return false; }
     }
@@ -369,7 +355,6 @@ public sealed class GridBand<T> {
   bool AnyFilter() {
     if (search.Trim() != "") { return true; }
     if (AnyColumnFilter()) { return true; }
-    foreach (var f in filters) { if (WantOf(f.Value) != "") { return true; } }
     return false;
   }
 
@@ -378,8 +363,7 @@ public sealed class GridBand<T> {
     return false;
   }
 
-  /// Clears what THIS grid owns — the quick search and the filter row. A `filters:` entry belongs to the page and
-  /// is deliberately untouched; the empty state only offers this button when there is something here to clear.
+  /// Clears what THIS grid owns — the quick search and the filter row.
   action ClearFilters() { search = ""; typed = Blanks(); }
 
   // ── A CALM HEADER — the filter row is ASKED FOR, not standing ───────────────────────────────
@@ -836,9 +820,8 @@ public sealed class GridBand<T> {
             if (visible.Count == 0 && AnyFilter()) {
               Row(gap: 2, px: 3, py: 3, align: Align.Center) {
                 Text("No rows match the filter.", color: Colors.TextMuted);
-                // ⚠ ONLY when there is something HERE to clear. A `filters:` entry belongs to the page, and
-                //   this button cannot touch it — offering it anyway is a control that takes the click and
-                //   leaves the screen exactly as it was.
+                // ⚠ ONLY when there is something HERE to clear — offering it otherwise is a control that takes
+                //   the click and leaves the screen exactly as it was.
                 if (search.Trim() != "" || AnyColumnFilter()) {
                   Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary.Text); }
                 }
@@ -846,6 +829,12 @@ public sealed class GridBand<T> {
             }
           }
         }
+        // ⭐ THE REST OF THE SET. A page's query is served about 2 MB of rows an answer, so `rows` over a big
+        //   table is the FIRST answer — and a grid that drew only that looked complete. Asked of the rows themselves,
+        //   so every caller passing a query gets it with nothing to write; a list that is all it will ever be draws
+        //   nothing here. Outside the scroll region, with the toolbar, for the same reason the toolbar is: a control you
+        //   have to scroll sideways to find is not there. ⚠ The search, filters and sort above work on the rows LOADED.
+        LoadMoreButton(rows);
       }
     }
     else {
@@ -894,6 +883,8 @@ public sealed class GridBand<T> {
             if (search.Trim() != "" || AnyColumnFilter()) { Pressable(onClick: ClearFilters) { Text("Clear", color: Colors.Primary.Text); } }
           }
         }
+        // The rest of the set, on the arm a phone renders — the same as the table's.
+        LoadMoreButton(rows);
       }
     }
   }

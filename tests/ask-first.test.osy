@@ -1,0 +1,42 @@
+// The kit asks before a destructive press (OSY-023): a danger-toned IconButton opens "<label>?" and acts only on the
+// second press, Cancel leaves everything as it was, and a Button given `confirmText` asks in its own words.
+
+/// The trash can asks; Cancel keeps the offcut, and pressing the action in the question throws it out.
+[Test]
+void a_danger_icon_button_asks_before_it_acts() {
+  Ui.Visit("/offcuts");
+  Ui.Click("Throw out Oak, 40cm");
+  Assert.Dialog("Throw out Oak, 40cm?");
+  Assert.Visible("3 offcuts");              // nothing has happened yet
+
+  Ui.Click("Cancel");
+  Assert.Visible("Oak, 40cm");
+  Assert.Visible("3 offcuts");
+
+  Ui.Click("Throw out Oak, 40cm");
+  Ui.Click("Throw out Oak, 40cm", within: "Throw out Oak, 40cm?");
+  Assert.Hidden("Oak, 40cm");
+  Assert.Visible("2 offcuts");
+}
+
+/// `confirm: false` turns the question off: one press, done.
+[Test]
+void a_danger_icon_button_told_not_to_ask_acts_at_once() {
+  Ui.Visit("/offcuts");
+  Ui.Click("Bin Walnut, 25cm now");
+  Assert.Hidden("Walnut, 25cm");
+  Assert.Visible("2 offcuts");
+}
+
+/// A Button with `confirmText` asks that question, and runs its action only when the action is pressed again.
+[Test]
+void a_button_with_confirm_text_asks_in_its_own_words() {
+  Ui.Visit("/offcuts");
+  Ui.Click("Sweep the bench");
+  Assert.Dialog("Sweep the bench? Every offcut goes in the bin.");
+  Assert.Hidden("Bench swept.");
+
+  Ui.Click("Sweep the bench", within: "Sweep the bench? Every offcut goes in the bin.");
+  Assert.Visible("Bench swept.");
+  Assert.Visible("0 offcuts");
+}

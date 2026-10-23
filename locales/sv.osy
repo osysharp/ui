@@ -254,7 +254,7 @@ translations sv {
   // ── FocusedBar ──
   /// FocusedBar · a control's name for screen readers
   /// also in RailTopBar
-  /// also in SidebarTopBar
+  /// also in SidebarTopBarGuarded
   /// also in TabbedTopRow
   accessibleName "Page header" => "Sidhuvud";
   /// FocusedBar · text on the page
@@ -273,31 +273,20 @@ translations sv {
   /// FocusedFrame · a title
   /// shown through ShellSheet.title
   /// also in RailFrame
-  /// also in SidebarFrame
+  /// also in SidebarFrameGuarded
   /// also in TabbedFrame
   title "Account" => "Konto";
 
   // ── FocusedLeavePrompt ──
   /// FocusedLeavePrompt · a button's label · at most ~23 characters
-  /// shown through Button.label
-  /// beside: "Keep editing"
+  /// shown through LeavePrompt.discardLabel
   button "Discard and exit" => "Släng och avsluta";
-  /// FocusedLeavePrompt · a button's label · at most ~18 characters
-  /// shown through Button.label
-  /// beside: "Discard and exit"
-  button "Keep editing" => "Fortsätt redigera";
   /// FocusedLeavePrompt · a button's label · at most ~19 characters
-  /// shown through Button.label
+  /// shown through LeavePrompt.saveLabel
   button "Save and exit" => "Spara och avsluta";
   /// FocusedLeavePrompt · a subtitle
-  /// shown through Dialog.subtitle
+  /// shown through LeavePrompt.subtitle
   subtitle "This step has changes that have not been saved yet." => "Det här steget har ändringar som inte har sparats ännu.";
-  /// FocusedLeavePrompt · a title
-  /// shown through Dialog.title
-  title "Leave without saving?" => "Lämna utan att spara?";
-  /// FocusedLeavePrompt · a title
-  /// shown through Alert.title
-  title "That could not be saved" => "Det gick inte att spara";
 
   // ── FocusedStepper ──
   /// FocusedStepper · a control's name for screen readers
@@ -344,6 +333,36 @@ translations sv {
   /// shown through KeyboardSheet.title
   title "Keyboard shortcuts" => "Kortkommandon";
 
+  // ── LeavePrompt ──
+  /// LeavePrompt · a button's label · at most ~24 characters
+  /// shown through LeavePrompt.discardLabel
+  button "Discard and leave" => "Kasta och lämna";
+  /// LeavePrompt · a button's label · at most ~18 characters
+  /// shown through Button.label
+  button "Keep editing" => "Fortsätt redigera";
+  /// LeavePrompt · a button's label · at most ~20 characters
+  /// shown through LeavePrompt.saveLabel
+  button "Save and leave" => "Spara och lämna";
+  /// LeavePrompt · a subtitle
+  /// shown through LeavePrompt.subtitle
+  subtitle "This page has changes that have not been saved yet." => "Den här sidan har ändringar som inte har sparats än.";
+  /// LeavePrompt · a title
+  /// shown through Dialog.title
+  title "Leave without saving?" => "Lämna utan att spara?";
+  /// LeavePrompt · a title
+  /// shown through Alert.title
+  title "That could not be saved" => "Det gick inte att spara";
+
+  // ── LoadMoreButton ──
+  /// LoadMoreButton · a button's label · at most ~15 characters
+  /// shown through LoadMoreButton.label
+  button "Load more" => "Läs in fler";
+
+  // ── LoadingNote ──
+  /// LoadingNote · text on the page
+  /// shown through LoadingNote.text
+  text "Loading…" => "Laddar…";
+
   // ── Menu ──
   /// Menu · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through Menu.label
@@ -362,6 +381,25 @@ translations sv {
   /// MonthHeader · a control's name for screen readers
   /// beside: "Previous month"
   accessibleName "Previous year" => "Föregående år";
+
+  // ── MoreText ──
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through MoreTextToggle.label
+  label "Less" => "Mindre";
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~26 characters
+  /// placeholders: {about} = about (string)
+  /// shown through MoreTextToggle.label
+  label "Less about {about}" => "Mindre om {about}";
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through MoreTextToggle.label
+  label "More" => "Mer";
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~26 characters
+  /// placeholders: {about} = about (string)
+  /// shown through MoreTextToggle.label
+  label "More about {about}" => "Mer om {about}";
+  /// MoreText · text on the page
+  /// shown through MoreTextToggle.text
+  text "Less" => "Mindre";
 
   // ── Osysharp.Ui.DurationUnit ──
   /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~10 characters
@@ -402,7 +440,7 @@ translations sv {
 
   // ── RailBar ──
   /// RailBar · a control's name for screen readers
-  /// also in SidebarRail
+  /// also in SidebarRailGuarded
   /// also in TabbedStrip
   /// also in TabbedPhoneBar
   accessibleName "Main navigation" => "Huvudnavigering";
@@ -489,6 +527,18 @@ translations sv {
   /// beside: "Discard", "Save"
   text "Unsaved changes" => "Osparade ändringar";
 
+  // ── SearchPicker ──
+  /// SearchPicker · placeholder text inside an empty field · at most ~20 characters
+  /// shown through SearchPicker.placeholder
+  placeholder "Type to search" => "Skriv för att söka";
+  /// SearchPicker · text on the page
+  text "Change" => "Ändra";
+  /// SearchPicker · text on the page
+  text "More match — keep typing to narrow it." => "Fler matchar — fortsätt skriva för att begränsa.";
+  /// SearchPicker · text on the page
+  /// placeholders: {Trim} = search.Trim(…) (string)
+  text "Nothing matches “{Trim}”." => "Inget matchar ”{Trim}”.";
+
   // ── SelectionBar ──
   /// SelectionBar · a control's name for screen readers
   accessibleName "Selection" => "Markering";
@@ -544,22 +594,22 @@ translations sv {
   /// SettingsSection · text on the page
   text "You can see this, but not change it." => "Du kan se det här, men inte ändra det.";
 
-  // ── ShellAppMenu ──
-  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~10 characters
+  // ── ShellAppMenuGuarded ──
+  /// ShellAppMenuGuarded · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through MenuItem.label
   /// beside: "Apps"
   label "Home" => "Start";
-  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~16 characters
+  /// ShellAppMenuGuarded · a label (a field, a list item, a menu entry) · at most ~16 characters
   /// shown through Menu.label
   label "Switch app" => "Byt app";
-  /// ShellAppMenu · text on the page
+  /// ShellAppMenuGuarded · text on the page
   /// shown through SectionLabel.text
   text "Apps" => "Appar";
-  /// ShellAppMenu · text on the page
+  /// ShellAppMenuGuarded · text on the page
   /// shown through SectionLabel.text
   /// also in ShellShortcuts
   text "Pinned" => "Fästa";
-  /// ShellAppMenu · text on the page
+  /// ShellAppMenuGuarded · text on the page
   /// shown through SectionLabel.text
   /// also in ShellShortcuts
   text "Recent" => "Senaste";
@@ -663,6 +713,7 @@ translations sv {
   /// TabbedPhoneMoreButton · a control's name for screen readers
   accessibleName "More" => "Mer";
   /// TabbedPhoneMoreButton · text on the page
+  /// also in MoreText
   text "More" => "Mer";
 
   // ── TabbedPhoneTab ──

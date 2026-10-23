@@ -108,11 +108,13 @@ component CatalogueFrame(AppChrome chrome, bool isPhone, string current, bool ha
           }
         }
       }
-    }
 
-    if (menuOpen && isPhone) {
-      StorefrontScrim(onCloseMenu);
-      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      // ⛔ INSIDE THE ONE ROOT: a second top-level element wears `CatalogueShell`'s `variants` (`MinH = Screen;
+      //    Bg = Bg`) — see `StorefrontFrame`, where that turned an overlay into an opaque sheet over the window.
+      if (menuOpen && isPhone) {
+        StorefrontScrim(onCloseMenu);
+        StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      }
     }
   }
 }

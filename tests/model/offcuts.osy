@@ -1,0 +1,33 @@
+// The offcut shelf — the kit's ask-first controls as an app uses them (OSY-023). A danger-toned `IconButton` is the
+// trash can in a row and asks before it throws; a `Button` asks when it is given a `confirmText`; and a danger-toned
+// one told `confirm: false` does not ask at all.
+
+using Osysharp.Ui;
+
+[Route("/offcuts")]
+[AllowAnonymous]
+[Render(CSR)]
+[Title("Offcuts")]
+component OffcutsPage() {
+  List<string> offcuts = ["Oak, 40cm", "Walnut, 25cm", "Ash, 60cm"];
+  string swept = "";
+
+  action Throw(string o) { offcuts.Remove(o); }
+  action Sweep() { offcuts.Clear(); swept = "Bench swept."; }
+
+  render {
+    Stack(gap: 3, p: 5) {
+      PageTitle("Offcuts");
+      foreach (var o in offcuts) {
+        Row(gap: 2, align: Align.Center, label: o) {
+          Text(o);
+          IconButton("Throw out " + o, () => Throw(o), tone: Tone.Danger) { Icon(Icons.Trash); }
+          IconButton("Bin " + o + " now", () => Throw(o), tone: Tone.Danger, confirm: false) { Icon(Icons.Close); }
+        }
+      }
+      Button("Sweep the bench", onPress: Sweep, confirmText: "Sweep the bench? Every offcut goes in the bin.");
+      if (swept != "") { Text(swept); }
+      Text($"{offcuts.Count} offcuts");
+    }
+  }
+}

@@ -48,3 +48,46 @@ component SkeletonText() {
     }
   }
 }
+
+/// "Is it still coming?" — the fade a late notice arrives with, 200ms. Used by `LoadingNote`.
+animation KitLateFade {
+  Duration = "200ms";
+  Easing = EaseOut;
+  from { Opacity = 0; }
+  to   { Opacity = 1; }
+}
+
+/// A quiet "Loading…" for a stand-in — put it in a `skeleton { }` beside the placeholders. It is a status message, so a
+/// screen reader says it; on screen it stays invisible until the wait has gone on long enough to notice (the skeleton
+/// itself shows ~150 ms after the page opens, and this fades in ~150 ms after that), so a fast read never flashes it.
+/// The placeholders say WHAT is coming; this says THAT it is coming, to someone who cannot see shapes.
+/// In a test it is a loading state — assert the real content once it has arrived; `Ui.HoldServer()` holds the page here.
+/// need: a loading message while data loads, tell a screen reader the page is still loading
+/// e.g. `skeleton { Stack(gap: 3) { LoadingNote(); SkeletonText(); } }`
+[Composable]
+component LoadingNote(string text = "Loading…") {
+  render {
+    Row(role: UiRole.Status, align: Align.Center, animation: KitLateFade, animationDelay: "150ms") {
+      Text(text, fontSize: FontSize.Label, color: Colors.TextMuted);
+    }
+  }
+}
+
+/// A card's outline while what it holds is on the way — the same frame as `Card`, at its padding and border, so nothing
+/// moves when the content lands. Give it the card's `title` when the page knows it before its data (drawn for real, in
+/// the same place); `lines` is how many placeholder rows it holds, the last one short.
+/// In a test it is a loading state — assert the real content once it has arrived; `Ui.HoldServer()` holds the page here.
+/// need: a placeholder card while a section loads, a card outline before its content arrives
+/// e.g. `skeleton { Stack(gap: 4) { SkeletonCard("Components", lines: 5); SkeletonCard("Releases"); } }`
+[Composable]
+component SkeletonCard(string title = "", int lines = 3) {
+  render {
+    Card(title) {
+      Stack(gap: 3) {
+        foreach (var i in Enumerable.Range(0, lines)) {
+          if (i == lines - 1 && lines > 1) { Skeleton(shape: SkeletonShape.HalfLine); } else { Skeleton(); }
+        }
+      }
+    }
+  }
+}

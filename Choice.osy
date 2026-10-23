@@ -98,6 +98,63 @@ namespace Osysharp.Ui;
   }
 }
 
+/// A picker over rows there are too many of to list — a table that grows. The person types; the PAGE reads the few
+/// rows that match, on the server, and offers them; the person picks one. Nothing loads every row: `search` is the
+/// text typed, and the page's own query reads it, so each keystroke is answered by the database over the whole table.
+/// Use it where `Dropdown` would offer every row of an entity (`osy lint`'s `ui-picker-over-a-growing-entity` says
+/// when); keep `Dropdown` for an enum, or a handful of rows the page already holds.
+/// `value` is a two-way binding, `T?` for an optional choice, exactly as on `Dropdown`. `options` is the page's query
+/// keyed on `search` — bound it with `.Take(n)`; when the page reads without one and more rows match than one answer
+/// carries, the panel says so ("more match — keep typing"). The template says what one row reads, as on `Dropdown`.
+/// In a test fill it by its label and press the match: `Ui.Fill("Supplier", "kest")`, then `Ui.Click("Kestrel Ltd")`.
+/// need: pick one of thousands of rows, a search-as-you-type picker, an autocomplete lookup, choose a customer by name, a combo box that searches, typeahead
+/// e.g. `string find = "";` · `live var matches = Supplier.Where(s => s.Name.Contains(find)).OrderBy(s => s.Name).Take(20).ToList();`
+///   then `SearchPicker("Supplier", value: order.Supplier, search: find, options: matches) { s => Text(s.Name); }`
+[Composable] component SearchPicker<T>(string label, Binding<T> value, Binding<string> search, T[] options,
+                                       string placeholder = "Type to search", bool disabled = false) {
+  // A chosen row is SHOWN, not typed back into the box: the template draws a row (an avatar, two lines), which no
+  // text field can hold. Pressing it reopens the search.
+  bool searching = false;
+  action Change() { searching = true; }
+  action Choose(T m) { value = m; search = ""; searching = false; }
+  action Close() { search = ""; searching = false; }
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (value != null && !searching) {
+        Pressable(onClick: Change, disabled: disabled, role: UiRole.ComboBox, expanded: false, label: label) {
+          Row(align: Align.Center, gap: 2, h: Length.ControlMd, px: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md,
+              bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body) {
+            Slot(value) { Text(value.Label); }
+            Spacer();
+            Text("Change", color: Colors.Primary.Text, fontSize: FontSize.Caption);
+          }
+        }
+      } else {
+        Box(position: Position.Relative) {
+          Input(value: search, label: label, placeholder: placeholder, w: "100%", h: Length.ControlMd, type: "search",
+                autoFocus: searching, onEscape: Close, disabled: disabled);
+          // The panel opens on what was typed, never on an empty box: an empty search is every row, which is the
+          // read this control exists not to make.
+          if (search.Trim() != "") {
+            Stack(role: UiRole.ListBox, position: Position.Absolute, z: ZIndex.Popover, mt: 1, minW: Length.MenuW, w: "100%",
+                  bg: Colors.Surface, borderW: 1, border: Colors.Border, rounded: Radius.Md, shadow: Shadow.Floating, p: 1, gap: 0) {
+              foreach (var m in options) {
+                Pressable(onClick: () => Choose(m)) {
+                  Option(selected: m == value) { Slot(m) { Text(m.Label); } }
+                }
+              }
+              if (options.Count == 0) { Text("Nothing matches “" + search.Trim() + "”.", color: Colors.TextMuted, px: 2, py: 2); }
+              if (options.HasMore) { Text("More match — keep typing to narrow it.", color: Colors.TextMuted, fontSize: FontSize.Caption, px: 2, py: 1); }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 /// A time-zone picker: a dropdown over the app's declared zones (`zones {}`, or the platform's default set), each read
 /// as its place and its region — "Stockholm — Europe". `value` is a two-way `Binding<Zone>`; what it stores is the zone
 /// itself, so a `Zone` field binds straight to it and every clock that reads the field (`DateTime.UtcNow.InZone(z)`,
@@ -160,9 +217,17 @@ public string ZoneWords(Zone zone) {
   //   on the press — commit, cascade, log — still says so. The binding writes into the page's unit of work like
   //   every other edit; what makes it durable is the page's commit, exactly as for a `Field`.
   action Flip() { value = !value; if (onToggle != null) { onToggle(); } }
+  // ⚑ A RING YOU CAN SEE, AND A TARGET A FINGER CAN HIT (OSY-022). The press had no focus style of its own, so a
+  //   keyboard user got the browser's hairline (measured 0.67px on the kit's ThemeToggle, the same shape), and its
+  //   row was as tall as one line of text — 21px, under WCAG 2.2's 24px floor (SC 2.5.8). The row now holds the
+  //   kit's `Length.TouchDense`, as `RadioGroup`'s options already did.
+  variants {
+    base { Rounded = Radius.Sm;
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
   render {
     Pressable(onClick: Flip, disabled: disabled, role: UiRole.Checkbox, checked: value, label: label) {
-      Row(align: Align.Center, gap: 2) {
+      Row(align: Align.Center, gap: 2, minH: Length.TouchDense) {
         // THE TICK DRAWS ITSELF WHEN IT IS TICKED — `KitDraw`, keyed to the value so it plays on the press and never
         // as the page appears (a form of twenty ticked boxes does not draw twenty ticks on load). The keyed box stays
         // put across the flip; only what is inside it changes.
@@ -244,9 +309,14 @@ public string ZoneWords(Zone zone) {
   // The same change as `Checkbox` above, for the same reason — see its note. A switch is the immediate-effect
   // sibling, so `onToggle` is where its commit usually goes.
   action Flip() { value = !value; if (onToggle != null) { onToggle(); } }
+  // The same ring and the same target as `Checkbox`, for the same reason.
+  variants {
+    base { Rounded = Radius.Sm;
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
   render {
     Pressable(onClick: Flip, disabled: disabled, role: UiRole.Switch, checked: value, label: label) {
-      Row(align: Align.Center, gap: 2) {
+      Row(align: Align.Center, gap: 2, minH: Length.TouchDense) {
         if (value) {
           Box(w: "34px", h: "20px", rounded: Radius.Pill, bg: Colors.Primary, px: 1, display: Display.InlineFlex, align: Align.Center, justify: Justify.End) {
             Box(w: "16px", h: "16px", rounded: Radius.Circle, bg: Colors.OnPrimary);

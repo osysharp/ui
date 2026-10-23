@@ -1,0 +1,45 @@
+// A toast goes by itself. It used to stay until the app cleared it, and an app that forgot (Admin's zone page) showed
+// one success message in the corner for as long as the page was open.
+//
+// Its time is read from the app's clock, once a second, so a test moves the clock and fires that once-a-second check
+// with `Ui.Tick()` — the moment it goes is the test's, not the real timer's.
+
+/// Still there four seconds in, gone at five — and `onDismiss` cleared the page's own state, so the next ring shows
+/// the same words again.
+[Test(Workshop)]
+void a_toast_goes_by_itself_and_clears_what_showed_it() {
+  TestClock.Set(new DateTime(2041, 3, 4, 9, 30, 0));
+  Ui.SignInAs(Tom);
+  Ui.Visit("/counter");
+  Ui.Click("Ring up");
+  Assert.Visible("Rung up.");
+  Assert.Visible("A notice is up.");
+
+  Ui.Tick();                                     // its time starts at the first beat that sees it
+  TestClock.Advance(TimeSpan.FromSeconds(4));
+  Ui.Tick();
+  Assert.Visible("Rung up.");
+
+  TestClock.Advance(TimeSpan.FromSeconds(1));
+  Ui.Tick();
+  Assert.Hidden("Rung up.");
+  Assert.Visible("Rings: 1. Nothing to say.");   // onDismiss cleared the page's notice
+
+  // Cleared, so the same message shows again.
+  Ui.Click("Ring up");
+  Assert.Visible("Rung up.");
+}
+
+/// Without `onDismiss` the toast still goes: the page keeps its notice, and the corner is empty.
+[Test(Workshop)]
+void a_toast_goes_even_when_the_page_never_clears_it() {
+  TestClock.Set(new DateTime(2041, 3, 4, 9, 30, 0));
+  Ui.SignInAs(Tom);
+  Ui.Visit("/counter/forgetful");
+  Ui.Click("Ring up");
+  Assert.Visible("Rung up.");
+  TestClock.Advance(TimeSpan.FromSeconds(10));
+  Ui.Tick();
+  Assert.Hidden("Rung up.");
+  Assert.Visible("A notice is up.");
+}

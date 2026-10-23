@@ -223,7 +223,9 @@ component Widget(string title, string subtitle = "", WidgetSpan span = WidgetSpa
         if (editing) {
           if (onEarlier != null) { IconButton("Move " + title + " earlier", onEarlier, size: Size.Sm) { Icon(Icons.ArrowLeft, size: 14); } }
           if (onLater != null) { IconButton("Move " + title + " later", onLater, size: Size.Sm) { Icon(Icons.ArrowRight, size: 14); } }
-          if (onRemove != null) { IconButton("Remove " + title, onRemove, size: Size.Sm, tone: Tone.Danger) { Icon(Icons.Close, size: 14); } }
+          // `confirm: false`: taking a widget off a board being arranged is undone by putting it back, so asking would
+          // only slow the arranging down.
+          if (onRemove != null) { IconButton("Remove " + title, onRemove, size: Size.Sm, tone: Tone.Danger, confirm: false) { Icon(Icons.Close, size: 14); } }
         }
       }
       Slot;

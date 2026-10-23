@@ -3,22 +3,49 @@
 namespace Osysharp.Ui;
 
 /// A page's h1 — one per screen. `PageTitle("Belfries")`.
-/// In a test it is read as text: `Assert.Visible("Belfries")`.
+/// It IS the page's heading, level 1, to a screen reader as well as to the eye (`Heading(text, level: 1)` with the
+/// title face). In a test it is read as text: `Assert.Visible("Belfries")`.
 // ⚑ In the DISPLAY face: a page's h1 is a heading, and an app that gives `Font.Display` a face of its own expects
 //   every heading to wear it. It read the text face, so a designed app's stub pages had Inter titles under a
 //   condensed-display hero (salon S0 run 2). The kit's `Display` is `Font.Sans` until an app overrides it, so an
 //   undesigned app looks exactly as before.
 [Composable] component PageTitle(string text) {
   variants { base { FontFamily = Font.Display; FontSize = FontSize.Title; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.15"; } }
-  render { Text(text); }
+  // ⚑ A HEADING, NOT JUST BIG TYPE. Until 2.26.0 this rendered a bare `Text`, so every page built on the kit had a
+  //   title to the eye and no heading at all to a screen reader — an outside tester counted 0 `h1`–`h6` on every
+  //   page of four generated apps (OSY-022), and a reader who navigates by headings had nothing to jump to.
+  render { Text(text, role: UiRole.Heading, level: 1); }
 }
 
-/// A card or section heading — the level below a page title.
+/// A card or section heading — the level below a page title. It is a heading, level 2, to a screen reader; a
+/// `Card("Billing")` and a `Dialog`'s title are drawn with it, so every card is a place a reader can jump to.
 /// In a test it is read as text: `Assert.Visible("Billing")`.
 /// e.g. `CardTitle("Billing")`
 [Composable] component CardTitle(string text) {
   variants { base { FontFamily = Font.Display; FontSize = FontSize.Subhead; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.25"; } }
-  render { Text(text); }
+  render { Text(text, role: UiRole.Heading, level: 2); }
+}
+
+/// A HEADING OF ANY LEVEL — h1 to h6, in the kit's type scale. A page's title is `PageTitle` (level 1) and a card's is
+/// `CardTitle` (level 2); `Heading` is for the levels between and below, and for a heading in its own place in the
+/// page — "Opening hours" over a block of the page, "This week" over a list. The size follows the level: 1 is the
+/// title size, 2 `FontSize.Heading`, 3 `FontSize.Subhead`, 4 to 6 body size in the headings weight. A level outside
+/// 1–6 is drawn and announced as the nearest one.
+/// ⚑ WHY A CONTROL AND NOT A SIZE. A heading is a fact about the page's OUTLINE, not about its type: a screen-reader
+/// user moves through a page by its headings, and a title drawn as large bold `Text` is not one — measured by an
+/// outside tester on four generated apps, every page had zero headings (OSY-022). Say "this is a heading" and the
+/// size comes with it.
+/// In a test it is read as text: `Assert.Visible("Opening hours")`.
+/// need: a heading, a section title, a subheading, h2 h3 h4, a title over part of a page, a heading level
+/// e.g. `Heading("Opening hours")` · `Heading("Weekends", level: 3)`
+[Composable] component Heading(string text, int level = 2) {
+  variants { base { FontFamily = Font.Display; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.2"; } }
+  /// The level a reader is told: 1 to 6, whatever was passed.
+  int Level() { return level < 1 ? 1 : (level > 6 ? 6 : level); }
+  render {
+    Text(text, role: UiRole.Heading, level: Level(),
+         fontSize: Level() == 1 ? FontSize.Title : (Level() == 2 ? FontSize.Heading : (Level() == 3 ? FontSize.Subhead : FontSize.Body)));
+  }
 }
 
 /// The tracked-out uppercase micro-label above a group ("BILLING", "DANGER ZONE").

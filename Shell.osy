@@ -1383,7 +1383,7 @@ component ShellNavMark(Icons glyph, NavState state, string monogram = "", string
            Rounded = Radius.Md; Transition = Motion.Fast;
            inside RailNavMarkLink.Hover { Bg = Colors.Muted; }
            inside RailNavMarkDiscloser.Hover { Bg = Colors.Muted; }
-           inside SidebarNavMarkRow.Hover { Bg = Colors.Muted; }
+           inside SidebarNavMarkRowGuarded.Hover { Bg = Colors.Muted; }
            inside ShellShortcutMarkRow.Hover { Bg = Colors.Muted; } }
     state {
       Current { Bg = Primary.Subtle; }

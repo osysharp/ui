@@ -1,0 +1,47 @@
+// A PAGE SHOWS ITS SHAPE WHILE IT LOADS, AND FILLS IN WHEN THE READ LANDS (card loading-states-everywhere).
+// `Ui.HoldServer()` keeps the server's answers back, so the test stands on the screen a slow server leaves a person on;
+// `Ui.ReleaseServer()` lets them through.
+
+[TestFixture]
+void ThreeMouldings() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  new Moulding { Moniker = "Oak half-round", Shelf = 1 };
+  new Moulding { Moniker = "Walnut flat", Shelf = 1 };
+  new Moulding { Moniker = "Gilt cushion", Shelf = 2 };
+}
+
+principal StockKeeper => Framer.Single(f => f.Email == "pia@frames.test");
+
+/// A page that loads in `on mount` shows its frame — the card's real title and a quiet "Loading…" — before the read
+/// lands, and its numbers after.
+[Test(ThreeMouldings)]
+void the_stock_report_shows_its_shape_while_it_loads_then_fills_in() {
+  Ui.SignInAs(StockKeeper);
+  Ui.HoldServer();
+  Ui.Visit("/stock/report");
+  Assert.Visible("Loading…");
+  Assert.Visible("Shelves");
+  Assert.Hidden("3 mouldings");
+
+  Ui.ReleaseServer();
+  Assert.Visible("3 mouldings");
+  Assert.Visible("on 2 shelves");
+  Assert.Hidden("Loading…");
+}
+
+/// The same for a page whose rows come through a `live var`.
+[Test(ThreeMouldings)]
+void the_shelves_show_their_shape_while_the_rows_load_then_fill_in() {
+  Ui.SignInAs(StockKeeper);
+  Ui.HoldServer();
+  Ui.Visit("/stock/shelves");
+  Assert.Visible("Reading the shelves…");
+  Assert.Visible("On the shelves");
+  Assert.Hidden("Walnut flat");
+
+  Ui.ReleaseServer();
+  Assert.Visible("Walnut flat");
+  Assert.Visible("Gilt cushion");
+  Assert.Hidden("Reading the shelves…");
+}

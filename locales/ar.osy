@@ -254,7 +254,7 @@ translations ar {
   // ── FocusedBar ──
   /// FocusedBar · a control's name for screen readers
   /// also in RailTopBar
-  /// also in SidebarTopBar
+  /// also in SidebarTopBarGuarded
   /// also in TabbedTopRow
   accessibleName "Page header" => "رأس الصفحة";
   /// FocusedBar · text on the page
@@ -273,31 +273,20 @@ translations ar {
   /// FocusedFrame · a title
   /// shown through ShellSheet.title
   /// also in RailFrame
-  /// also in SidebarFrame
+  /// also in SidebarFrameGuarded
   /// also in TabbedFrame
   title "Account" => "الحساب";
 
   // ── FocusedLeavePrompt ──
   /// FocusedLeavePrompt · a button's label · at most ~23 characters
-  /// shown through Button.label
-  /// beside: "Keep editing"
+  /// shown through LeavePrompt.discardLabel
   button "Discard and exit" => "تجاهل والخروج";
-  /// FocusedLeavePrompt · a button's label · at most ~18 characters
-  /// shown through Button.label
-  /// beside: "Discard and exit"
-  button "Keep editing" => "متابعة التعديل";
   /// FocusedLeavePrompt · a button's label · at most ~19 characters
-  /// shown through Button.label
+  /// shown through LeavePrompt.saveLabel
   button "Save and exit" => "حفظ والخروج";
   /// FocusedLeavePrompt · a subtitle
-  /// shown through Dialog.subtitle
+  /// shown through LeavePrompt.subtitle
   subtitle "This step has changes that have not been saved yet." => "في هذه الخطوة تغييرات لم تُحفظ بعد.";
-  /// FocusedLeavePrompt · a title
-  /// shown through Dialog.title
-  title "Leave without saving?" => "هل تريد المغادرة دون حفظ؟";
-  /// FocusedLeavePrompt · a title
-  /// shown through Alert.title
-  title "That could not be saved" => "تعذّر الحفظ";
 
   // ── FocusedStepper ──
   /// FocusedStepper · a control's name for screen readers
@@ -344,6 +333,36 @@ translations ar {
   /// shown through KeyboardSheet.title
   title "Keyboard shortcuts" => "اختصارات لوحة المفاتيح";
 
+  // ── LeavePrompt ──
+  /// LeavePrompt · a button's label · at most ~24 characters
+  /// shown through LeavePrompt.discardLabel
+  button "Discard and leave" => "تجاهل وغادر";
+  /// LeavePrompt · a button's label · at most ~18 characters
+  /// shown through Button.label
+  button "Keep editing" => "متابعة التعديل";
+  /// LeavePrompt · a button's label · at most ~20 characters
+  /// shown through LeavePrompt.saveLabel
+  button "Save and leave" => "احفظ وغادر";
+  /// LeavePrompt · a subtitle
+  /// shown through LeavePrompt.subtitle
+  subtitle "This page has changes that have not been saved yet." => "في هذه الصفحة تغييرات لم تُحفظ بعد.";
+  /// LeavePrompt · a title
+  /// shown through Dialog.title
+  title "Leave without saving?" => "هل تريد المغادرة دون حفظ؟";
+  /// LeavePrompt · a title
+  /// shown through Alert.title
+  title "That could not be saved" => "تعذّر الحفظ";
+
+  // ── LoadMoreButton ──
+  /// LoadMoreButton · a button's label · at most ~15 characters
+  /// shown through LoadMoreButton.label
+  button "Load more" => "تحميل المزيد";
+
+  // ── LoadingNote ──
+  /// LoadingNote · text on the page
+  /// shown through LoadingNote.text
+  text "Loading…" => "جارٍ التحميل…";
+
   // ── Menu ──
   /// Menu · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through Menu.label
@@ -362,6 +381,25 @@ translations ar {
   /// MonthHeader · a control's name for screen readers
   /// beside: "Previous month"
   accessibleName "Previous year" => "السنة السابقة";
+
+  // ── MoreText ──
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through MoreTextToggle.label
+  label "Less" => "أقل";
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~26 characters
+  /// placeholders: {about} = about (string)
+  /// shown through MoreTextToggle.label
+  label "Less about {about}" => "أقل عن {about}";
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through MoreTextToggle.label
+  label "More" => "المزيد";
+  /// MoreText · a label (a field, a list item, a menu entry) · at most ~26 characters
+  /// placeholders: {about} = about (string)
+  /// shown through MoreTextToggle.label
+  label "More about {about}" => "المزيد عن {about}";
+  /// MoreText · text on the page
+  /// shown through MoreTextToggle.text
+  text "Less" => "أقل";
 
   // ── Osysharp.Ui.DurationUnit ──
   /// Osysharp.Ui.DurationUnit · a label (a field, a list item, a menu entry) · at most ~10 characters
@@ -402,7 +440,7 @@ translations ar {
 
   // ── RailBar ──
   /// RailBar · a control's name for screen readers
-  /// also in SidebarRail
+  /// also in SidebarRailGuarded
   /// also in TabbedStrip
   /// also in TabbedPhoneBar
   accessibleName "Main navigation" => "التنقل الرئيسي";
@@ -489,6 +527,18 @@ translations ar {
   /// beside: "Discard", "Save"
   text "Unsaved changes" => "تغييرات غير محفوظة";
 
+  // ── SearchPicker ──
+  /// SearchPicker · placeholder text inside an empty field · at most ~20 characters
+  /// shown through SearchPicker.placeholder
+  placeholder "Type to search" => "اكتب للبحث";
+  /// SearchPicker · text on the page
+  text "Change" => "تغيير";
+  /// SearchPicker · text on the page
+  text "More match — keep typing to narrow it." => "توجد نتائج أخرى — تابع الكتابة لتضييقها.";
+  /// SearchPicker · text on the page
+  /// placeholders: {Trim} = search.Trim(…) (string)
+  text "Nothing matches “{Trim}”." => "لا شيء يطابق «{Trim}».";
+
   // ── SelectionBar ──
   /// SelectionBar · a control's name for screen readers
   accessibleName "Selection" => "التحديد";
@@ -544,22 +594,22 @@ translations ar {
   /// SettingsSection · text on the page
   text "You can see this, but not change it." => "يمكنك رؤية هذا، لكن لا يمكنك تغييره.";
 
-  // ── ShellAppMenu ──
-  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~10 characters
+  // ── ShellAppMenuGuarded ──
+  /// ShellAppMenuGuarded · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through MenuItem.label
   /// beside: "Apps"
   label "Home" => "الرئيسية";
-  /// ShellAppMenu · a label (a field, a list item, a menu entry) · at most ~16 characters
+  /// ShellAppMenuGuarded · a label (a field, a list item, a menu entry) · at most ~16 characters
   /// shown through Menu.label
   label "Switch app" => "تبديل التطبيق";
-  /// ShellAppMenu · text on the page
+  /// ShellAppMenuGuarded · text on the page
   /// shown through SectionLabel.text
   text "Apps" => "التطبيقات";
-  /// ShellAppMenu · text on the page
+  /// ShellAppMenuGuarded · text on the page
   /// shown through SectionLabel.text
   /// also in ShellShortcuts
   text "Pinned" => "المثبّتة";
-  /// ShellAppMenu · text on the page
+  /// ShellAppMenuGuarded · text on the page
   /// shown through SectionLabel.text
   /// also in ShellShortcuts
   text "Recent" => "الأخيرة";
@@ -663,6 +713,7 @@ translations ar {
   /// TabbedPhoneMoreButton · a control's name for screen readers
   accessibleName "More" => "المزيد";
   /// TabbedPhoneMoreButton · text on the page
+  /// also in MoreText
   text "More" => "المزيد";
 
   // ── TabbedPhoneTab ──

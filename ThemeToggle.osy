@@ -16,10 +16,15 @@ component ThemeToggle(string glyph = "🌓", string label = "Toggle theme") {
   variants {
     base {
       Px = 3; Py = 2; Rounded = Radius.Md; Border = Colors.Border; Bg = Colors.Surface; Color = Colors.OnSurface;
+      // ⚑ A FOCUS RING A KEYBOARD USER CAN SEE (OSY-022). It had none of its own, so focus was the browser's default
+      //   hairline — measured 0.67px by an outside tester — on a control that sits in every page's header. And a
+      //   target a finger can hit: the emoji face alone made it as small as the glyph's line.
+      MinW = Length.TouchDense; MinH = Length.TouchDense; Display = Display.InlineFlex;
+      Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; }
     }
   }
 
   render {
-    Pressable(glyph, onClick: Flip, label: label);
+    Pressable(glyph, onClick: Flip, label: label, align: Align.Center, justify: Justify.Center);
   }
 }

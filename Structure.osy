@@ -100,11 +100,25 @@ namespace Osysharp.Ui;
 /// name. Required makes it unrepresentable rather than merely diagnosed.
 /// ⚑ First, because every captioned control in this kit reads `(label, …)`. Measured 2026-08-29: both call sites
 /// in the corpus already passed `label:` by name, so the move cost two edits and closed the hole for free.
-/// need: a small square press target that is only a glyph, a close or an edit affordance in a row
+/// ⭐ A DANGER-TONED ONE ASKS FIRST. `tone: Tone.Danger` is the trash can in a row, and a one-press destroy is the
+/// commonest irreversible mistake there is (OSY-023), so it opens the kit's `ConfirmStep` — "Delete welcome.txt?",
+/// Cancel or the action — and runs `onPress` only on the second press. `confirmText:` says more than "<label>?"
+/// ("Delete welcome.txt? It cannot be recovered."); `confirm: false` turns the question off, for a removal that is
+/// undone as easily as it is done (a filter chip, a widget on a board being arranged); `confirm: true` asks on any tone.
+/// In a test: `Ui.Click("Delete welcome.txt"); Assert.Dialog("Delete welcome.txt?");
+/// Ui.Click("Delete welcome.txt", within: "Delete welcome.txt?");`.
+/// need: a small square press target that is only a glyph, a close or an edit affordance in a row, a delete button in a row
 /// e.g. `IconButton("Remove", Remove, tone: Tone.Danger) { Icon(Icons.Trash); }`
 [Composable] component IconButton(string label, Action onPress, Tone tone = Tone.Default, Size size = Size.Md,
                                   bool disabled = false, bool canPress = true, string whenDenied = "",
-                                  string shortcut = "") {
+                                  string shortcut = "", bool? confirm = null, string confirmText = "") {
+  // Asks first when it was told to, or when it is a danger action and was not told otherwise.
+  action Press() {
+    if (confirm ?? (tone == Tone.Danger || confirmText != "")) {
+      if (Dialog.Ask<ConfirmAnswer>(ConfirmStep(confirmText != "" ? confirmText : label + "?", label), unitOfWork: Inherit)
+          == ConfirmAnswer.Proceed) { onPress(); }
+    } else { onPress(); }
+  }
   variants {
     base {
       Display = Display.InlineFlex; Rounded = Radius.Md; Transition = Motion.Fast; Color = Colors.TextMuted;
@@ -126,7 +140,9 @@ namespace Osysharp.Ui;
     }
   }
   render {
-    Pressable(onClick: onPress, label: label, disabled: disabled || !canPress, whenDenied: whenDenied, shortcut: shortcut) {
+    // `Press` only when it asks — see Button: pressed straight through, the button is busy for as long as the action runs.
+    Pressable(onClick: (confirm ?? (tone == Tone.Danger || confirmText != "")) ? Press : onPress, label: label,
+              disabled: disabled || !canPress, whenDenied: whenDenied, shortcut: shortcut) {
       Row(align: Align.Center, justify: Justify.Center) { Slot; }
       // The name an icon has no room for, and its key — on hover and keyboard focus.
       if (shortcut != "") { KeyTip(label, shortcut); }

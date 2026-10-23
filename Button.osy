@@ -38,8 +38,23 @@ component Button(
     // button shows its name and key; `showShortcut: true` shows the key ON the button instead ("Send ⌘↵") — for
     // the one primary action a reader should learn the key of.
     string shortcut = "",
-    bool showShortcut = false)
+    bool showShortcut = false,
+    // ⭐ ASK BEFORE IT RUNS — `confirmText: "Sign the minutes? They cannot be changed afterwards."` opens the kit's
+    //   `ConfirmStep` with that question and runs `onPress` only when the person presses the action again inside it;
+    //   `confirm: true` asks "<label>?". For an action that cannot be taken back — signing, closing, sending, deleting.
+    //   An outside tester found every one of those running on one press in four generated apps (OSY-023).
+    // ⚠ NOT ON BY TONE, unlike `IconButton`. A danger-toned `Button` is as often the confirmation's OWN action — the
+    //   "Delete" in a `Dialog`'s footer — and asking there would ask twice. So a Button asks when it is told to.
+    bool? confirm = null,
+    string confirmText = "")
 {
+  action Press() {
+    if (confirm ?? confirmText != "") {
+      if (Dialog.Ask<ConfirmAnswer>(ConfirmStep(confirmText != "" ? confirmText : label + "?", label), unitOfWork: Inherit)
+          == ConfirmAnswer.Proceed) { onPress(); }
+    } else { onPress(); }
+  }
+
   variants {
     base {
       Px = 4; Py = 2; Rounded = Radius.Md; FontWeight = FontWeight.Semibold; FontSize = FontSize.Body; H = Length.ControlMd;
@@ -64,7 +79,10 @@ component Button(
   }
 
   render {
-    Pressable(onClick: onPress, disabled: disabled || !canPress, whenDenied: whenDenied,
+    // ⚠ `Press` ONLY WHEN IT ASKS. Pressed straight through, the press IS the app's action: the button is busy while it
+    //   runs (a slow save shows it and cannot be pressed twice) and its failure is the press's. Through `Press` the
+    //   action is a fire-and-forget callback, which `Press` has already returned from.
+    Pressable(onClick: (confirm ?? confirmText != "") ? Press : onPress, disabled: disabled || !canPress, whenDenied: whenDenied,
               label: announceAs != "" ? announceAs : label, shortcut: shortcut) {
       Row(align: Align.Center, justify: Justify.Center, gap: 2) {
         Slot;

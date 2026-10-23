@@ -1,0 +1,58 @@
+// THE PAGE'S UNIT OF WORK, END TO END — one page that writes no save code beyond placing `SaveActions`,
+// and gets the rest from the platform: every edit joins the page's unit of work, each one is an Undo step without a
+// `UnitOfWork.Mark` anywhere, a save the model's rules would refuse is held with the edits kept, leaving the page asks
+// first, and an act that saves at once is refused while the job holds edits nobody has saved.
+
+/// One job at the framer's desk: its artwork and customer edited in place, saved beside its name.
+[Route("/orders/{id}/desk")] [Authorize(IsFramer)] [Render(CSR)] [Title("Job desk")]
+component JobDeskPage(Guid id) {
+  live var order = FrameOrder.FirstOrDefault(o => o.Id == id);
+  string notice = "";
+
+  // Marking a job paid happens AT ONCE — the server call saves as it ends. While the job holds unsaved edits the
+  // platform refuses it, in words the person can act on, rather than change the job under their draft.
+  action MarkPaid() {
+    notice = "";
+    try {
+      SettleOrder(order.Id);
+      notice = "Marked paid.";
+    }
+    catch (Exception e) { notice = e.Message; }
+  }
+
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(order.Customer) { SaveActions(saved: "Job saved."); }
+        Field("Artwork", value: order.Artwork);
+        Field("Customer", value: order.Customer);
+        Row(gap: 2, align: Align.Center) {
+          Button("Mark paid", onPress: MarkPaid);
+          TextLink("Back to orders", to: "/");
+        }
+        if (notice != "") { Text(notice, role: UiRole.Status); }
+        Text(order.Paid ? "Paid." : "Not paid yet.");
+      }
+    }
+  }
+}
+
+/// The same job's artwork, kept by itself once the person has PAUSED for three seconds (`AutoSave(after: 3)`).
+[Route("/orders/{id}/jot-slowly")] [Authorize(IsFramer)] [Render(CSR)] [Title("Jot")]
+component JobJotPage(Guid id) {
+  live var order = FrameOrder.FirstOrDefault(o => o.Id == id);
+  render {
+    if (order != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(order.Customer) { AutoSave(after: 3); }
+        Field("Artwork", value: order.Artwork);
+      }
+    }
+  }
+}
+
+/// Settles a job — work the person does not edit field by field, so it is a function, and it saves as it ends.
+void SettleOrder(Guid id) {
+  var job = FrameOrder.Single(o => o.Id == id);
+  job.Paid = true;
+}

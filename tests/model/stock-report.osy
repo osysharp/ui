@@ -1,0 +1,66 @@
+// THE STOCK REPORT — two pages that read the server on the way in, so each has a moment when it is still loading:
+// one loads in `on mount` (a server function, the way a report is read), one through a `live var`. Each draws its
+// SHAPE meanwhile — the kit's `SkeletonCard` with the card's real title, and a `LoadingNote` — and fills in when the
+// read lands (`tests/loading.test.osy` holds the server to look at the moment in between).
+
+/// What the stock report says: how many mouldings, on how many shelves.
+public sealed class StockSummary {
+  public int Mouldings;
+  public int Shelves;
+}
+
+/// The stock in two numbers — a server read, as a report is.
+StockSummary StockReport() {
+  return new StockSummary {
+    Mouldings = Moulding.Count(),
+    Shelves = Moulding.Select(m => m.Shelf).Distinct().Count()
+  };
+}
+
+/// The report, loaded in `on mount` — its skeleton shows while that first read is out.
+[Route("/stock/report")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock report")]
+component StockReportPage() {
+  StockSummary summary = new StockSummary();
+  on mount { summary = StockReport(); }
+
+  skeleton {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Stock report");
+      LoadingNote();
+      SkeletonCard("Shelves", lines: 2);
+    }
+  }
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Stock report");
+      Card("Shelves") {
+        Stack(gap: 3) {
+          Text($"{summary.Mouldings} mouldings");
+          Text($"on {summary.Shelves} shelves");
+        }
+      }
+    }
+  }
+}
+
+/// The shelves, read through a `live var` — its skeleton shows while the rows are on their way.
+[Route("/stock/shelves")] [Authorize(IsFramer)] [Render(CSR)] [Title("Shelves")]
+component ShelvesPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Shelf).ToList();
+
+  skeleton {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Shelves");
+      LoadingNote("Reading the shelves…");
+      SkeletonCard("On the shelves", lines: 3);
+    }
+  }
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Shelves");
+      Card("On the shelves") {
+        Stack(gap: 3) { foreach (var m in mouldings) { Text(m.Moniker); } }
+      }
+    }
+  }
+}

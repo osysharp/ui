@@ -45,7 +45,7 @@
 //                    mark-only identity chip; menus are BOTTOM SHEETS within thumb reach; `aside` stacks under the
 //                    page rather than disappearing. Every target is at least `Length.Touch`, and nothing that
 //                    matters is reachable only by hovering.
-//   cozy     768+    the rail DOCKS as a 64px icon strip — always visible, never a click away from knowing where
+//   cozy     768+    the rail DOCKS as a 68px icon strip — always visible, never a click away from knowing where
 //                    you are — and a nested group opens as a FLYOUT beside it. One content column.
 //   wide     1100+   the rail opens to its full 264px with labels, badges and section headings; the page and its
 //                    `aside` sit SIDE BY SIDE. This is the band that has room, and it uses it.
@@ -74,7 +74,7 @@ public enum RailDrawer { Closed, Open }
 ///   `search`    the global search affordance in the top bar — `ShellSearch(…)` is shaped for it
 ///   `actions`   top-bar controls right of search — a notification button, a primary call to action
 ///   `railFoot`  pinned at the foot of the rail — `ShellFootCard(…)` is shaped for it. Hidden when the rail is
-///               an icon strip, because a card cannot be 64px wide and a truncated one is worse than none.
+///               an icon strip, because a card cannot be 68px wide and a truncated one is worse than none.
 ///   `aside`     a right rail. A COLUMN beside the page at 1100+, a section under it below that — never dropped,
 ///               because a phone that silently loses a panel has lost content, not layout.
 ///
@@ -261,20 +261,20 @@ internal component SidebarFrameGuarded(
         // `?` opens the page's keyboard sheet, from anywhere — fixed, so it takes no room here.
         KeyboardSheet();
       }
-    }
 
-    // The identity SHEET — phone only. Rendered at the frame's root, outside the rail, so no transform or overflow
-    // of the rail's can clip it and it stacks over everything the shell draws.
-    if (userMenuOpen && isPhone && hasMenu) {
-      ShellSheet("Account", onCloseUserMenu) {
-        ShellSheetIdentity(chrome.User);
-        Divider();
-        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll, AskBeforeLeave);
+      // The identity SHEET — phone only. Rendered at the frame's root, outside the rail, so no transform or overflow
+      // of the rail's can clip it and it stacks over everything the shell draws.
+      if (userMenuOpen && isPhone && hasMenu) {
+        ShellSheet("Account", onCloseUserMenu) {
+          ShellSheetIdentity(chrome.User);
+          Divider();
+          ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll, AskBeforeLeave);
+        }
       }
-    }
 
-    if (leaving != "") {
-      LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing);
+      if (leaving != "") {
+        LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing);
+      }
     }
   }
 }
@@ -335,7 +335,7 @@ internal component SidebarRailGuarded(
       Divider();
       // THE SCROLLING REGION. `overflowY` flips to `Visible` while a flyout is open, because a flyout is positioned
       // beside a row and an `auto` overflow clips on BOTH axes — the collapsed rail's submenu would be cut off at
-      // 64px. A transient panel is worth a transiently unscrollable list.
+      // 68px. A transient panel is worth a transiently unscrollable list.
       Stack(gap: 1, grow: 1, minH: "0", overflowY: flyout != "" ? Overflow.Visible : Overflow.Auto,
             px: 2, py: 2, scrollbarWidth: ScrollbarWidth.Thin) {
         if (chrome.Loading) { ShellNavSkeleton(iconOnly); }
@@ -349,7 +349,7 @@ internal component SidebarRailGuarded(
           }
         }
       }
-      // The foot slot is a CARD, and a card cannot be 64px wide. Hidden rather than truncated when the rail is an
+      // The foot slot is a CARD, and a card cannot be 68px wide. Hidden rather than truncated when the rail is an
       // icon strip: a clipped help card reads as a rendering bug, and its absence reads as a narrow rail.
       if (!iconOnly) {
         Stack(gap: 0, px: 3, pb: 3, pt: 2) { Slot("railFoot"); }

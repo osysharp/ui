@@ -124,13 +124,15 @@ component EditorialFrame(
       }
       Slot("primary");
       Slot("footer");
-    }
 
-    if (menuOpen && isPhone) {
-      StorefrontScrim(onCloseMenu);
-      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      // ⛔ INSIDE THE ONE ROOT, for `StorefrontFrame`'s reason: a second top-level element wears `EditorialShell`'s
+      //    `variants` (`MinH = Screen; Bg = Bg`), which turned the user menu's `Backdrop` into an opaque sheet over the
+      //    whole window. (That backdrop now sits beside its menu, in `EditorialHeader`.)
+      if (menuOpen && isPhone) {
+        StorefrontScrim(onCloseMenu);
+        StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      }
     }
-    if (userMenuOpen && hasMenu && !isPhone) { Backdrop(onCloseUserMenu); }
   }
 }
 
@@ -166,10 +168,11 @@ component EditorialHeader(
         if (hasUser && !isPhone) {
           Box(position: Position.Relative) {
             ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
+            // `BelowEnd`, and the backdrop BESIDE the menu, for `StorefrontHeader`'s reasons. A click away shuts
+            // everything the shell holds open — and while this menu is open, nothing else is.
             if (userMenuOpen && hasMenu) {
-              Box(position: Position.Absolute, top: "calc(100% + 8px)", right: "0", z: ZIndex.Popover) {
-                Menu { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
-              }
+              Backdrop(onDismissAll);
+              Menu(from: MenuFrom.BelowEnd, label: chrome.User.Name) { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
             }
           }
         }

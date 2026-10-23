@@ -1,0 +1,91 @@
+// THE WORKSHOP'S STOCK — more mouldings and suppliers than one answer to a page carries. A page's read is served about
+// 2 MB of rows an answer, and a moulding carries its whole profile sheet, so a long stock list is a WINDOW: the stock
+// table pages (`DataGrid` draws "Load more" itself), the stock list pages through `LoadMoreButton`, and a purchase
+// picks its supplier with a `SearchPicker` the database answers as the framer types.
+
+/// A moulding profile the workshop stocks, with its full specification sheet.
+entity Moulding {
+  [Required, MaxLength(120)] string Moniker;
+  int Shelf;
+  [MaxLength(9000)] string Specification = "";
+  security { allow read, create when IsFramer; }
+}
+
+/// Somebody the workshop buys from.
+entity Supplier {
+  [Required, MaxLength(120)] string Name;
+  [MaxLength(9000)] string Terms = "";
+  security { allow read, create when IsFramer; }
+}
+
+/// The stock as a table — every moulding, shelf by shelf.
+[Route("/stock")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock")]
+component StockPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Shelf).ToList();
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Stock");
+      DataGrid("Mouldings", rows: mouldings,
+               columns: [ new GridColumn<Moulding> { Name = "Moniker", Label = "Moniker", Value = m => m.Moniker } ]);
+    }
+  }
+}
+
+/// The stock by shelf, in the order the page reads it: no column can be sorted by, so the order is the page's.
+[Route("/stock/by-shelf")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock by shelf")]
+component StockByShelfPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Shelf).ToList();
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Stock by shelf");
+      DataGrid("Mouldings by shelf", rows: mouldings,
+               columns: [ new GridColumn<Moulding> { Name = "Moniker", Label = "Moniker", Value = m => m.Moniker, Sortable = false },
+                          new GridColumn<Moulding> { Name = "Shelf", Label = "Shelf", Value = m => m.Shelf.ToString(), Sortable = false } ]);
+    }
+  }
+}
+
+/// The stock opening on its highest shelf: the Shelf column says `Sort = UiSort.Descending`, so the rows ARRIVE in that
+/// order — whatever order the page read them in, and although Shelf is not the first column.
+[Route("/stock/top-shelf-first")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock, top shelf first")]
+component StockTopShelfFirstPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Moniker).ToList();
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Stock, top shelf first");
+      DataGrid("Mouldings, top shelf first", rows: mouldings,
+               columns: [ new GridColumn<Moulding> { Name = "Moniker", Label = "Moniker", Value = m => m.Moniker },
+                          new GridColumn<Moulding> { Name = "Shelf", Label = "Shelf", Value = m => m.Shelf.ToString(),
+                                                     Number = m => m.Shelf, Kind = GridColumnKind.Number,
+                                                     Sort = UiSort.Descending } ]);
+    }
+  }
+}
+
+/// The same stock as a plain list, paged by the button under it.
+[Route("/stock/list")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock list")]
+component StockListPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Shelf).ToList();
+  render {
+    Stack(gap: 1, p: 6) {
+      PageTitle("Stock list");
+      foreach (var m in mouldings) { Text(m.Moniker); }
+      LoadMoreButton(mouldings, label: "More mouldings");
+    }
+  }
+}
+
+/// A purchase: the supplier is found by typing, not by scrolling every supplier the workshop has ever used.
+[Route("/purchase")] [Authorize(IsFramer)] [Render(CSR)] [Title("Purchase")]
+component PurchasePage() {
+  string find = "";
+  Supplier? supplier = null;
+  live var matches = Supplier.Where(s => s.Name.Contains(find)).OrderBy(s => s.Name).Take(20).ToList();
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Purchase");
+      SearchPicker("Supplier", value: supplier, search: find, options: matches) { s => Text(s.Name); }
+      if (supplier != null) { Text("Buying from " + supplier.Name); }
+    }
+  }
+}

@@ -16,7 +16,8 @@ namespace Osysharp.Ui;
 /// the same place. Undo steps back to the last savepoint (`UnitOfWork.Mark("…")` before an edit makes one, and names the
 /// button), Discard drops every unsaved change, Save commits them. Mod+S saves and Mod+Z undoes, from anywhere on the page.
 /// `blockedBy` holds a save back with the sentence saying why, exactly as `SaveBar`'s; `onSaved` runs once a save lands.
-/// A refused save says why ("Not saved — …") in the same place.
+/// A save the model's rules would refuse is HELD, not sent: the edits stay and each field in the way is shown.
+/// A refused save says why ("Not saved — …") in the same place, and keeps the edits so they can be fixed and saved.
 /// In a test: `Ui.Click("Save")`, `Ui.Click("Discard")`, and `Assert.Visible("Edited")` while there are changes.
 /// need: save and cancel buttons beside the title, inline save, a dirty marker on a record, save in a side panel, discard changes in place
 /// e.g. `PageHead(account.Name) { SaveActions(saved: "Saved."); }`
@@ -32,6 +33,14 @@ component SaveActions(string saved = "Saved", string blockedBy = "", Action onSa
     problem = "";
     justSaved = false;
     if (blockedBy != "") { return; }
+    // HELD, NOT SENT: a save the model's own rules would refuse never leaves the page — the edits stay, every
+    // field in the way is shown at its control, and the sentence says how many. (Sent, it would only come back refused:
+    // a refused page save keeps its edits too, but the person would wait a round trip to learn what the page knew.)
+    if (Validation.All.Count > 0) {
+      Validation.Reveal();
+      problem = Validation.All.Count == 1 ? "1 field needs attention." : Validation.All.Count.ToString() + " fields need attention.";
+      return;
+    }
     try {
       UnitOfWork.Commit();
       justSaved = true;
@@ -40,7 +49,9 @@ component SaveActions(string saved = "Saved", string blockedBy = "", Action onSa
     // A lost race is the platform's to show: the conflict notice gives the person both values and Keep theirs /
     // Apply mine. Caught here it would read only "Not saved — …" with nothing to choose (`osy docs ui-conflict-notice`).
     catch (ConflictException) { throw; }
-    catch (Exception ex) { problem = ex.Message; }
+    // A refused save KEEPS the page's edits, so the reason shows beside them, still editable; each
+    // field the server named shows its own sentence under it (`Validation.MessageFor`).
+    catch (Exception ex) { problem = "Not saved — " + ex.Message; }
   }
   action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }
   action Undo() { problem = ""; UnitOfWork.Undo(); }
@@ -63,7 +74,7 @@ component SaveActions(string saved = "Saved", string blockedBy = "", Action onSa
         Button("Discard", onPress: Discard, tone: Tone.Ghost, size: Size.Sm);
         Button("Save", onPress: Save, tone: Tone.Primary, size: Size.Sm, shortcut: "Mod+S", disabled: blockedBy != "");
       } else if (problem != "") {
-        Text("Not saved — " + problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
+        Text(problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
       } else if (justSaved && saved != "") {
         Row(gap: 1, align: Align.Center) {
           Icon(Icons.Check, size: 14, color: Colors.Success);
@@ -74,11 +85,13 @@ component SaveActions(string saved = "Saved", string blockedBy = "", Action onSa
   }
 }
 
-/// NO SAVE BUTTON — the page's changes are kept by themselves `after` seconds after they were made, and until then
-/// the person can take them back: "Saving in 2 s · Undo", then "All changes saved". Undo steps back to the last savepoint
-/// when there is one (`UnitOfWork.Mark`) and otherwise drops the changes waiting to be kept — an undo that is TRUE: what has
-/// been kept is kept, and the window to change your mind is the one before it is. A refused save keeps the changes and
-/// says why, with Retry.
+/// NO SAVE BUTTON — the page's changes are kept by themselves once the person has PAUSED for `after` seconds (every
+/// edit restarts the count, read from `UnitOfWork.EditCount()`, so nothing is saved mid-word), and until then the
+/// person can take them back: "Saving in 2 s · Undo", then "All changes saved". Undo steps back to the last savepoint
+/// when there is one (`UnitOfWork.Mark`, or the step the platform marks for each edit) and otherwise drops the changes
+/// waiting to be kept — an undo that is TRUE: what has been kept is kept, and the window to change your mind is the one
+/// before it is. A save the model's rules would refuse is HELD — the changes stay, the fields in the way are shown, and
+/// it tries again once the person has edited and paused; one the server refuses says why, with Retry.
 /// Put it where a person glances to know their work is safe — a record's head, a panel's foot.
 /// In a test: make an edit, `Assert.Visible("Saving in")`, then `Ui.Tick()` once per second of `after` and
 /// `Assert.Visible("All changes saved")`; or `Ui.Click("Undo")` inside the window.
@@ -89,11 +102,21 @@ component AutoSave(int after = 2, string saved = "All changes saved") {
   string problem = "";
   bool everSaved = false;
   int waited = 0;
+  int seenEdits = -1;   // the edit count the last tick saw — a different one means the person is still editing
   live var dirty = Navigation.IsDirty;
   live var canUndo = UnitOfWork.CanUndo();
 
   action Keep() {
     problem = "";
+    // HELD, NOT SENT: a save the model's own rules would refuse never leaves the page — the edits stay, every
+    // field in the way is shown at its control, and the sentence says how many. (Sent, it would only come back refused:
+    // a refused page save keeps its edits too, but the person would wait a round trip to learn what the page knew.)
+    if (Validation.All.Count > 0) {
+      Validation.Reveal();
+      problem = Validation.All.Count == 1 ? "1 field needs attention." : Validation.All.Count.ToString() + " fields need attention.";
+      waited = 0;
+      return;
+    }
     try {
       UnitOfWork.Commit();
       everSaved = true;
@@ -108,12 +131,17 @@ component AutoSave(int after = 2, string saved = "All changes saved") {
     if (UnitOfWork.CanUndo()) { UnitOfWork.Undo(); } else { UnitOfWork.Discard(); }
   }
 
-  // One tick a second: while there are changes (and the last attempt was not refused), count; at `after`, keep them.
+  // One tick a second: while there are changes (and the last attempt was not refused), count the QUIET seconds — an
+  // edit since the last tick starts the count again — and at `after` of them, keep the changes.
   on every (TimeSpan.FromSeconds(1)) {
-    if (dirty && problem == "") {
+    var edits = UnitOfWork.EditCount();
+    if (!dirty) { waited = 0; seenEdits = edits; }
+    // A new edit after a held or refused save is the person fixing it: the count starts over and it is tried again.
+    else if (edits != seenEdits) { seenEdits = edits; problem = ""; waited = 1; if (waited >= after) { Keep(); } }
+    else if (problem == "") {
       waited = waited + 1;
       if (waited >= after) { Keep(); }
-    } else if (!dirty) { waited = 0; }
+    }
   }
 
   render {
@@ -146,8 +174,8 @@ component AutoSave(int after = 2, string saved = "All changes saved") {
 /// ⚠ A REFUSED SAVE KEEPS THE PROMPT UP with the server's words in `error`; a prompt that closed on a failed save
 ///   would look exactly like one that worked.
 /// need: warn before leaving a page with unsaved changes, ask save or discard before navigating away, leave guard
+/// In a test: `Assert.Dialog("Leave without saving?")`, then `Ui.Click("Keep editing")`.
 /// e.g. `if (leaving != "") { LeavePrompt(canSave, error, SaveAndLeave, DiscardAndLeave, KeepEditing); }`
-/// in a test: `Assert.Dialog("Leave without saving?")`, then `Ui.Click("Keep editing")`.
 [Composable]
 component LeavePrompt(bool canSave, string error, Action onSave, Action onDiscard, Action onKeep,
                       string subtitle = "This page has changes that have not been saved yet.",

@@ -151,6 +151,11 @@ component StorefrontFrame(
     Stack(gap: 0, minH: Length.Screen) {
       Slot("promo");
 
+      // An open category panel's click-away. It is drawn BEFORE the sticky header, at the header's own z, so the
+      // header and its panel paint over it and the page under it does not: a press on the page closes the panel, a
+      // press on the panel follows its link. Drawn after the header, at the same z, it covered the panel it serves.
+      if (open != null && !isPhone) { Backdrop(onCloseCategory); }
+
       // The header pins as ONE box with its category panel, so the panel can never be left behind a scrolled header.
       Stack(gap: 0, position: Position.Sticky, top: "0", z: ZIndex.Sticky) {
         if (!isPhone) {
@@ -181,24 +186,29 @@ component StorefrontFrame(
 
       // A phone's page must not end UNDER the fixed bar.
       if (isPhone) { Box(h: "calc(3.75rem + env(safe-area-inset-bottom))", decorative: true); }
-    }
 
-    if (isPhone) {
-      StorefrontPhoneBar(barItems, current, hasBag, bagCount, bagLabel, bagOpen, menuOpen, onToggleBag, onToggleMenu,
-                         onNavigated);
-    }
+      if (isPhone) {
+        StorefrontPhoneBar(barItems, current, hasBag, bagCount, bagLabel, bagOpen, menuOpen, onToggleBag, onToggleMenu,
+                           onNavigated);
+      }
 
-    // Overlays live at the FRAME's root, outside the header, so no sticky box or overflow can clip them.
-    if (open != null && !isPhone) { Backdrop(onCloseCategory); }
-    if (bagOpen && hasBag) {
-      StorefrontScrim(onCloseBag);
-      StorefrontBagPanel(bagLabel, bagCount, onCloseBag) { Slot("bag"); }
+      // Overlays sit outside the header, so no sticky box or overflow can clip them — and INSIDE this one root.
+      // ⛔ THE FRAME HAS EXACTLY ONE TOP-LEVEL ELEMENT. Every top-level element of a component's render wears the
+      //    `variants` class of the component that renders it, and `StorefrontShell`'s is `MinH = Screen; Bg = Bg`.
+      //    Drawn beside this Stack, the user menu's `Backdrop` wore it and became an opaque, window-sized sheet over
+      //    the page: the page went blank and the menu under it could not be pressed (measured 2026-10-21, a buyer
+      //    clicking their avatar). A fixed box needs no particular parent, so here it changes nothing else.
+      //    Guarded by the Ui kit's `tests/shells.test.osy`, under `osy test --pixels`.
+      if (bagOpen && hasBag) {
+        StorefrontScrim(onCloseBag);
+        StorefrontBagPanel(bagLabel, bagCount, onCloseBag) { Slot("bag"); }
+      }
+      if (menuOpen && isPhone) {
+        StorefrontScrim(onCloseMenu);
+        StorefrontMenuDrawer(chrome, categories, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      }
+      // (The user menu's backdrop is beside its menu, in `StorefrontHeader`; the category panel's is above the header.)
     }
-    if (menuOpen && isPhone) {
-      StorefrontScrim(onCloseMenu);
-      StorefrontMenuDrawer(chrome, categories, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
-    }
-    if (userMenuOpen && hasMenu && !isPhone) { Backdrop(onCloseUserMenu); }
   }
 }
 
@@ -233,10 +243,15 @@ component StorefrontHeader(
         if (hasUser) {
           Box(position: Position.Relative) {
             ShellUserChip(chrome.User, hasMenu, onToggleUserMenu, markOnly: true, open: userMenuOpen);
+            // `BelowEnd`: the chip sits at the window's right edge, so the menu hangs from its right corner. A
+            // `Menu` places ITSELF against this relative box — wrapped in a zero-width box pinned right, its default
+            // `BelowStart` hung it from that box's left edge, i.e. off the right of the window.
+            // ⛔ AND ITS BACKDROP IS HERE, BESIDE IT — never at the frame's root. The header is a sticky box with its
+            //    own `z: Sticky`, so it is a stacking context the menu cannot leave: a backdrop drawn later at the root
+            //    with the same z painted OVER the whole header, menu included, and every row was unclickable.
             if (userMenuOpen && hasMenu) {
-              Box(position: Position.Absolute, top: "calc(100% + 8px)", right: "0", z: ZIndex.Popover) {
-                Menu { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
-              }
+              Backdrop(onCloseUserMenu);
+              Menu(from: MenuFrom.BelowEnd, label: chrome.User.Name) { ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll); }
             }
           }
         }

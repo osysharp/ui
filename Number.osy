@@ -50,6 +50,11 @@ component NumberField(
   action Up() { value = value + 1 > max ? max : value + 1; }
   action Down() { value = value - 1 < min ? min : value - 1; }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
@@ -65,14 +70,14 @@ component NumberField(
         //   actually means now.
         Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, label: label,
               min: min, max: max,
-              invalid: error != "", w: Length.NumberW, h: Length.ControlMd, px: 2, borderW: 1, border: Colors.Border,
+              invalid: shownError != "", w: Length.NumberW, h: Length.ControlMd, px: 2, borderW: 1, border: Colors.Border,
               bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body, textAlign: TextAlign.Center);
         Stepper(label: label, onUp: Up, onDown: Down, disabled: disabled);
         if (unit != "") { Text(unit, fontSize: FontSize.Label, color: Colors.TextMuted, ml: 2); }
       }
-      if (error != "" || hint != "") {
-        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
-             color: error != "" ? Colors.Danger : Colors.TextMuted);
+      if (shownError != "" || hint != "") {
+        Text(shownError != "" ? shownError : hint, id: note, fontSize: FontSize.Caption,
+             color: shownError != "" ? Colors.Danger : Colors.TextMuted);
       }
     }
   }
@@ -114,6 +119,11 @@ component DecimalField(
   action Up() { value = value + 1m > max ? max : value + 1m; }
   action Down() { value = value - 1m < min ? min : value - 1m; }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
@@ -124,14 +134,14 @@ component DecimalField(
         // `stepMismatch` — has nothing left to defeat.
         Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, label: label,
               min: min, max: max,
-              invalid: error != "", w: Length.NumberW, h: Length.ControlMd, px: 2, borderW: 1, border: Colors.Border,
+              invalid: shownError != "", w: Length.NumberW, h: Length.ControlMd, px: 2, borderW: 1, border: Colors.Border,
               bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body, textAlign: TextAlign.Center);
         Stepper(label: label, onUp: Up, onDown: Down, disabled: disabled);
         if (unit != "") { Text(unit, fontSize: FontSize.Label, color: Colors.TextMuted, ml: 2); }
       }
-      if (error != "" || hint != "") {
-        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
-             color: error != "" ? Colors.Danger : Colors.TextMuted);
+      if (shownError != "" || hint != "") {
+        Text(shownError != "" ? shownError : hint, id: note, fontSize: FontSize.Caption,
+             color: shownError != "" ? Colors.Danger : Colors.TextMuted);
       }
     }
   }

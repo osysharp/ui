@@ -1,0 +1,26 @@
+// A KIT FIELD SAYS WHAT IS WRONG WITH ITSELF — a page that writes no validation code beyond declaring the rules on the
+// entity and placing `Field`s and `SaveActions`. A save held for a broken rule, and one the SERVER refuses (a code that
+// another mat already has, which only the server can know), both show their sentence under the field it is about.
+
+/// A mat the workshop stocks, by its catalogue code.
+[Title(Name)]
+entity Mat {
+  [Required, Unique("That code is already on another mat."), MaxLength(20)] string Code;
+  [Required, MinLength(1, "A mat needs a name."), MaxLength(80)] string Name;
+  security { allow read, create, update when IsFramer; }
+}
+
+/// One mat, edited in place with Save beside its name. No `catch`, no `ex.Violations`, no `error:` anywhere.
+[Route("/mats/{id}")] [Authorize(IsFramer)] [Render(CSR)] [Title("Mat")]
+component MatPage(Guid id) {
+  live var mat = Mat.FirstOrDefault(m => m.Id == id);
+  render {
+    if (mat != null) {
+      Stack(gap: 4, p: 6) {
+        PageHead(mat.Name) { SaveActions(saved: "Mat saved."); }
+        Field("Code", value: mat.Code);
+        Field("Name", value: mat.Name);
+      }
+    }
+  }
+}

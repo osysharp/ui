@@ -129,11 +129,11 @@ component SplitFrame(AppChrome chrome, bool isPhone, string current, bool hasUse
           }
         }
       }
-    }
 
-    if (menuOpen && isPhone) {
-      StorefrontScrim(onCloseMenu);
-      StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      if (menuOpen && isPhone) {
+        StorefrontScrim(onCloseMenu);
+        StorefrontMenuDrawer(chrome, items, current, hasUser, hasMenu, onCloseMenu, onDismissAll, onNavigated);
+      }
     }
   }
 }

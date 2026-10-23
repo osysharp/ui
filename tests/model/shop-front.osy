@@ -1,0 +1,50 @@
+// The workshop's shop front and its journal — the two consumer shells, each with the signed-in person's account menu.
+// What `shells.test.osy` opens: a shell's user menu must stay pressable over the page it covers.
+using Osysharp.Ui;
+
+/// The shop's chrome, shared by both frames: a category, one with sub-categories (a panel, in the storefront), and a
+/// person with an account menu.
+public AppChrome ShopChrome(string home) {
+  return new AppChrome {
+    Product = "Byrne & Daughters Framing",
+    Home = home,
+    Nav = [
+      new NavItem { Label = "Frames", To = home },
+      new NavItem { Label = "Mouldings", Children = [ new NavItem { Label = "Oak mouldings", To = home + "/oak" } ] },
+    ],
+    User = new ShellUser {
+      Name = "Ada Byrne", Initials = "AB", Secondary = "Customer",
+      Menu = [ new MenuAction { Label = "Your account", Icon = Icons.User, To = home + "/account" } ],
+    },
+  };
+}
+
+[Layout]
+[AllowAnonymous]
+component ShopFrontFrame() {
+  render { StorefrontShell(ShopChrome("/shop")) { Outlet(); } }
+}
+
+[Layout]
+[AllowAnonymous]
+component JournalFrame() {
+  render { EditorialShell(ShopChrome("/journal")) { Outlet(); } }
+}
+
+[Route("/shop")] [Layout(ShopFrontFrame)] [AllowAnonymous] [Render(CSR)] [Title("Frames")]
+component ShopFrontHome() { render { Stack(p: 6) { Text("Oak, walnut and gilt, cut to your picture."); } } }
+
+[Route("/shop/account")] [Layout(ShopFrontFrame)] [AllowAnonymous] [Render(CSR)] [Title("Your account")]
+component ShopFrontAccount() { render { Stack(p: 6) { Text("Your orders and delivery addresses."); } } }
+
+[Route("/journal")] [Layout(JournalFrame)] [AllowAnonymous] [Render(CSR)] [Title("Journal")]
+component JournalHome() { render { Stack(p: 6) { Text("Notes from the bench."); } } }
+
+[Route("/journal/account")] [Layout(JournalFrame)] [AllowAnonymous] [Render(CSR)] [Title("Your account")]
+component JournalAccount() { render { Stack(p: 6) { Text("Your orders and delivery addresses."); } } }
+
+[Route("/shop/oak")] [Layout(ShopFrontFrame)] [AllowAnonymous] [Render(CSR)] [Title("Oak mouldings")]
+component ShopFrontOak() { render { Stack(p: 6) { Text("Quarter-sawn oak, in four profiles."); } } }
+
+[Route("/journal/oak")] [Layout(JournalFrame)] [AllowAnonymous] [Render(CSR)] [Title("Oak mouldings")]
+component JournalOak() { render { Stack(p: 6) { Text("Quarter-sawn oak, in four profiles."); } } }

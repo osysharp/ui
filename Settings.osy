@@ -395,8 +395,10 @@ component SettingsGrid() {
 /// FIRED, NOT AWAITED (a component's callback never is), so it cannot stop the save: a sentence it throws is lost and
 /// the save goes ahead. A check belongs in `blockedBy`. `onSaved` runs once a save has landed — to re-read what the page
 /// shows about it ("Changed by …").
-/// ⚑ A REFUSED SAVE SAYS WHY even when nothing is left to save: a commit the server refuses gives the page's edits back,
-///   so the bar would close with its reason inside it — it says "Not saved — <the reason>" instead.
+/// ⭐ A SAVE THE MODEL'S RULES WOULD REFUSE IS HELD, NOT SENT: the edits stay, every field in the way is shown at its
+///   control (`Validation.Reveal()`), and the bar says "2 fields need attention." (`Validation.All`).
+/// ⚑ A REFUSED SAVE SAYS WHY AND KEEPS THE EDITS: the bar stays up reading "Not saved — <the reason>", the person's
+///   values are still in their fields, and each field the server named shows its sentence under it.
 /// In a test: `Ui.Click("Save")`, `Ui.Click("Discard")`, and `Assert.Visible("Unsaved changes")` while there are some.
 /// need: an explicit save and discard bar, save changes to settings, unsaved changes warning, undo an edit before saving, refuse to save until a field is filled, why a save was refused
 /// e.g. `SaveBar(saved: "Statuses saved.")` · `SaveBar(saved: "Saved.", blockedBy: reason == "" ? "Say why." : "")`
@@ -413,6 +415,14 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
     justSaved = false;
     // Mod+S reaches here even while the button is disabled — the shortcut is the bar's, not the button's.
     if (blockedBy != "") { return; }
+    // HELD, NOT SENT: a save the model's own rules would refuse never leaves the page — the edits stay, every
+    // field in the way is shown at its control, and the sentence says how many. (Sent, it would only come back refused:
+    // a refused page save keeps its edits too, but the person would wait a round trip to learn what the page knew.)
+    if (Validation.All.Count > 0) {
+      Validation.Reveal();
+      problem = Validation.All.Count == 1 ? "1 field needs attention." : Validation.All.Count.ToString() + " fields need attention.";
+      return;
+    }
     try {
       if (onSave != null) { onSave(); }
       UnitOfWork.Commit();
@@ -422,7 +432,9 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
     // A lost race is the platform's to show: the conflict notice gives the person both values and Keep theirs /
     // Apply mine. Caught here it would read only "Not saved — …" with nothing to choose (`osy docs ui-conflict-notice`).
     catch (ConflictException) { throw; }
-    catch (Exception ex) { problem = ex.Message; }
+    // A refused save KEEPS the page's edits: the bar stays up with the reason in it, and each field
+    // the server named shows its own sentence under it (`Validation.MessageFor`).
+    catch (Exception ex) { problem = "Not saved — " + ex.Message; }
   }
   action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }
   action Undo() { problem = ""; UnitOfWork.Undo(); }
@@ -436,7 +448,7 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
           Lamp(lit: true, tone: Tone.Primary);
           Text("Unsaved changes", fontWeight: FontWeight.Medium);
           if (blockedBy != "") { Text(blockedBy, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
-          else if (problem != "") { Text(problem, color: Colors.Danger, fontSize: FontSize.Caption); }
+          else if (problem != "") { Text(problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
           Spacer();
           if (canUndo) {
             Button(undoLabel != "" ? "Undo " + undoLabel.ToLower() : "Undo", onPress: Undo, tone: Tone.Ghost, size: Size.Sm,
@@ -447,11 +459,11 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
                  disabled: blockedBy != "");
         }
       } else if (problem != "") {
-        // The refused commit gave the edits back, so there is nothing left to save — but the reason is still owed.
-        // The page's own ground behind it: the bar stays at the foot of the window, over whatever has scrolled under it.
+        // Nothing left to save (a function the save ran discarded what it carried, or the person discarded since) —
+        // but the reason is still owed. The page's own ground behind it: the bar stays at the foot of the window.
         Row(gap: 2, align: Align.Center, px: 4, py: 3, bg: Colors.Bg, label: "Not saved") {
           Icon(Icons.Warning, color: Colors.Danger);
-          Text("Not saved — " + problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
+          Text(problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
         }
       } else if (justSaved && saved != "") {
         Row(gap: 2, align: Align.Center, px: 4, py: 3, bg: Colors.Bg) {

@@ -110,7 +110,9 @@ theme Ui {
     TextLine  = "0.75rem";   // the height of a stand-in for one line of text (a skeleton bar)
     Measure   = "68ch";      // a comfortable reading measure for prose
     RailW     = "264px";
-    RailNarrowW = "60px";    // the same rail collapsed to an icon strip
+    // the same rail collapsed to an icon strip. 68px, not 60: its column must hold a 28px
+    // mark AND a 24px disclosure target beside it (WCAG 2.2 SC 2.5.8) — see `RailNavChevron`.
+    RailNarrowW = "68px";
     // ⭐ THE SQUARE A GLYPH SITS IN WHEN A SHELL HAS NO ROOM FOR WORDS — the brand tile at the head of the rail, and
     //    the highlight on a nav row that has lost its label. ONE token because they sit four rows apart in the SAME
     //    60px column: a tile and a highlight that merely happened to agree would drift the first time one moved, and

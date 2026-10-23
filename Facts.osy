@@ -22,6 +22,7 @@ component Facts(string label = "") {
 /// The line is a NAMED GROUP: a test reads a value by its label (`Assert.Visible("Healthy", within: "Gateway")`).
 /// ⚑ Say a missing figure in words (`"not reported"`), never as an empty value — an empty value is a line that
 ///   promises a figure and shows nothing.
+/// In a test read the value through its label: `Assert.Visible("Healthy", within: "Gateway")`.
 /// e.g. `Fact("Status", value: zone.Status.Label) { Badge("Running", tone: Tone.Success); }`
 /// e.g. `Fact("Backups", value: "every night, kept 7 days", hint: "As its provider states it, 2m ago.")`
 [Composable]

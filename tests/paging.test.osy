@@ -1,0 +1,90 @@
+// LISTS THAT PAGE, and a picker that searches — over more rows than one answer to a page carries (about 2 MB). Each
+// moulding and supplier carries an 8,000-character sheet, so 300 of them are well past one answer: the first answer
+// holds about 250, and the rest are only reachable by asking for them.
+
+[TestFixture]
+void BigStock() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  var sheet = "".PadRight(8000, 'x');
+  for (int i = 0; i < 300; i++) {
+    new Moulding { Moniker = "Profile " + i.ToString("D3"), Shelf = i, Specification = sheet };
+  }
+}
+
+[TestFixture]
+void SmallStock() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  for (int i = 0; i < 3; i++) { new Moulding { Moniker = "Profile " + i.ToString("D3"), Shelf = i }; }
+}
+
+[TestFixture]
+void ManySuppliers() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  var terms = "".PadRight(8000, 'y');
+  for (int i = 0; i < 300; i++) {
+    new Supplier { Name = "Agent " + i.ToString("D3"), Terms = terms };
+  }
+  // Last by name: never among the first rows of any read that is not a search for it.
+  new Supplier { Name = "Zephyr Mouldings", Terms = terms };
+}
+
+principal Pia => Framer.Single(f => f.Email == "pia@frames.test");
+
+/// The stock table holds the first answer, offers the rest, and stops offering once it has it all.
+[Test(BigStock)]
+void the_stock_table_loads_more_until_it_has_every_row() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/stock");
+  Assert.Visible("Profile 000");
+  Assert.Hidden("Profile 299");            // past the first answer
+  Ui.Click("Load more");
+  Assert.Visible("Profile 299");
+  Assert.Hidden("Load more");              // nothing left to load
+}
+
+/// The plain list pages the same way, through the button under it.
+[Test(BigStock)]
+void the_stock_list_loads_more_through_its_button() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/stock/list");
+  Assert.Visible("Profile 000");
+  Assert.Hidden("Profile 299");
+  Ui.Click("More mouldings");
+  Assert.Visible("Profile 299");
+  Assert.Hidden("More mouldings");
+}
+
+/// A list that is all it will ever be offers nothing: three mouldings fit one answer with room to spare.
+[Test(SmallStock)]
+void a_list_that_is_all_there_is_offers_no_more() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/stock/list");
+  Assert.Visible("Profile 002");
+  Assert.Hidden("More mouldings");
+  Ui.Visit("/stock");
+  Assert.Visible("Profile 002");
+  Assert.Hidden("Load more");
+}
+
+/// The picker finds a supplier no first answer would hold, by asking the database for what was typed.
+[Test(ManySuppliers)]
+void the_supplier_picker_finds_a_match_the_page_never_loaded() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/purchase");
+  Assert.Hidden("Zephyr Mouldings");
+  Ui.Fill("Supplier", "Zeph");
+  Ui.Click("Zephyr Mouldings");
+  Assert.Visible("Buying from Zephyr Mouldings");
+}
+
+/// A search nothing matches says so, rather than drawing an empty panel.
+[Test(ManySuppliers)]
+void the_supplier_picker_says_when_nothing_matches() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/purchase");
+  Ui.Fill("Supplier", "Quokka");
+  Assert.Visible("Nothing matches “Quokka”.");
+}

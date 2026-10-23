@@ -1,0 +1,44 @@
+// A kit field shows a refused save's message UNDER ITSELF, with no code in the page to put it there: a save held for a
+// rule the page can check, and a save the server refuses for a rule only it can (another row already has that code).
+// `Assert.TextIs` asks for an element that reads EXACTLY the sentence — the save control's own line reads
+// "Not saved — …" or "1 field needs attention.", so the only thing that can satisfy it is the field's message.
+
+[TestFixture]
+void Mats() {
+  var tom = new Framer { Email = "tom@frames.test" };
+  new RoleGrant { Member = tom, Role = WorkshopRole.Framer };
+  new Mat { Code = "IVO-2", Name = "Ivory, 2 mm" };
+  new Mat { Code = "BLK-14", Name = "Black core, 1.4 mm" };
+}
+
+Guid MatCoded(string code) {
+  var id = Guid.Empty;
+  runas (Tom) { id = Mat.Single(m => m.Code == code).Id; }
+  return id;
+}
+
+/// A save held for a rule the page can check: the field's own sentence appears under the field it is about.
+[Test(Mats)]
+void a_held_save_says_what_is_wrong_under_the_field() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/mats/" + MatCoded("IVO-2"));
+  Ui.Fill("Name", "");
+  Ui.Click("Save");
+  Assert.Visible("1 field needs attention.");
+  Assert.TextIs("A mat needs a name.");
+  Assert.Violation("Name", "A mat needs a name.");
+}
+
+/// A save the SERVER refuses — the code is another mat's, which only the server can know — says so under Code.
+[Test(Mats)]
+void a_save_the_server_refuses_says_why_under_the_field() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/mats/" + MatCoded("IVO-2"));
+  Ui.Fill("Code", "BLK-14");
+  Ui.Click("Save");
+  Assert.TextIs("That code is already on another mat.");
+  // …and the person's value is STILL IN THE BOX beside it (a refused page save keeps the page's
+  // edits), so they fix it there and save again instead of retyping it over IVO-2.
+  Assert.Value("Code", "BLK-14");
+  runas (Tom) { Assert.Equal("IVO-2", Mat.Single(m => m.Name == "Ivory, 2 mm").Code); }
+}

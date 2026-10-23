@@ -19,7 +19,7 @@ Every Osy# app has it in scope — the CLI ships it, so it resolves offline, wit
 
 ```osy
 app Fulcrum {
-  use Osysharp.Ui@2;
+  use Osysharp.Ui@3;
   …
 }
 ```
@@ -52,9 +52,9 @@ component Orders() {
 | group | controls |
 |---|---|
 | actions | `Button`, `IconButton`, `Menu`, `MenuItem`, `CommandMenu`, `KeyHint` |
-| input | `Field`, `NumberField`, `DecimalField`, `DurationField`, `DatePicker`, `DateTimePicker`, `Dropdown`, `RadioGroup`, `Checkbox`, `Option`, `SearchField` |
+| input | `Field`, `NumberField`, `DecimalField`, `DurationField`, `DatePicker`, `DateTimePicker`, `Dropdown`, `SearchPicker`, `RadioGroup`, `Checkbox`, `Option`, `SearchField` |
 | overlays | `Dialog`, `Backdrop`, `Scrim`, `ShellSheet`, `KeyboardSheet`, `AssistantPanel` |
-| data | `DataGrid` (selectable, with a selection toolbar), `SelectionBar`, `FilterChip`, `Card`, `Metric`, `Badge`, `RecordBadge`, `RecordPanel`, `ListRow` |
+| data | `DataGrid` (selectable, with a selection toolbar, and Load more), `LoadMoreButton`, `SelectionBar`, `FilterChip`, `Card`, `Metric`, `Badge`, `RecordBadge`, `RecordPanel`, `ListRow` |
 | feedback | `Alert`, `Done`, `EmptyState`, `ProgressBar`, `Spinner`, `Skeleton`, `SaveBar`, `SaveActions`, `AutoSave`, `LeavePrompt`, `Lamp` |
 | settings | `SettingsArea`, `SettingsPage`, `SettingsSection`, `SettingRow`, `SettingsOverview` |
 | shells | `SidebarShell`, `RailShell`, `TabbedShell`, `WorkbenchShell`, `FocusedShell`, `SplitShell`, `CatalogueShell`, `EditorialShell`, `MarqueeShell`, `StorefrontShell` |
@@ -70,7 +70,7 @@ Its words are translated (`locales/`), and every control is keyboard-reachable a
 - Source: one `.osy` file per group in this folder (`Button.osy`, `DataGrid.osy`, `Shell.Sidebar.osy`, …), the default
   theme in `theme.osy`.
 - Tests: `tests/`.
-- Package: `use Osysharp.Ui@2;` — the CLI carries the current release, and `osy lock` fetches any other from this
+- Package: `use Osysharp.Ui@3;` — the CLI carries the current release, and `osy lock` fetches any other from this
   repository's releases.
 
 To build your own look on top of it, declare a `theme` in your app — its tokens re-skin every control. To change a

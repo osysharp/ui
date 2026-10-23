@@ -22,7 +22,7 @@ policy IsOwner => RoleGrant.Any(g => g.Member == user && g.Role == WorkshopRole.
 /// A frame ordered for a customer's picture.
 [Title(Customer)]
 entity FrameOrder {
-  [Required, MaxLength(120)] string Customer;
+  [Required, MinLength(1), MaxLength(120)] string Customer;   // MinLength: a blank name is a broken rule a save is held for
   [Required, MaxLength(120)] string Artwork;
   bool Paid;
   [ForeignKey(Order)] BenchNote[] Notes;
@@ -108,6 +108,36 @@ component OrderJotPage(Guid id) {
         PageHead(order.Customer) { AutoSave(after: 2); }
         Field("Artwork", value: order.Artwork);
       }
+    }
+  }
+}
+
+/// The counter: ringing an order up says so in a toast, which goes by itself (`Toast`) and clears what showed it.
+[Route("/counter")] [Authorize(IsFramer)] [Render(CSR)] [Title("Counter")]
+component CounterPage() {
+  string notice = "";
+  int rung = 0;
+  action RingUp() { rung = rung + 1; notice = "Rung up."; }
+  action ClearNotice() { notice = ""; }
+  render {
+    Stack(gap: 4, p: 6) {
+      Button("Ring up", onPress: RingUp);
+      Text(notice == "" ? $"Rings: {rung}. Nothing to say." : "A notice is up.");
+      Toast(notice, tone: Tone.Success, onDismiss: ClearNotice);
+    }
+  }
+}
+
+/// The same counter for a page that never clears its notice: the toast still goes.
+[Route("/counter/forgetful")] [Authorize(IsFramer)] [Render(CSR)] [Title("Counter")]
+component ForgetfulCounterPage() {
+  string notice = "";
+  action RingUp() { notice = "Rung up."; }
+  render {
+    Stack(gap: 4, p: 6) {
+      Button("Ring up", onPress: RingUp);
+      Text(notice == "" ? "Nothing to say." : "A notice is up.");
+      if (notice != "") { Toast(notice, tone: Tone.Success); }
     }
   }
 }

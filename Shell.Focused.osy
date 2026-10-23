@@ -249,18 +249,18 @@ component FocusedFrame(
         }
         slot aside { Slot("aside"); }
       }
-    }
 
-    if (userMenuOpen && isPhone && hasMenu) {
-      ShellSheet("Account", onCloseUserMenu) {
-        ShellSheetIdentity(chrome.User);
-        Divider();
-        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
+      if (userMenuOpen && isPhone && hasMenu) {
+        ShellSheet("Account", onCloseUserMenu) {
+          ShellSheetIdentity(chrome.User);
+          Divider();
+          ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
+        }
       }
-    }
 
-    if (leaving != "") {
-      FocusedLeavePrompt(canSaveLeaving, leaveError, SaveAndExit, DiscardAndExit, KeepEditing);
+      if (leaving != "") {
+        FocusedLeavePrompt(canSaveLeaving, leaveError, SaveAndExit, DiscardAndExit, KeepEditing);
+      }
     }
   }
 }

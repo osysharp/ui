@@ -63,13 +63,45 @@ public enum DialogSize {
             if (subtitle != "") { Hint(subtitle); }
           }
           // The body is what scrolls. `minH: "0"` is what lets a flex child be SHORTER than its content — without it
-          // the body pushes the panel past its cap and the window scrolls instead. The small inline padding keeps a
-          // focus ring at the body's edge from being clipped by the scroller.
-          Stack(gap: 4, grow: 1, minH: "0", overflowY: Overflow.Auto, mx: "-4px", px: "4px", py: "2px", label: title + " — content") {
+          // the body pushes the panel past its cap and the window scrolls instead. 4px of padding on every side, taken
+          // back by the margin, keeps a focus ring (up to 4px: width + offset) at the body's edge from being clipped by
+          // the scroller, at the first and last control as well as at the sides.
+          Stack(gap: 4, grow: 1, minH: "0", overflowY: Overflow.Auto, m: "-4px", p: "4px", label: title + " — content") {
             Slot;
           }
           Row(align: Align.Center, gap: 2, shrink: 0) { Spacer(); Slot("actions"); }
         }
+      }
+    }
+  }
+}
+
+/// What the kit's "are you sure?" answered. `Proceed` is the only answer: a cancel, Escape or a press outside it
+/// answers nothing (`Dialog.Discard`), so "not `Proceed`" is every way of saying no.
+public enum ConfirmAnswer { Proceed }
+
+/// THE KIT'S "ARE YOU SURE?" — the small dialog an `IconButton(tone: Tone.Danger)` opens before it runs its action,
+/// and any `Button`/`IconButton` given `confirm: true` or a `confirmText:`. It asks `question`, says `detail` under it
+/// when there is one, and offers Cancel and the action itself (`proceed`, the button's own words). Opened with
+/// `Dialog.Ask<ConfirmAnswer>(ConfirmStep(…))`; it answers `ConfirmAnswer.Proceed`, or nothing.
+/// ⚑ WHY THE KIT ASKS, AND NOT EACH APP. An outside tester walked every irreversible action in four generated apps —
+///   deleting a place, removing an alert, sending an order — and found a confirmation only where a kit had written
+///   one (OSY-023). A one-press destroy is the default an app gets unless somebody remembers, so the control that
+///   performs it is where remembering belongs.
+/// In a test it is a dialog named by its question: `Assert.Dialog("Delete welcome.txt?")`, then
+/// `Ui.Click("Delete welcome.txt", within: "Delete welcome.txt?")` — or `Ui.Click("Cancel")`.
+/// need: are you sure, confirm before deleting, ask before an irreversible action, a confirmation dialog
+/// e.g. `if (Dialog.Ask<ConfirmAnswer>(ConfirmStep("Close the meeting?", "Close it", detail: "Item 3 has no vote yet.")) == ConfirmAnswer.Proceed) { Close(); }`
+[AllowAnonymous]
+[Render(CSR)]
+component ConfirmStep(string question, string proceed, string detail = "") {
+  action Go() { Dialog.Confirm(ConfirmAnswer.Proceed); }
+  action Cancel() { Dialog.Discard(); }
+  render {
+    Dialog(question, onDismiss: Cancel, subtitle: detail, size: DialogSize.Small) {
+      slot actions {
+        Button("Cancel", onPress: Cancel);
+        Button(proceed, onPress: Go, tone: Tone.Danger);
       }
     }
   }
@@ -211,12 +243,16 @@ public enum MenuFrom {
   render { Box(keycap: keys, align: Align.Center, justify: Justify.Center, decorative: true); }
 }
 
-/// A transient message pinned to the corner of the viewport. Render it conditionally and clear it from an effect:
-/// it owns the appearance and the position, the app owns the timer.
-/// In a test it is read as text: `Assert.Visible("Saved")`.
-/// need: a brief message that appears and fades, confirm an action succeeded, a transient notification
-/// e.g. `Toast("Saved", tone: Tone.Success)`
-[Composable] component Toast(string message, Tone tone = Tone.Default) {
+/// A transient message pinned to the corner of the viewport, that goes by itself after `seconds` (5 by default; longer
+/// for a long message, a second for every 20 characters) and waits while the pointer is over it, so it can be read.
+/// An empty message shows nothing, so render it always and let `onDismiss` clear the state that shows it — then the
+/// same words can show again later, and the page never carries an old one. `seconds: 0` keeps it until the message
+/// is cleared.
+/// In a test it is read as text: `Assert.Visible("Saved")`. To see it go: `Ui.Tick()` (its time starts at the first
+/// beat that sees the message), `TestClock.Advance(TimeSpan.FromSeconds(10))`, `Ui.Tick()`, then `Assert.Hidden("Saved")`.
+/// need: a brief message that appears and fades, confirm an action succeeded, a transient notification, a message that disappears by itself
+/// e.g. `Toast(notice, tone: Tone.Success, onDismiss: ClearNotice);`
+[Composable] component Toast(string message, Tone tone = Tone.Default, int seconds = 5, Action? onDismiss = null) {
   variants {
     base {
       Position = Position.Fixed; Bottom = "24px"; Right = "24px"; Z = ZIndex.Notification;
@@ -231,5 +267,48 @@ public enum MenuFrom {
       Ghost   { Bg = Colors.Muted;          Color = Colors.OnSurface; }
     }
   }
-  render { Text(message); }
+  // ⚑ THE TOAST OWNS ITS TIMER, so no page can forget one. It used to say "the app owns the timer", and Admin's zone
+  //   page showed "Resolved." in the corner for as long as the page was open: nothing ever cleared it.
+  // ⚠ TIMED PER MESSAGE, not per mount: a page that keeps the toast rendered and changes its text gets the full time
+  //   for the new text. Without `onDismiss`, a message that timed out stays gone until the text changes.
+  // ⚠ ON THE APP'S CLOCK (`DateTime.UtcNow`), checked once a second — not a count of beats. A test moves that clock
+  //   (`TestClock.Advance`), so `Ui.Tick()` after it is the moment the toast goes; a count of beats would also be
+  //   moved by the real timer between a slow test's steps.
+  // ⚠ RENDERED ALWAYS, EMPTY WHEN THERE IS NOTHING TO SAY: a toast inside the page's `if` takes its clock away with it
+  //   the moment `onDismiss` clears the message, so a test's `Ui.Tick()` raced the real beat and could find no clock.
+  // ⚠ SO ITS TIME STARTS AT THE FIRST BEAT THAT SEES THE MESSAGE (at most a second after it shows), not when it was
+  //   set: an `on change` that read the clock to stamp it would re-run on every tick of that clock.
+  string timed = "";              // the message the clock is timing
+  DateTime since = DateTime.UtcNow;
+  string gone = "";               // the message that timed out, when no `onDismiss` clears it
+  bool held = false;              // the pointer is over it
+  on mount { timed = message; since = DateTime.UtcNow; }
+  action Hold() { held = true; }
+  // Leaving it starts its time again: whoever was reading it gets the whole time back.
+  action Release() { held = false; since = DateTime.UtcNow; }
+  on every (TimeSpan.FromSeconds(1)) {
+    if (message == "") {
+      timed = "";
+      gone = "";
+    } else if (seconds > 0 && gone != message) {
+      if (timed != message) {
+        timed = message;
+        since = DateTime.UtcNow;
+      } else if (!held && DateTime.UtcNow >= since.AddSeconds(Math.Max(seconds, message.Length / 20))) {
+        // ↑ a long message is given time to be read: a second for every 20 characters, when that is more.
+        if (onDismiss != null) {
+          // The page clears it; the same words set again are a new message, timed from when they show.
+          timed = "";
+          onDismiss();
+        } else {
+          gone = message;
+        }
+      }
+    }
+  }
+  render {
+    if (message != "" && gone != message) {
+      Box(role: UiRole.Status, onPointerEnter: Hold, onPointerLeave: Release) { Text(message); }
+    }
+  }
 }

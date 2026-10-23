@@ -1,0 +1,124 @@
+// THE WHOLE JOURNEY OF A PAGE'S UNIT OF WORK — edit → unsaved → undo → save, a save the rules refuse,
+// leaving with unsaved edits, an act that saves at once, and an auto-save that waits for a pause. Each test reads the
+// row back after the screen says what happened: a control that says "Saved" and kept nothing is the failure ruled out.
+
+/// Every edit is an Undo step of its own, with no `UnitOfWork.Mark` anywhere in the page: Undo puts the field back.
+[Test(Workshop)]
+void an_edit_is_undone_without_a_mark_in_the_page() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Three etchings, one frame");
+  Assert.Visible("Edited");
+  Ui.Click("Undo artwork");
+  Assert.Value("Artwork", "Two etchings, one frame");
+  Assert.Hidden("Edited");
+}
+
+/// Two edits are two steps: Undo takes back the last one only, and Save keeps the one left.
+[Test(Workshop)]
+void undo_takes_back_one_step_and_save_keeps_the_rest() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Three etchings, one frame");
+  Ui.Fill("Customer", "Cy Lundqvist");
+  Ui.Click("Undo customer");
+  Assert.Value("Customer", "Cy Lund");
+  Assert.Value("Artwork", "Three etchings, one frame");
+  Ui.Click("Save");
+  Assert.Visible("Job saved.");
+  runas (Tom) { Assert.Equal("Three etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// A save the model's rules would refuse is HELD: nothing is sent, the edits stay, and the page says what is in the way.
+[Test(Workshop)]
+void a_save_the_rules_refuse_is_held_and_the_edits_stay() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Three etchings, one frame");
+  Ui.Fill("Customer", "");
+  Ui.Click("Save");
+  Assert.Visible("1 field needs attention.");
+  Assert.Value("Artwork", "Three etchings, one frame");
+  Assert.Visible("Edited");
+  runas (Tom) { Assert.Equal("Two etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+  Ui.Fill("Customer", "Cy Lund");
+  Ui.Click("Save");
+  Assert.Visible("Job saved.");
+  runas (Tom) { Assert.Equal("Three etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// Leaving a page with unsaved edits asks first — with no shell and no guard written in the page. Keep editing stays.
+[Test(Workshop)]
+void leaving_asks_first_and_keep_editing_stays() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Back to orders");
+  Assert.Dialog("Leave without saving?");
+  Ui.Click("Keep editing");
+  Assert.OnPage("/orders/{id}/desk");
+  Assert.Value("Artwork", "Harbour at dawn");
+}
+
+/// Save and leave keeps the edit, then goes where the person asked.
+[Test(Workshop)]
+void a_page_with_no_shell_saves_and_leaves() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Back to orders");
+  Ui.Click("Save and leave");
+  Assert.OnPage("/");
+  runas (Tom) { Assert.Equal("Harbour at dawn", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// Discard and leave drops the edit for real.
+[Test(Workshop)]
+void a_page_with_no_shell_discards_and_leaves() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Back to orders");
+  Ui.Click("Discard and leave");
+  Assert.OnPage("/");
+  runas (Tom) { Assert.Equal("Two etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}
+
+/// An act that saves at once is refused while the job holds unsaved edits — and goes through once they are saved.
+[Test(Workshop)]
+void an_immediate_act_waits_for_the_unsaved_edits() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Mark paid");
+  Assert.Visible("Save or discard your changes to this frame order first");
+  runas (Tom) { Assert.False(FrameOrder.Single(o => o.Customer == "Cy Lund").Paid); }
+  Ui.Click("Save");
+  Assert.Visible("Job saved.");
+  Ui.Click("Mark paid");
+  Assert.Visible("Marked paid.");
+  runas (Tom) { Assert.True(FrameOrder.Single(o => o.Customer == "Cy Lund").Paid); }
+}
+
+/// Auto-save waits for a PAUSE: every edit starts its count again, so while the person keeps editing nothing is kept —
+/// four seconds of ticks, each after an edit, against a three-second window — and once they stop, it is.
+[Test(Workshop)]
+void an_auto_save_waits_for_a_pause_in_the_edits() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/orders/" + OrderOf("Cy Lund") + "/jot-slowly");
+  Ui.Fill("Artwork", "Two");
+  Ui.Tick();
+  Ui.Fill("Artwork", "Two etchings");
+  Ui.Tick();
+  Ui.Fill("Artwork", "Two etchings,");
+  Ui.Tick();
+  Ui.Fill("Artwork", "Two etchings, walnut");
+  Ui.Tick();
+  Assert.Visible("Saving in");
+  runas (Tom) { Assert.Equal("Two etchings, one frame", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+  Ui.Tick();
+  Ui.Tick();
+  Ui.Tick();
+  Assert.Visible("All changes saved");
+  runas (Tom) { Assert.Equal("Two etchings, walnut", FrameOrder.Single(o => o.Customer == "Cy Lund").Artwork); }
+}

@@ -6,7 +6,7 @@
 //
 // ⛔ THIS IS NOT `SidebarShell` COLLAPSED, AND THE DIFFERENCE IS MECHANISM RATHER THAN WIDTH. The sidebar's rail
 //    narrows to an icon strip as a STATE — the reader chooses it, the wide band un-chooses it, and while it is
-//    narrow a row shows a glyph and nothing else. This rail is 64px ALWAYS, on every pointer width, and it is built
+//    narrow a row shows a glyph and nothing else. This rail is 68px ALWAYS, on every pointer width, and it is built
 //    around that constraint instead of tolerating it:
 //
 //      * EVERY ROW CARRIES ITS LABEL, as a flyout on hover AND on keyboard focus. The sidebar's collapsed rail has
@@ -21,7 +21,7 @@
 //      * IT EXPANDS INTO A LABELLED PANEL, AND THE PANEL FLOATS — it never pushes. Slack, Linear and VS Code all
 //        expand, the taxonomy says a rail "can expand into a full navigation panel when needed", and this shell
 //        refused to until 2026-09-07 on the argument that a nav which moves the page is worse than none. Half of
-//        that argument was right and it is what the OVERLAY preserves: the 60px rail stays exactly where it is,
+//        that argument was right and it is what the OVERLAY preserves: the 68px rail stays exactly where it is,
 //        the content column never reflows, and the panel is a layer you dismiss rather than a resize you undo.
 //
 //        ⛔ AND PUSHING WOULD HAVE MADE THIS SHELL A DUPLICATE. `SidebarShell` already collapses and expands by
@@ -41,7 +41,7 @@
 //                    ⚑ This is close to the sidebar's compact band ON PURPOSE. On a phone a left-nav app IS a
 //                    drawer; inventing a difference to look different would be a worse design, and the two shells
 //                    genuinely diverge where the room to diverge exists.
-//   pointer  768+    the permanent 60px rail, with an expandable panel over it. One content column, always.
+//   pointer  768+    the permanent 68px rail, with an expandable panel over it. One content column, always.
 //   wide     1100+   the page and its `aside` sit side by side (`ShellBody`).
 
 namespace Osysharp.Ui;
@@ -49,7 +49,7 @@ namespace Osysharp.Ui;
 /// HOW THE RAIL IS PRESENTED RIGHT NOW — the one value its geometry is switched on.
 ///
 /// ⭐ FOUR COMPLETE ARMS RATHER THAN A BASE PLUS OVERRIDES. The rail is fixed-and-off-canvas on a phone, static
-/// and 60px on a pointer, and fixed-and-wide while expanded — three different `position`s for one element. Layering
+/// and 68px on a pointer, and fixed-and-wide while expanded — three different `position`s for one element. Layering
 /// those as `base` + a responsive block + a boolean dimension makes the winner depend on which rule the emitter
 /// writes last, which is not a thing a reader of this file can see. Each arm below states the whole geometry, so
 /// what you read is what renders.
@@ -61,9 +61,9 @@ public enum RailForm {
   DrawerShut,
   /// Phone, open — the labelled drawer, over the page and over a scrim.
   DrawerOpen,
-  /// Pointer, resting — 60px, in flow, glyphs only. The arrangement's whole point.
+  /// Pointer, resting — 68px, in flow, glyphs only. The arrangement's whole point.
   Docked,
-  /// Pointer, expanded — a labelled panel FLOATING over the page. The 60px column stays in flow beneath it, so
+  /// Pointer, expanded — a labelled panel FLOATING over the page. The 68px column stays in flow beneath it, so
   /// nothing the reader was looking at moves.
   Panel
 }
@@ -74,7 +74,7 @@ public enum RailForm {
 ///   (default)   the routed page — put your `Outlet(retain: 8)` here
 ///   `search`    the global search affordance in the top bar — `ShellSearch(…)` is shaped for it
 ///   `actions`   top-bar controls right of search
-///   `railFoot`  above the identity at the foot of the rail. A 64px rail cannot hold a card, so it is rendered
+///   `railFoot`  above the identity at the foot of the rail. A 68px rail cannot hold a card, so it is rendered
 ///               only in the phone DRAWER, which has the width — the same call the sidebar makes, and for the same
 ///               reason: a clipped help card reads as a rendering fault.
 ///   `aside`     a right rail. A COLUMN beside the page at 1100+, a section under it below that.
@@ -159,7 +159,7 @@ component RailFrame(
     // ⚠ `Position.Relative` IS WHAT THE EXPANDED PANEL RESOLVES AGAINST. Without it an absolutely positioned rail
     //   climbs to the viewport and stops matching the height of the row it belongs to.
     Row(align: Align.Stretch, minH: Length.Screen, position: Position.Relative) {
-      // ⭐ THE 60px COLUMN IS ALWAYS HERE, EVEN WHILE THE PANEL IS OPEN — a `Docked`-width spacer holds the
+      // ⭐ THE 68px COLUMN IS ALWAYS HERE, EVEN WHILE THE PANEL IS OPEN — a `Docked`-width spacer holds the
       //    content's left edge exactly where it was, which is the whole reason expansion floats rather than
       //    pushes. Decorative: the rail's own landmark is the one the reader and the tests navigate by, and a
       //    second one would make `within: "Main navigation"` ambiguous.
@@ -192,15 +192,17 @@ component RailFrame(
         // `?` opens the page's keyboard sheet, from anywhere — fixed, so it takes no room here.
         KeyboardSheet();
       }
-    }
 
-    // The identity SHEET — phone only, rendered at the frame's root so no transform or overflow of the drawer's
-    // can clip it, and it stacks over everything the shell draws.
-    if (userMenuOpen && isPhone && hasMenu) {
-      ShellSheet("Account", onCloseUserMenu) {
-        ShellSheetIdentity(chrome.User);
-        Divider();
-        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
+      // The identity SHEET — phone only, rendered outside the drawer so no transform or overflow of the drawer's
+      // can clip it, and it stacks over everything the shell draws. Its parts are fixed, so its own box takes no room.
+      // ⛔ INSIDE THE ONE ROOT: a second top-level element wears `RailShell`'s `variants` (`Display = Flex; MinH =
+      //    Screen; Bg = Bg`) — see `StorefrontFrame`, where that turned an overlay into an opaque sheet over the window.
+      if (userMenuOpen && isPhone && hasMenu) {
+        ShellSheet("Account", onCloseUserMenu) {
+          ShellSheetIdentity(chrome.User);
+          Divider();
+          ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
+        }
       }
     }
   }
@@ -239,7 +241,7 @@ component RailBar(
                    Shadow = Shadow.Deep; TranslateX = "0"; }
       Docked     { Position = Position.Static; TranslateX = "0"; Shrink = 0; }
       // OVER the page, never beside it — `Absolute` against `RailFrame`'s row, so the panel is exactly as tall as
-      // the shell rather than as tall as the viewport, and the 60px spacer holds the content's edge in place.
+      // the shell rather than as tall as the viewport, and the 68px spacer holds the content's edge in place.
       Panel      { Position = Position.Absolute; Top = "0"; Bottom = "0"; Left = "0"; Z = ZIndex.Drawer;
                    Shadow = Shadow.Deep; TranslateX = "0"; }
     }
@@ -254,7 +256,7 @@ component RailBar(
       }
       Divider();
       // THE SCROLLING REGION. `overflowY` flips to `Visible` while a flyout is pinned, because a flyout is
-      // positioned beside a row and an `auto` overflow clips on BOTH axes — a 64px rail would slice its own panel
+      // positioned beside a row and an `auto` overflow clips on BOTH axes — a 68px rail would slice its own panel
       // off. A transient unscrollable list is worth a panel that is not cut in half.
       // ⚠ `overflowX` MUST STAY VISIBLE ALWAYS, not only while pinned: the hover/focus TIP is a CSS-only overlay
       //   with no state behind it, so there is no moment at which the shell could widen the clip for it.
@@ -270,14 +272,14 @@ component RailBar(
           }
         }
       }
-      // The foot slot is a CARD and a 60px rail cannot hold one, so it appears wherever the rail is labelled —
+      // The foot slot is a CARD and a 68px rail cannot hold one, so it appears wherever the rail is labelled —
       // the phone drawer and the expanded panel both have the width. Hidden rather than truncated, because a
       // clipped card reads as a rendering fault.
       if (labelled) { Stack(gap: 0, px: 3, pb: 2, pt: 2) { Slot("railFoot"); } }
 
       // ⭐ THE EXPAND CONTROL SITS WITH IDENTITY, NOT IN THE NAV AND NOT IN THE BRAND LOCKUP — and the placement
       //    is an argument rather than a leftover. It is chrome ABOUT the rail, so putting it among the destinations
-      //    would make a row that is not a place; putting it in the lockup would crowd a 60px brand tile with a
+      //    would make a row that is not a place; putting it in the lockup would crowd a 68px brand tile with a
       //    second glyph. The rail's own signature is that everything about the rail lives at its foot.
       // ⚠ POINTER ONLY. On a phone the drawer already shows every label, so there is nothing to expand into.
       if (!isPhone) {
@@ -334,7 +336,7 @@ component RailNavEmpty(bool labelled) {
 component RailNavNode(NavItem item, bool labelled, string current, string flyout,
                       Action<string> onToggleFlyout, Action onCloseFlyout, Action onNavigated) {
   render {
-    // A SECTION — a heading over children that are always visible. A 64px rail has no room for the words, so it
+    // A SECTION — a heading over children that are always visible. A 68px rail has no room for the words, so it
     // degrades to a hairline: the grouping survives, the heading does not.
     if (item.Shape() == NavKind.Section && item.Children.Length > 0) {   // an empty section draws nothing
       if (labelled) { Row(px: 2, pt: 4, pb: 1) { SectionLabel(item.Label); } }
@@ -375,7 +377,7 @@ component RailNavBranch(NavItem item, bool labelled, string current, string flyo
       if (discloses && navigates) {
         if (labelled) { RailNavLink(item, item.State(current), onNavigated); }
         if (!labelled) { RailNavMarkLink(item, item.State(current), onNavigated); }
-        RailNavChevron(item, labelled, open, () => onToggleFlyout(item.Key()));
+        RailNavChevron(item, open, () => onToggleFlyout(item.Key()));
       }
       if (discloses && !navigates) {
         if (labelled) { RailNavDiscloser(item, item.State(current), open, () => onToggleFlyout(item.Key())); }
@@ -433,7 +435,7 @@ component RailNavLink(NavItem item, NavState state, Action onNavigated) {
   }
 }
 
-/// THE SAME ROW WITH ITS LABEL GONE — the 60px rail's navigating row.
+/// THE SAME ROW WITH ITS LABEL GONE — the 68px rail's navigating row.
 ///
 /// ⛔ IT IS A SEPARATE COMPONENT BECAUSE THE PAINT MOVES, and a `variants` block cannot branch on a `bool`. The
 ///    labelled row's highlight IS the row, so it lives on that component's root; the collapsed row's highlight is a
@@ -441,7 +443,7 @@ component RailNavLink(NavItem item, NavState state, Action onNavigated) {
 ///    way and then un-paint it, which is not something the variant arms can express — `state` is keyed by an enum,
 ///    and `labelled` is not one.
 ///
-/// ⭐ SO THIS ROOT PAINTS NOTHING, and that is the point rather than an omission: it keeps the FULL 44×40 box, which
+/// ⭐ SO THIS ROOT PAINTS NOTHING, and that is the point rather than an omission: it keeps the FULL 52×40 box, which
 ///    is what receives the click and the focus ring, while the 28px mark inside it is what the reader sees light up.
 ///    Shrinking the highlight therefore costs no hit area at all — `Length.TouchDense` is untouched.
 [Composable, Part]
@@ -522,9 +524,9 @@ component RailNavMarkDiscloser(NavItem item, NavState state, bool open, Action o
 }
 
 /// The disclosure control beside a row that also navigates. In the narrow rail it is a thin strip down the row's
-/// trailing edge rather than a chevron with a label beside it — 64px has no room for two glyphs.
+/// trailing edge rather than a chevron with a label beside it — 68px has room for a mark and a 24px target, and no more.
 [Composable, Part]
-component RailNavChevron(NavItem item, bool labelled, bool open, Action onToggle) {
+component RailNavChevron(NavItem item, bool open, Action onToggle) {
   live var name = item.Label + " sub-pages";
   variants {
     base { Display = Display.InlineFlex; Shrink = 0; MinH = Length.TouchDense; Rounded = Radius.Sm;
@@ -533,11 +535,13 @@ component RailNavChevron(NavItem item, bool labelled, bool open, Action onToggle
            Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
-    // ⚠ 16px WHILE COLLAPSED, 18 WHEN LABELLED, and the two pixels are load-bearing. The nav column is 44px wide
-    //   (60px rail, `px: 2` on the list), and a collapsed navigating group puts this strip BESIDE a 28px
-    //   `ShellNavMark`. At 18 the pair is 46 and overflows a rail whose `overflowX` is deliberately `Visible`, so it
-    //   would paint outside the column rather than being clipped — a defect no clipping gate would catch either.
-    Pressable(onClick: onToggle, label: name, expanded: open, w: labelled ? "18px" : "16px") {
+    // ⚠ 24px, COLLAPSED AND LABELLED — WCAG 2.2's minimum target (SC 2.5.8), and the reason the collapsed rail is
+    //   68px. In a 60px rail it could only be 16px: the nav column is the rail less `px: 2` on the
+    //   list, and a collapsed navigating group puts this strip BESIDE a 28px `ShellNavMark`, so 44px held 28 + 16 and
+    //   nothing wider. 68px gives a 52px column: the mark and a full 24px target. ⛔ Never widen this without the
+    //   rail: the pair would overflow a column whose `overflowX` is deliberately `Visible`, painting outside the rail
+    //   rather than being clipped (guard: demo/shell-arrangements `rail.test.osy`, `Assert.Inside`).
+    Pressable(onClick: onToggle, label: name, expanded: open, w: "24px") {
       Row(align: Align.Center, justify: Justify.Center, w: "100%") {
         Icon(open ? Icons.ChevronDown : Icons.ChevronRight, size: 12);
       }

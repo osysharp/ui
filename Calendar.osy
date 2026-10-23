@@ -41,12 +41,17 @@ component DatePicker(
 
   variants { base { Gap = Space.FieldGap; } }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
       Box(position: Position.Relative) {
         PickerTrigger(text: value == null ? placeholder : (value ?? month).ToString("d MMM yyyy"), label: label, open: open,
-                      invalid: error != "", disabled: disabled, onPress: Toggle);
+                      invalid: shownError != "", disabled: disabled, onPress: Toggle);
         if (clearable && value != null && !disabled) {
           Pressable(onClick: Clear, label: $"Clear {label}") { Text("Clear", fontSize: FontSize.Label, color: Colors.TextMuted); }
         }
@@ -59,7 +64,7 @@ component DatePicker(
           }
         }
       }
-      FieldNote(hint: hint, error: error);
+      FieldNote(hint: hint, error: shownError);
     }
   }
 }
@@ -90,12 +95,17 @@ component TimePicker(
 
   variants { base { Gap = Space.FieldGap; } }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
       Box(position: Position.Relative) {
         PickerTrigger(text: use12Hour ? value.ToString("h:mm tt") : value.ToString("HH:mm"), label: label,
-                      open: open, invalid: error != "", disabled: disabled, onPress: Toggle);
+                      open: open, invalid: shownError != "", disabled: disabled, onPress: Toggle);
         if (open) {
           Backdrop(Close);
           Stack(role: UiRole.Dialog, label: $"{label} time", position: Position.Absolute, z: ZIndex.Popover, mt: 1,
@@ -109,7 +119,7 @@ component TimePicker(
           }
         }
       }
-      FieldNote(hint: hint, error: error);
+      FieldNote(hint: hint, error: shownError);
     }
   }
 }
@@ -150,12 +160,17 @@ component DateTimePicker(
 
   variants { base { Gap = Space.FieldGap; } }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
       Box(position: Position.Relative) {
         PickerTrigger(text: value.ToString("d MMM yyyy HH:mm"), label: label, open: open,
-                      invalid: error != "", disabled: disabled, onPress: Toggle);
+                      invalid: shownError != "", disabled: disabled, onPress: Toggle);
         if (open) {
           Backdrop(Close);
           CalendarPanel(label: label) {
@@ -167,7 +182,7 @@ component DateTimePicker(
           }
         }
       }
-      FieldNote(hint: hint, error: error);
+      FieldNote(hint: hint, error: shownError);
     }
   }
 }
@@ -209,11 +224,16 @@ component DurationField(
 
   variants { base { Gap = Space.FieldGap; } }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
       Box(position: Position.Relative) {
-        PickerTrigger(text: DurationWords(value), label: label, open: open, invalid: error != "", disabled: disabled,
+        PickerTrigger(text: DurationWords(value), label: label, open: open, invalid: shownError != "", disabled: disabled,
                       onPress: Toggle);
         if (open) {
           Backdrop(Close);
@@ -233,7 +253,7 @@ component DurationField(
           }
         }
       }
-      FieldNote(hint: hint, error: error);
+      FieldNote(hint: hint, error: shownError);
     }
   }
 }

@@ -1,0 +1,42 @@
+// A CONSUMER SHELL'S ACCOUNT MENU STAYS ON TOP OF ITS OWN CLICK-CATCHER.
+//
+// Opening the avatar menu renders a full-window `Backdrop` that catches a click away. The storefront and editorial
+// shells drew it beside their page, as a second top-level element of the frame — and every top-level element of a
+// component wears that component's `variants` class. So the backdrop took the shell's `Bg = Colors.Bg; MinH = Screen`
+// and became an opaque sheet over the whole window: the page went blank and the menu under it could not be pressed.
+// Measured 2026-10-21 on an app built with the kits (a buyer clicking their avatar in a StorefrontShell).
+//
+// ⚠ Only a real browser can tell what covers what — run with `osy test --pixels`. In happy-dom `Assert.Clickable`
+//   reports itself unchecked rather than passing.
+
+/// The storefront: the avatar opens the menu, its row is the thing a click lands on, and it leads to the page.
+[Test]
+void a_storefront_account_menu_can_be_pressed() {
+  Ui.Visit("/shop");
+  Assert.Visible("Oak, walnut and gilt, cut to your picture.");
+  Ui.Click("Ada Byrne");
+  Assert.Clickable("Your account");
+  Ui.Click("Your account");
+  Assert.Visible("Your orders and delivery addresses.");
+}
+
+/// A storefront category with sub-categories opens a panel under the header; its link is what a click lands on.
+[Test]
+void a_storefront_category_panel_can_be_pressed() {
+  Ui.Visit("/shop");
+  Ui.Click("Mouldings");
+  Assert.Clickable("Oak mouldings");
+  Ui.Click("Oak mouldings");
+  Assert.Visible("Quarter-sawn oak, in four profiles.");
+}
+
+/// The editorial shell draws the same menu over the same kind of backdrop.
+[Test]
+void an_editorial_account_menu_can_be_pressed() {
+  Ui.Visit("/journal");
+  Assert.Visible("Notes from the bench.");
+  Ui.Click("Ada Byrne");
+  Assert.Clickable("Your account");
+  Ui.Click("Your account");
+  Assert.Visible("Your orders and delivery addresses.");
+}

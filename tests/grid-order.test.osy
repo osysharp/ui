@@ -1,0 +1,47 @@
+// A GRID KEEPS THE PAGE'S ORDER UNTIL THE READER SORTS IT. A grid with no column saying `Sort` opens sorted by its first —
+// and when that column cannot be sorted by (`Sortable = false`), its header said "not sorted" while the rows were sorted by
+// it anyway: a status page's owner-first alerts came out alphabetical by severity (card infra-status-tabs, 2026-10-21).
+
+[TestFixture]
+void ShelvedStock() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  // Shelf order is not alphabetical order.
+  new Moulding { Moniker = "Walnut", Shelf = 1 };
+  new Moulding { Moniker = "Ash", Shelf = 2 };
+  new Moulding { Moniker = "Oak", Shelf = 3 };
+}
+
+principal ShelfPia => Framer.Single(f => f.Email == "pia@frames.test");
+
+/// No column can be sorted by, so the rows stand in the order the page read them: by shelf, not by name.
+[Test(ShelvedStock)]
+void a_grid_whose_columns_cannot_be_sorted_keeps_the_pages_order() {
+  Moulding? walnut = null;
+  Moulding? ash = null;
+  runas (ShelfPia) {
+    walnut = Moulding.Single(m => m.Moniker == "Walnut");
+    ash = Moulding.Single(m => m.Moniker == "Ash");
+  }
+  Ui.SignInAs(ShelfPia);
+  Ui.Visit("/stock/by-shelf");
+  Assert.Before(walnut, ash);
+}
+
+/// A column that says `Sort = UiSort.Descending` is the order the rows arrive in — not the first column's (Ash, Oak,
+/// Walnut), and not ascending (Walnut, Ash, Oak). It replaced `sortColumn: "Shelf"`, a string nothing checked.
+[Test(ShelvedStock)]
+void a_column_that_says_sort_descending_is_the_order_the_rows_arrive_in() {
+  Moulding? walnut = null;
+  Moulding? ash = null;
+  Moulding? oak = null;
+  runas (ShelfPia) {
+    walnut = Moulding.Single(m => m.Moniker == "Walnut");
+    ash = Moulding.Single(m => m.Moniker == "Ash");
+    oak = Moulding.Single(m => m.Moniker == "Oak");
+  }
+  Ui.SignInAs(ShelfPia);
+  Ui.Visit("/stock/top-shelf-first");
+  Assert.Before(oak, ash);
+  Assert.Before(ash, walnut);
+}

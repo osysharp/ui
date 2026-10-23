@@ -223,22 +223,22 @@ component TabbedFrame(
       // A phone's page must not end UNDER the fixed bar. A spacer in flow rather than padding on the body, so the
       // page's own scroll length is right and the last card is fully reachable.
       if (isPhone) { Box(h: "calc(3.5rem + env(safe-area-inset-bottom))", decorative: true); }
-    }
 
-    if (isPhone) {
-      TabbedPhoneBar(chrome, barItems, needsMore, current, moreOpen, onToggleMore, onNavigated);
-    }
-
-    // Overlays live at the FRAME's root, outside the bars, so no transform or overflow of a bar's can clip them.
-    if (userMenuOpen && isPhone && hasMenu) {
-      ShellSheet("Account", onCloseUserMenu) {
-        ShellSheetIdentity(chrome.User);
-        Divider();
-        ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
+      if (isPhone) {
+        TabbedPhoneBar(chrome, barItems, needsMore, current, moreOpen, onToggleMore, onNavigated);
       }
-    }
-    if (moreOpen && isPhone) {
-      ShellSheet("All sections", onCloseMore) { TabbedMoreSheet(chrome, current, onNavigated); }
+
+      // Overlays live at the FRAME's root, outside the bars, so no transform or overflow of a bar's can clip them.
+      if (userMenuOpen && isPhone && hasMenu) {
+        ShellSheet("Account", onCloseUserMenu) {
+          ShellSheetIdentity(chrome.User);
+          Divider();
+          ShellMenuItemsGuarded(chrome.User.Menu, onDismissAll);
+        }
+      }
+      if (moreOpen && isPhone) {
+        ShellSheet("All sections", onCloseMore) { TabbedMoreSheet(chrome, current, onNavigated); }
+      }
     }
   }
 }

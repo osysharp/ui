@@ -3,7 +3,9 @@
 namespace Osysharp.Ui;
 
 /// A labelled text input. `Field("Name", value: draft.Name)` — `value` is a two-way binding, so typing updates
-/// the bound field directly. Pass `error` to mark it invalid and show the message; pass `hint` for help text
+/// the bound field directly. A save refused for this field — held for a rule the model declares, or refused by the
+/// server — shows its message under it BY ITSELF, with no code in the page (`Validation.MessageFor`). Pass `error` only
+/// for a check of the page's own: it marks the field invalid, shows that message, and wins. Pass `hint` for help text
 /// (the error replaces the hint while it is present, so the row never grows). Pass `type` for the kinds of text a
 /// browser knows about — `"password"` masks what is typed, `"email"`/`"tel"` change the keyboard a phone shows.
 /// `autoFocus: true` gives it the keyboard as it appears — the next thing to type in a step that just opened.
@@ -54,6 +56,11 @@ component Field(
     base { Gap = Space.FieldGap; W = "100%"; MinW = 0; }
   }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
@@ -62,10 +69,10 @@ component Field(
       //   mid-word and leaves nothing on screen to say so. Degrading gracefully means the reader gets less, not that
       //   they get something that looks complete and is not.
       Input(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled, type: type,
-            label: label, invalid: error != "", onEnter: onEnter, autoFocus: autoFocus, textOverflow: TextOverflow.Ellipsis);
-      if (error != "" || hint != "") {
-        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
-             color: error != "" ? Colors.Danger : Colors.TextMuted);
+            label: label, invalid: shownError != "", onEnter: onEnter, autoFocus: autoFocus, textOverflow: TextOverflow.Ellipsis);
+      if (shownError != "" || hint != "") {
+        Text(shownError != "" ? shownError : hint, id: note, fontSize: FontSize.Caption,
+             color: shownError != "" ? Colors.Danger : Colors.TextMuted);
       }
     }
   }
@@ -99,15 +106,65 @@ component TextAreaField(
     base { Gap = Space.FieldGap; W = "100%"; MinW = 0; }
   }
 
+  // A REFUSED SAVE'S MESSAGE LANDS HERE BY ITSELF (field-messages-in-kit): the sentence the model's rules — or the
+  // server — gave for the field this control edits, once the person has left it or tried to save. `error:` still wins
+  // when the page passes one, so a page with its own check keeps its own words.
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
   render {
     Stack(gap: 1) {
       if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
       TextArea(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled,
-               rows: rows, label: label, invalid: error != "");
-      if (error != "" || hint != "") {
-        Text(error != "" ? error : hint, id: note, fontSize: FontSize.Caption,
-             color: error != "" ? Colors.Danger : Colors.TextMuted);
+               rows: rows, label: label, invalid: shownError != "");
+      if (shownError != "" || hint != "") {
+        Text(shownError != "" ? shownError : hint, id: note, fontSize: FontSize.Caption,
+             color: shownError != "" ? Colors.Danger : Colors.TextMuted);
       }
+    }
+  }
+}
+
+/// The input for ONE PARAMETER OF AN `[Action]`, as its kind takes it — what an editor shows when a person sets up a
+/// step that runs one of the app's actions later (an automation's step, a macro's). `choices` is what the parameter
+/// offers (`Actions.Choices`, or its enum's members): with any, it is a dropdown; otherwise yes or no, a whole number, a
+/// number, a date, a date and time, a time of day, a length of time, an id, details written as JSON (a `Structure`) or
+/// a JSON list (a `Sequence`). `value` is the text an `ActionValue` stores — check it with `Actions.Check` before
+/// keeping it, which reads it exactly as the run will.
+/// `ActionArgumentField(p, choices, value: draft.Value)` · in a test it is filled by its label: `Ui.Fill("Due", "2026-11-02")`.
+/// need: an input for an action's parameter, set up a step that runs an action, a value for a tool or a macro
+[Composable]
+component ActionArgumentField(ActionParameter p, List<ActionChoice> choices, Binding<string> value) {
+  string Words(string k) {
+    var c = choices.FirstOrDefault(x => x.Key == k);
+    return c == null ? k : c!.Label;
+  }
+  string Hint(string takes) {
+    if (!p.Optional) { return takes; }
+    return takes == "" ? "May be left empty." : takes + " May be left empty.";
+  }
+  render {
+    if (choices.Count > 0) {
+      Dropdown(p.Label, value: value, options: choices.Select(c => c.Key).ToArray()) { k => Text(Words(k)); }
+    } else if (p.Kind == ActionParameterKind.YesNo) {
+      Dropdown(p.Label, value: value, options: ["true", "false"]) { k => Text(k == "true" ? "Yes" : "No"); }
+    } else if (p.Kind == ActionParameterKind.Number) {
+      Field(p.Label, value: value, type: "number", hint: Hint("A whole number."));
+    } else if (p.Kind == ActionParameterKind.Decimal) {
+      Field(p.Label, value: value, type: "number", hint: Hint("A number — 2.5 for two and a half."));
+    } else if (p.Kind == ActionParameterKind.Date) {
+      Field(p.Label, value: value, type: "date", hint: Hint(""));
+    } else if (p.Kind == ActionParameterKind.DateAndTime) {
+      Field(p.Label, value: value, type: "datetime-local", hint: Hint(""));
+    } else if (p.Kind == ActionParameterKind.TimeOfDay) {
+      Field(p.Label, value: value, type: "time", hint: Hint(""));
+    } else if (p.Kind == ActionParameterKind.Duration) {
+      Field(p.Label, value: value, placeholder: "1:30:00", hint: Hint("Hours, minutes and seconds — 1:30:00 is an hour and a half."));
+    } else if (p.Kind == ActionParameterKind.Structure) {
+      TextAreaField(p.Label, value: value, rows: 4, placeholder: "{ \"name\": \"value\" }", hint: Hint("Its details, written as JSON."));
+    } else if (p.Kind == ActionParameterKind.Sequence) {
+      TextAreaField(p.Label, value: value, rows: 3, placeholder: "[\"first\", \"second\"]", hint: Hint("Several values, written as a JSON list."));
+    } else {
+      Field(p.Label, value: value, hint: Hint(""));
     }
   }
 }

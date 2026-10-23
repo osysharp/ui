@@ -183,13 +183,15 @@ component WorkbenchShell(AppChrome chrome) {
         Stack(gap: 0, grow: 1, minW: "0", role: UiRole.Main, label: "Page") { Slot; }
         WorkbenchStatus() { Slot("status"); }
         if (leaving != "") { LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing); }
-      }
-    }
-    if (userMenuOpen && !Layout.AtLeast(Tablet) && hasMenu) {
-      ShellSheet("Account", CloseUserMenu) {
-        ShellSheetIdentity(chrome.User);
-        Divider();
-        ShellMenuItemsGuarded(chrome.User.Menu, DismissAll, AskBeforeLeave);
+        // The identity sheet — phone only, so it lives in the phone arm's root: drawn beside it, it would wear this
+        // shell's `variants` (Display, Bg) and sit in the flow under the page.
+        if (userMenuOpen && hasMenu) {
+          ShellSheet("Account", CloseUserMenu) {
+            ShellSheetIdentity(chrome.User);
+            Divider();
+            ShellMenuItemsGuarded(chrome.User.Menu, DismissAll, AskBeforeLeave);
+          }
+        }
       }
     }
   }
@@ -257,8 +259,8 @@ component WorkbenchTip(string text, string badge = "") {
            TranslateY = "-50%"; Ml = 1; Px = 2; Py = 1; Rounded = Radius.Sm; Bg = Colors.OnSurface;
            Color = Colors.Surface; FontSize = FontSize.Caption; WhiteSpace = WhiteSpace.Nowrap;
            Z = ZIndex.Tooltip; Shadow = Shadow.Floating; PointerEvents = PointerEvents.None;
-           inside WorkbenchMarkLink.Hover { Display = Display.Flex; }
-           inside WorkbenchMarkLink.Focus { Display = Display.Flex; }
+           inside WorkbenchMarkLinkGuarded.Hover { Display = Display.Flex; }
+           inside WorkbenchMarkLinkGuarded.Focus { Display = Display.Flex; }
            inside WorkbenchMark.Hover { Display = Display.Flex; }
            inside WorkbenchMark.Focus { Display = Display.Flex; } }
   }

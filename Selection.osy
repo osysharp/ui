@@ -70,3 +70,21 @@ component SelectionBar(int count, Action onClear) {
     }
   }
 }
+
+/// "Load more" under a list that is a WINDOW of a page's query — drawn only while rows lie past what the page holds,
+/// and pressing it reads the next answer and appends it, so the list grows in place. A page's read is served about
+/// 2 MB of rows an answer (or its own `.Take(n)`), so a list over a big table holds the first answer's rows; this is
+/// how a person reaches the rest. `DataGrid` draws one under its rows by itself; a list you draw with `foreach` puts
+/// one under its rows. Over a list that is every row it will ever have (built in memory, or a `.Take(n)` the page
+/// has filled) it draws nothing.
+/// In a test press it by its label: `Ui.Click("Load more")`, and `Assert.Hidden("Load more")` once the last rows are in.
+/// need: load more rows, show the next page of a list, page a long list, a "show more" button, more rows exist, pagination
+/// e.g. `foreach (var t in tickets) { ListRow { Text(t.Subject); } }` then `LoadMoreButton(tickets);`
+[Composable] component LoadMoreButton<T>(T[] rows, string label = "Load more") {
+  action More() { rows.LoadMore(); }
+  render {
+    if (rows.HasMore) {
+      Row(justify: Justify.Center, py: 2) { Button(label, onPress: More, tone: Tone.Ghost); }
+    }
+  }
+}
