@@ -1,0 +1,74 @@
+// Tempo — for an app people BOOK a time in: classes, appointments, rooms, courts, tables.
+//
+// The idea: the timetable on the studio wall. What a visitor comes for is a time, so every time is set in a
+// monospace that lines up down a column (Azeret Mono), the words around it in a warm, plain grotesk (Albert Sans),
+// and a free slot is a square-cornered ticket, not a pastel chip. One colour beyond the neutrals, a magenta, kept for
+// the time you have chosen and the button that books it.
+//
+// What it refuses, because it is what an unguided booking page converges on: a calendar of rounded pastel chips, a
+// grid of identical service cards with an icon each, a blue "Book now" on every card, and a stock photograph of a
+// smiling receptionist as the hero.
+
+namespace Osysharp.Ui.Looks;
+
+/// Tempo — the timetable on the wall: times set in Azeret Mono down a column, the words in Albert Sans, free slots as
+/// square tickets, a magenta kept for the time you chose and the button that books it. For booking: classes,
+/// appointments, rooms, courts, tables.
+/// Arranged as: the booking site — a header with what can be booked, a day of times to choose from, the chosen time
+/// carried in the header's bag until it is booked — `StorefrontShell`, `DatePicker`, `TimePicker`, `RadioGroup`.
+/// Categories: booking.
+public abstract theme Tempo {
+  Colors {
+    Bg            = Modes.Of(light: "#FAFAF9", dark: "#141015");
+    OnBg          = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
+    Surface       = Modes.Of(light: "#FFFFFF", dark: "#1B161D");
+    OnSurface     = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
+    Elevated      = Modes.Of(light: "#FFFFFF", dark: "#231D26");
+    Sunken        = Modes.Of(light: "#F2F1EF", dark: "#0E0B0F");
+    Muted         = Modes.Of(light: "#EFEDEB", dark: "#2A232D");
+    Border        = Modes.Of(light: "#DDD9D6", dark: "#3A3240");
+    CardLine      = Modes.Of(light: "#E4E0DD", dark: "#332B38");
+    TextSecondary = Modes.Of(light: "#3E3443", dark: "#CFC6D3");
+    TextMuted     = Modes.Of(light: "#625868", dark: "#A69CAB");
+    BorderDanger  = Modes.Of(light: "#B42318", dark: "#FF8A5C");
+    // THE ONE COLOUR: a magenta, for the time you have chosen and the button that books it.
+    Primary       = Modes.Of(light: Palette.From("#B3246F"), dark: Palette.From("#F38CCB"));
+    OnPrimary     = Modes.Of(light: "#FFFFFF", dark: "#3A0A24");
+    Focus         = Modes.Of(light: "#8E1C58", dark: "#F7A8D8");
+    Success       = Modes.Of(light: Palette.From("#167A3E"), dark: Palette.From("#4AC98A"));
+    Danger        = Modes.Of(light: Palette.From("#B42318"), dark: Palette.From("#FF8A5C"));
+    Warning       = Modes.Of(light: Palette.From("#94600A"), dark: Palette.From("#F2B544"));
+    Waiting       = Modes.Of(light: "#45618E", dark: "#9DB4DD");
+    Scrim         = Modes.Of(light: "rgba(28,21,32,.34)", dark: "rgba(0,0,0,.6)");
+    // The header is the page's own paper; the current item is ink, as a day ringed on a printed timetable.
+    Chrome          = Modes.Of(light: "#FAFAF9", dark: "#141015");
+    OnChrome        = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
+    ChromeMuted     = Modes.Of(light: "#3E3443", dark: "#CFC6D3");
+    ChromeFaint     = Modes.Of(light: "#625868", dark: "#A69CAB");
+    ChromeHover     = Modes.Of(light: "#F0EEEC", dark: "#1F1922");
+    ChromeSunken    = Modes.Of(light: "#F2F1EF", dark: "#0E0B0F");
+    ChromeElevated  = Modes.Of(light: "#FFFFFF", dark: "#231D26");
+    ChromeLine      = Modes.Of(light: "#E4E0DD", dark: "#2C2530");
+    ChromeCurrent   = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
+    OnChromeCurrent = Modes.Of(light: "#FFFFFF", dark: "#141015");
+    ChromeFocus     = Colors.Focus;
+  }
+  Font {
+    Sans    = "\"Albert Sans\", ui-sans-serif, system-ui, sans-serif";
+    Display = "\"Albert Sans\", ui-sans-serif, system-ui, sans-serif";
+    // Every time, date and count — a column of times only reads as a timetable when its figures line up.
+    Mono    = "\"Azeret Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+    Figure  = "\"Azeret Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+  }
+  FontSize   { Caption = "12px"; Label = "13px"; Body = "15px"; Subhead = "17px"; Heading = "22px"; Title = "32px"; Code = "13px"; }
+  FontWeight { Regular = 400; Medium = 520; Semibold = 640; Bold = 760; Headings = 720; }
+  // Square tickets: a slot is a stub you tear off, so tags and small controls keep a 3px corner; cards a little more.
+  Radius     { Sm = "3px"; Md = "5px"; Lg = "10px"; Pill = "999px"; Tag = "3px"; }
+  Space      { Step = "0.25rem"; Gutter = "1rem"; PagePad = "1.5rem"; SectionGap = "2.75rem"; FieldGap = "0.45rem"; }
+  Length     { ControlSm = "34px"; ControlMd = "40px"; ControlLg = "48px"; Touch = "44px"; TouchDense = "38px"; RailW = "248px"; AppBarH = "58px"; }
+  Shadow {
+    Raised   = "0 1px 0 rgba(28,21,32,.06)";
+    Floating = "0 14px 32px -12px rgba(28,21,32,.26), 0 0 0 1px rgba(28,21,32,.07)";
+    Deep     = "0 30px 60px -20px rgba(28,21,32,.34), 0 0 0 1px rgba(28,21,32,.07)";
+  }
+}

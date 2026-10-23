@@ -5,6 +5,14 @@
   "entries": [],
   "fonts": [
     {
+      "family": "Albert Sans",
+      "hash": "c2fb6fda415c7bf5926c15aa98f759da45cdc5ac4ac6925a72a84db4eb3862a3",
+      "file": "fonts/albert-sans-latin-variable-normal.woff2",
+      "contentType": "font/woff2",
+      "weight": "100 900",
+      "style": "normal"
+    },
+    {
       "family": "Atkinson Hyperlegible Mono",
       "hash": "a96152b51f0399f38a2b5210697f2cdd17d2a14620b796094a22c23423f13cd0",
       "file": "fonts/AtkinsonHyperlegibleMono.woff2",
@@ -19,6 +27,14 @@
       "weight": "200 800"
     },
     {
+      "family": "Azeret Mono",
+      "hash": "d090ca8b9080094d42b06c43f2987bfa8b36fd5565611fd59db84db53c5f74bb",
+      "file": "fonts/azeret-mono-latin-variable-normal.woff2",
+      "contentType": "font/woff2",
+      "weight": "100 900",
+      "style": "normal"
+    },
+    {
       "family": "DM Mono",
       "hash": "d2dd938860c30a69108906661b293272df6b8c6edf16e7344e91104e5b284e28",
       "file": "fonts/DMMono-Regular.woff2",
@@ -31,6 +47,14 @@
       "file": "fonts/DMMono-Medium.woff2",
       "contentType": "font/woff2",
       "weight": "500"
+    },
+    {
+      "family": "Epilogue",
+      "hash": "943ab208b058dbb0a8b257c02d6d9cfe5932a72c4deea8c77d192111c7c14519",
+      "file": "fonts/epilogue-latin-variable-normal.woff2",
+      "contentType": "font/woff2",
+      "weight": "100 900",
+      "style": "normal"
     },
     {
       "family": "Figtree",
@@ -73,6 +97,14 @@
       "file": "fonts/SofiaSansCondensed.woff2",
       "contentType": "font/woff2",
       "weight": "1 1000"
+    },
+    {
+      "family": "Source Serif 4",
+      "hash": "382475f38242c52d42a3e5ff8dc69b5d73f10d0d21e4550b5fe232984688779a",
+      "file": "fonts/source-serif-4-latin-variable-normal.woff2",
+      "contentType": "font/woff2",
+      "weight": "200 900",
+      "style": "normal"
     },
     {
       "family": "Spline Sans Mono",

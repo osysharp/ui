@@ -1,0 +1,79 @@
+// Folio — for a site people READ: guides, articles, a programme, an organisation's own pages.
+//
+// The idea: the printed programme. A white page and ink, the words set in a text serif made for long reading on a
+// screen (Source Serif 4) at a generous size, headings in a heavy, tight grotesk (Epilogue), and solid ink rules
+// where other sites put grey boxes. One colour beyond the neutrals, a deep teal, kept for links and for what to press.
+//
+// What it refuses, because it is what an unguided content site converges on: cream paper, a serif DISPLAY face with a
+// clay accent, tiny letter-spaced labels over every heading, and a grid of identical article cards. The serif here is
+// the reading face, the display is a grotesk, and the page is white.
+
+namespace Osysharp.Ui.Looks;
+
+/// Folio — the printed programme: white paper and ink, words in Source Serif 4 at a reading size, headings in a heavy
+/// Epilogue, solid ink rules instead of grey boxes, a deep teal for links and actions. For content sites: guides,
+/// articles, a programme, an organisation's own pages.
+/// Arranged as: the reading page — the wordmark, a centred nav and one call to action over the page's opening
+/// picture, a page title, a long single column, and a footer of plain links — `EditorialShell`, `PageTitle`,
+/// `Heading`, `TextLink`, `Divider`.
+/// Categories: content-site.
+public abstract theme Folio {
+  Colors {
+    Bg            = Modes.Of(light: "#FFFFFF", dark: "#101214");
+    OnBg          = Modes.Of(light: "#121417", dark: "#ECEEEF");
+    Surface       = Modes.Of(light: "#FFFFFF", dark: "#16191C");
+    OnSurface     = Modes.Of(light: "#121417", dark: "#ECEEEF");
+    Elevated      = Modes.Of(light: "#FFFFFF", dark: "#1D2125");
+    Sunken        = Modes.Of(light: "#F2F4F5", dark: "#0B0D0E");
+    Muted         = Modes.Of(light: "#EEF1F2", dark: "#22272B");
+    Border        = Modes.Of(light: "#C9CFD3", dark: "#353C42");
+    // A card's edge is a rule of INK, as a box drawn on a printed page — not a grey hairline.
+    CardLine      = Modes.Of(light: "#121417", dark: "#5B646B");
+    TextSecondary = Modes.Of(light: "#33383D", dark: "#C2C8CD");
+    TextMuted     = Modes.Of(light: "#596066", dark: "#9AA2A9");
+    BorderDanger  = Modes.Of(light: "#B3261E", dark: "#FF7A70");
+    // THE ONE COLOUR: a deep teal, for links and for what to press. Nothing else on the page is coloured.
+    Primary       = Modes.Of(light: Palette.From("#006B78"), dark: Palette.From("#4FC3D1"));
+    OnPrimary     = Modes.Of(light: "#FFFFFF", dark: "#00262B");
+    Focus         = Modes.Of(light: "#0A84A0", dark: "#7AD7E2");
+    Success       = Modes.Of(light: Palette.From("#1F7A3A"), dark: Palette.From("#4CC38A"));
+    Danger        = Modes.Of(light: Palette.From("#B3261E"), dark: Palette.From("#FF7A70"));
+    Warning       = Modes.Of(light: Palette.From("#8F5B00"), dark: Palette.From("#F0B54A"));
+    Waiting       = Modes.Of(light: "#5B4FA8", dark: "#A99BF0");
+    Scrim         = Modes.Of(light: "rgba(18,20,23,.36)", dark: "rgba(0,0,0,.62)");
+    // The chrome IS the page: a reading site's header is printed on the same paper, and the current item is set in
+    // reverse — ink ground, white words — as a printed index marks where you are.
+    Chrome          = Modes.Of(light: "#FFFFFF", dark: "#101214");
+    OnChrome        = Modes.Of(light: "#121417", dark: "#ECEEEF");
+    ChromeMuted     = Modes.Of(light: "#33383D", dark: "#C2C8CD");
+    ChromeFaint     = Modes.Of(light: "#596066", dark: "#9AA2A9");
+    ChromeHover     = Modes.Of(light: "#F2F4F5", dark: "#1A1E21");
+    ChromeSunken    = Modes.Of(light: "#F2F4F5", dark: "#0B0D0E");
+    ChromeElevated  = Modes.Of(light: "#FFFFFF", dark: "#1D2125");
+    ChromeLine      = Modes.Of(light: "#121417", dark: "#353C42");
+    ChromeCurrent   = Modes.Of(light: "#121417", dark: "#ECEEEF");
+    OnChromeCurrent = Modes.Of(light: "#FFFFFF", dark: "#101214");
+    ChromeFocus     = Colors.Focus;
+  }
+  Font {
+    // The reading face carries the words AND the controls: a content site is read, and a serif button is part of the
+    // printed page rather than an app's control dropped into it.
+    Sans    = "\"Source Serif 4\", ui-serif, Georgia, serif";
+    Display = "\"Epilogue\", ui-sans-serif, system-ui, sans-serif";
+    Mono    = "\"DM Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+    Figure  = "\"Epilogue\", ui-sans-serif, system-ui, sans-serif";
+  }
+  // A reading size: body text at 18px, and few steps above it, each a clear jump.
+  FontSize   { Caption = "13px"; Label = "14px"; Body = "18px"; Subhead = "21px"; Heading = "30px"; Title = "48px"; Code = "15px"; }
+  FontWeight { Regular = 400; Medium = 500; Semibold = 600; Bold = 800; Headings = 800; }
+  // Nearly square: a printed page has no rounded corners, and a 2px edge only softens a control's box.
+  Radius     { Sm = "2px"; Md = "2px"; Lg = "3px"; Pill = "999px"; Tag = "2px"; }
+  Space      { Step = "0.28rem"; Gutter = "1.25rem"; PagePad = "2rem"; SectionGap = "3.5rem"; FieldGap = "0.5rem"; }
+  Length     { ControlSm = "34px"; ControlMd = "42px"; ControlLg = "50px"; Touch = "44px"; TouchDense = "38px"; RailW = "260px"; AppBarH = "64px"; }
+  // Almost no shadow: depth on a printed page is a rule, not a blur. A floating panel keeps one, so it reads as above.
+  Shadow {
+    Raised   = "none";
+    Floating = "0 10px 28px -12px rgba(18,20,23,.28), 0 0 0 1px rgba(18,20,23,.9)";
+    Deep     = "0 24px 56px -18px rgba(18,20,23,.36), 0 0 0 1px rgba(18,20,23,.9)";
+  }
+}

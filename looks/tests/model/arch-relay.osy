@@ -83,14 +83,13 @@ component RelayIncidentsPage() {
           filterable: true,
           selectable: true,
           rowSelected: Open,
-          sortColumn: "Age",
           columns: [
             new GridColumn<IncidentRow> { Name = "Id", Label = "ID", Value = i => i.Id, Width = 96 },
             new GridColumn<IncidentRow> { Name = "Severity", Label = "Sev", Value = i => i.Severity.Label, Width = 76 },
             new GridColumn<IncidentRow> { Name = "Title", Label = "Title", Value = i => i.Title, Title = true, Fill = true, Width = 260 },
             new GridColumn<IncidentRow> { Name = "Service", Label = "Service", Value = i => i.Service, Width = 120 },
             new GridColumn<IncidentRow> { Name = "State", Label = "State", Value = i => i.State.Label, Width = 120 },
-            new GridColumn<IncidentRow> { Name = "Age", Label = "Age", Kind = GridColumnKind.Number, Value = i => Age(i.Minutes),
+            new GridColumn<IncidentRow> { Name = "Age", Sort = UiSort.Ascending, Label = "Age", Kind = GridColumnKind.Number, Value = i => Age(i.Minutes),
                                           Number = i => i.Minutes, Align = "right", Width = 76 },
             new GridColumn<IncidentRow> { Name = "Owner", Label = "Owner", Value = i => i.Owner, Width = 120 },
           ]

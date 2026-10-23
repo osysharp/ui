@@ -15,6 +15,7 @@ namespace Osysharp.Ui.Looks;
 /// people and states. For CRM, agencies and project tools.
 /// Arranged as: the record desk — a labelled sidebar, a list with the opened record beside it as tabs, edits that keep
 /// themselves with an Undo while they wait, and an assistant a press away — `SidebarShell`, `Dock`, `AutoSave`, `AssistantPanel`.
+/// Categories: internal-tool, booking.
 public abstract theme Studio {
   Colors {
     Bg            = Modes.Of(light: "#FFFFFF", dark: "#141416");

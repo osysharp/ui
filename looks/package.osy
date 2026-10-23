@@ -1,4 +1,4 @@
-// Osysharp.Ui.Looks — five finished looks for any app built on the UI kit: Ledger, Relay, Civic, Studio and Signal.
+// Osysharp.Ui.Looks — seven finished looks for any app built on the UI kit: Ledger, Relay, Civic, Studio, Signal, Folio and Tempo.
 //
 // A look is a BASE, not a final pick. Each is an `abstract theme` — installing the package changes nothing — and an
 // app derives from the closest one and makes it its own:
@@ -8,9 +8,9 @@
 // Every token the app does not override comes from the look: its palette in light and dark, its type and the faces it
 // ships, its density, its radii and elevation, and the colours of the app's chrome. `osy kit looks` lists them.
 package Osysharp.Ui.Looks {
-  version     "0.3.0";
-  minPlatform "0.14.0";
-  summary     "five looks for apps on the UI kit — Ledger, Relay, Civic, Studio, Signal — each a theme an app derives from and makes its own.";
+  version     "0.4.0";
+  minPlatform "0.15.0";
+  summary     "seven looks for apps on the UI kit — Ledger, Relay, Civic, Studio, Signal, Folio, Tempo — each a theme an app derives from and makes its own, each a start for the categories it names.";
   model "model/**/*.osy";
   use Osysharp.Ui;
   // The producer's test project: the specimen — one page per shape a business app is made of, photographed in every look.

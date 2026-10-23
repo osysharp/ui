@@ -16,6 +16,7 @@ namespace Osysharp.Ui.Looks;
 /// headings on a blue-grey page. For healthcare, public services and any app anyone may have to use.
 /// Arranged as: the flow — one plain question at a time, the steps beside it, "Save and continue" in words, and a check
 /// of every answer before it is sent — `FocusedShell`, `RadioGroup`, `ShellAside`.
+/// Categories: booking, internal-tool.
 public abstract theme Civic {
   Colors {
     Bg            = Modes.Of(light: "#EEF2F4", dark: "#0E1418");

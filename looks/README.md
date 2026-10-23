@@ -1,6 +1,7 @@
-# Osysharp.Ui.Looks — five looks for business apps
+# Osysharp.Ui.Looks — seven looks for apps on the UI kit
 
-Five finished designs for any app built on the UI kit. Each is a whole look — the palette in light and dark, the faces
+Seven finished designs for any app built on the UI kit, each a start for one or more categories of app (`osy kit
+looks <category>`: shop, booking, internal-tool, content-site, dashboard). Each is a whole look — the palette in light and dark, the faces
 it ships, the density, the corners, the elevation and the colours of the app's chrome — and each is a **base**: your
 app derives from the closest one and makes it its own.
 
@@ -18,6 +19,8 @@ face. Everything you do not override stays as the look designed it, contrast-che
 | **Civic** | healthcare, public services, anything anyone may have to use | large type in Atkinson Hyperlegible, controls you cannot miss, square corners, bold headings, a black focus ring |
 | **Studio** | CRM, agencies, recruiting, project tools | Figtree, ink-black actions, soft grey chrome, round corners and pill tags, colour kept for people and states |
 | **Signal** | analytics, reporting, dashboards, growth tools | an ink rail beside a light page, figures set tall in a condensed face, cards without an outline, ultraviolet |
+| **Folio** | content sites: guides, articles, a programme, an organisation's pages | white paper and ink, words in Source Serif 4 at 18px, headings in a heavy Epilogue, solid ink rules instead of grey boxes, a deep teal |
+| **Tempo** | booking: classes, appointments, rooms, courts, tables | every time in Azeret Mono down a column, Albert Sans for the words, free slots as square tickets, a magenta for the time you chose |
 
 ### Ledger
 ![Ledger — an overview, an accounts table in dark, an inbox and a board in dark](docs/ledger.jpg)
@@ -36,7 +39,10 @@ face. Everything you do not override stays as the look designed it, contrast-che
 
 …and on a phone, in the same order:
 
-![The five looks on a phone](docs/phones.jpg)
+![The first five looks on a phone](docs/phones.jpg)
+
+Folio and Tempo have no photographed sheet yet: `osy test --pixels --theme Looks.Folio` in `tests/` photographs the
+specimen in either.
 
 ## Each look comes with an arrangement
 
@@ -69,7 +75,8 @@ app Billing {
 
 ```console
 osy lock          # pins the package; its faces come with it
-osy kit looks     # the five, with their faces, accents and density
+osy kit looks     # all seven, with their faces, accents, density and categories
+osy kit looks booking   # only the looks made as a start for one category
 ```
 
 ## Using it
@@ -112,7 +119,7 @@ The package's own `tests/contrast.test.osy` is the whole list of pairs the kit p
 
 | | |
 |---|---|
-| looks | five abstract themes — installing the package changes nothing until a theme derives from one |
+| looks | seven abstract themes — installing the package changes nothing until a theme derives from one |
 | tokens | every look sets the same contract: the page's colours, action and states, the chrome (rail and bars), faces (text, display, mono, figures), the type scale and weights, corners, the density step, control heights and elevation, and the chart kit's first two series |
 | faces | Wix Madefor, DM Mono, Reddit Sans and Mono, Atkinson Hyperlegible Next and Mono, Figtree, Fragment Mono, Sofia Sans and Sofia Sans Condensed, Spline Sans Mono — all under the SIL Open Font License, shipped in the package |
 | checked | every words-on-ground pair at WCAG AA in light and dark (`tests/contrast.test.osy`); every accent clear of every status colour |
