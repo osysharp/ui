@@ -130,6 +130,105 @@ The package's own `tests/contrast.test.osy` is the whole list of pairs the kit p
 The looks are in `model/`, one file each; the faces and their licences in `fonts/`; the specimen in `tests/`.
 Documentation: `osy docs ui-looks-kit`.
 
+## Examples
+
+Taken from this package's own tests, which compile and run on every release.
+
+```osy
+[Test(CivicApplication)]
+void civic_a_question_page_and_its_save() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/civic/practice");
+  Assert.Visible("Tell us about your practice");
+  Ui.Shot("civic · question · wide · light");
+  // Continuing without the one required answer says what is wrong, at the top and at the field.
+  Ui.Click("Save and continue");
+  Assert.Visible("There is a problem");
+  Ui.Shot("civic · question · error · wide · light");
+  Ui.Fill("Practice name", "Harbourside Surgery");
+  Ui.Click("Dental practice");
+  Assert.Checked("Dental practice");
+  Ui.Click("Save and continue");
+  Assert.OnPage("/civic/hours");
+  Assert.Equal("Harbourside Surgery", Draft.Single(d => d.Key == "civic-practice").Title);
+  Ui.Theme("dark");
+  Ui.Visit("/civic/practice");
+  Ui.Shot("civic · question · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/civic/practice");
+  Ui.Shot("civic · question · phone · light");
+}
+```
+
+From [`tests/arch-civic.test.osy`](tests/arch-civic.test.osy).
+
+```osy
+[Test(LedgerBooks)]
+void ledger_accounts_read_calmly_and_select_into_a_toolbar() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/ledger");
+  Assert.Visible("Brightwater Dental Group");
+  Assert.Expanded("Filter", false);
+  Ui.Shot("ledger · accounts · wide · light");
+  Ui.Click("Select Kestrel Freight");
+  Ui.Click("Select Northgate Property Services");
+  Assert.Visible("2 selected");
+  Ui.Shot("ledger · accounts · selected · wide · light");
+  Ui.Click("Clear selection");
+  Ui.Click("Filter");
+  Ui.Fill("Filter Annual value", ">40000");
+  Ui.Click("Filter · 1");
+  Assert.Visible("Annual value over 40000");
+  Ui.Shot("ledger · accounts · filtered · wide · light");
+  Ui.Theme("dark");
+  Ui.Visit("/ledger");
+  Ui.Shot("ledger · accounts · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/ledger");
+  Ui.Shot("ledger · accounts · phone · light");
+}
+```
+
+From [`tests/arch-ledger.test.osy`](tests/arch-ledger.test.osy).
+
+```osy
+[Test(RelayDesk)]
+void relay_console_with_its_drawers() {
+  Ui.Viewport(1440, 960);
+  Ui.Visit("/relay");
+  Assert.Visible("Invoice runs time out for accounts over 300 seats");
+  Assert.Visible("Live", within: "Status");
+  Ui.Shot("relay · console · wide · light");
+  Ui.Click("Invoice runs time out for accounts over 300 seats");
+  Assert.Visible("Working notes", within: "Incident INC-4821");
+  Ui.Fill("Owner", "Hannah Lowe");
+  Assert.Visible("Edited", within: "Incident INC-4821");
+  Ui.Shot("relay · console · inspector · wide · light");
+  Ui.Click("Save", within: "Incident INC-4821");
+  Assert.Hidden("Edited");
+  Assert.Equal("Hannah Lowe", Draft.Single(d => d.Key == "relay-incident").Owner);
+  Ui.Theme("dark");
+  Ui.Visit("/relay");
+  Ui.Click("Invoice runs time out for accounts over 300 seats");
+  Ui.Shot("relay · console · inspector · wide · dark");
+  Ui.Theme("light");
+  Ui.Viewport(390, 844);
+  Ui.Visit("/relay");
+  Ui.Shot("relay · console · phone · light");
+}
+```
+
+From [`tests/arch-relay.test.osy`](tests/arch-relay.test.osy).
+
+## Learn more
+
+- [The Osysharp.Ui.Looks reference](https://osysharp.com/reference/ui/looks-kit/)
+- [Osysharp.Ui.Looks in the package catalogue](https://osysharp.com/packages/#osysharp-ui-looks)
+- [The Osy# reference](https://osysharp.com/reference/) — the language, the runtime and every kit
+- [`llms-full.txt`](https://osysharp.com/llms-full.txt) — the whole reference and specification as one Markdown file, for a coding agent
+
 ## Licence
 
-MIT for the code. Each font keeps its own licence, beside it in `fonts/`.
+MIT — see [`LICENSE`](LICENSE). Third-party components keep their own terms: see [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
