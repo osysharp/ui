@@ -45,3 +45,34 @@ void a_column_that_says_sort_descending_is_the_order_the_rows_arrive_in() {
   Assert.Before(oak, ash);
   Assert.Before(ash, walnut);
 }
+
+[TestFixture]
+void CountedStock() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  // As TEXT these order "30", "84", "9"; as numbers 9, 30, 84. The names are in neither order.
+  new Moulding { Moniker = "Beech", Shelf = 84 };
+  new Moulding { Moniker = "Cedar", Shelf = 9 };
+  new Moulding { Moniker = "Elm", Shelf = 30 };
+}
+
+/// A formatted number column sorts as a NUMBER, both ways round: 9 < 30 < 84, never "30" < "84" < "9".
+[Test(CountedStock)]
+void a_column_that_formats_a_number_sorts_by_the_number_both_ways() {
+  Moulding? nine = null;
+  Moulding? thirty = null;
+  Moulding? eightyFour = null;
+  runas (ShelfPia) {
+    nine = Moulding.Single(m => m.Shelf == 9);
+    thirty = Moulding.Single(m => m.Shelf == 30);
+    eightyFour = Moulding.Single(m => m.Shelf == 84);
+  }
+  Ui.SignInAs(ShelfPia);
+  Ui.Visit("/stock/by-count");
+  Ui.Click("Shelf");
+  Assert.Before(nine, thirty);
+  Assert.Before(thirty, eightyFour);
+  Ui.Click("Shelf");
+  Assert.Before(eightyFour, thirty);
+  Assert.Before(thirty, nine);
+}

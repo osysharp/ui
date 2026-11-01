@@ -6,11 +6,13 @@ namespace Osysharp.Ui;
 /// line per fact with a rule under it. Each line is a `Fact`. On a phone the label sits over its value.
 /// Reach for it where a card would otherwise hold lines of "Label: value" prose: a record's details, a server's state,
 /// what a plan includes. Put it in a `Card` for a titled block, with the card's status chips in `slot actions`.
+/// `label` names the table ("About this server") and it is required: it is the table's only name, the one a screen
+/// reader announces and a test scopes to.
 /// In a test it is a container — read a value through its fact: `Assert.Visible("Managed", within: "Hosting")`.
 /// need: show the details of a record, key value pairs, a description list, label and value rows, a properties table, information as a table
-/// e.g. `Card("Database") { Facts { Fact("Engine", value: "Postgres 16"); Fact("Storage", value: "63 of 200 GiB"); } }`
+/// e.g. `Card("Database") { Facts("About this database") { Fact("Engine", value: "Postgres 16"); Fact("Storage", value: "63 of 200 GiB"); } }`
 [Composable]
-component Facts(string label = "") {
+component Facts(string label) {
   render {
     Stack(gap: 0, w: "100%", label: label) { Slot; }
   }

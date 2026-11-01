@@ -66,7 +66,9 @@ public sealed class NavLink {
 public abstract component WorkspaceShell();
 
 /// The Ui kit's own design of the frame: the page, the window's height, nothing around it.
+/// It is what `WorkspaceShell` is until an app designs its own, so an app writes it only to say "no frame" on purpose.
 /// In a test there is nothing of its own to drive — it draws only the page.
+/// e.g. `component PlainShell() : WorkspaceShell { render { BareWorkspaceShell() { Slot; } } }`
 public component BareWorkspaceShell() : WorkspaceShell { render { Box(w: "100%", h: "100dvh", bg: Colors.Bg) { Slot; } } }
 
 /// The LAYOUT a kit's working page names — `[Layout(WorkspaceFrame)]` — the app's shell (its design of `WorkspaceShell`)

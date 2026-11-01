@@ -21,7 +21,7 @@ component OffcutsPage() {
       foreach (var o in offcuts) {
         Row(gap: 2, align: Align.Center, label: o) {
           Text(o);
-          IconButton("Throw out " + o, () => Throw(o), tone: Tone.Danger) { Icon(Icons.Trash); }
+          IconButton("Scrap " + o, () => Throw(o), tone: Tone.Danger) { Icon(Icons.Trash); }
           IconButton("Bin " + o + " now", () => Throw(o), tone: Tone.Danger, confirm: false) { Icon(Icons.Close); }
         }
       }

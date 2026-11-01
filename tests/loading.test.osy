@@ -45,3 +45,33 @@ void the_shelves_show_their_shape_while_the_rows_load_then_fill_in() {
   Assert.Visible("Gilt cushion");
   Assert.Hidden("Reading the shelves…");
 }
+
+/// A page inside a layout that waits on its OWN reads (a live server call and a live list, no skeleton) is held with
+/// it: the visit returns on that waiting screen instead of waiting for answers that cannot come (FM-95 — it used to
+/// hang the driver for 300 s and be reported as a client that stopped responding), and the page arrives on release.
+[Test(ThreeMouldings)]
+void a_page_in_a_layout_waiting_on_its_own_reads_is_visited_while_held_then_fills_in() {
+  Ui.SignInAs(StockKeeper);
+  Ui.HoldServer();
+  Ui.Visit("/stock/counter");
+  Assert.Hidden("The counter is open");
+
+  Ui.ReleaseServer();
+  Assert.Visible("The counter is open");
+  Assert.Visible("3 on the books, 3 shelved");
+}
+
+/// …and for a page whose `live var` CALLS a server function: its answer is a server call's, held like one (FM-111 —
+/// it used to answer at once, so the moment before a live report arrived could not be stood on).
+[Test(ThreeMouldings)]
+void a_live_server_call_is_held_like_any_server_call() {
+  Ui.SignInAs(StockKeeper);
+  Ui.HoldServer();
+  Ui.Visit("/stock/live-report");
+  Assert.Visible("Counting the stock…");
+  Assert.Hidden("3 mouldings counted");
+
+  Ui.ReleaseServer();
+  Assert.Visible("3 mouldings counted");
+  Assert.Hidden("Counting the stock…");
+}

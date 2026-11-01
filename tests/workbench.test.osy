@@ -1,0 +1,35 @@
+// The WORKBENCH shell's explorer and marks (`Shell.Workbench.osy`): a row opened from the explorer keeps the explorer,
+// and a mark with a badge says it.
+
+/// A tree in the `explorer` slot opens a record that is in no section of the nav: the explorer — and the tree in it —
+/// stays beside the record, the way a side bar stays when a file is opened from it, and its section's mark stays lit.
+[Test(Workshop)]
+void a_row_opened_from_the_workbench_explorer_keeps_the_explorer() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk/quote");
+  Ui.Click("The Byrne job");
+  Assert.OnPage("/desk/job/ada");
+  Assert.Visible("Mount cut, glass ordered.");
+  Assert.Visible("The Byrne job", within: "Quote");                  // the explorer is still Quote's, the tree in it
+  Ui.Click("Quote — Hide the explorer", within: "Main navigation");  // its mark is the lit one: it folds the explorer
+  Assert.Hidden("The Byrne job");
+}
+
+/// `ShowVersion` on a workbench: its brand is a bare mark with no tagline under it, so the app's and the platform's
+/// version are at the far end of the status line — the same words every other shell draws under the product's name.
+[Test(Workshop)]
+void a_workbench_with_show_version_names_the_versions_in_its_status_line() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk/quote");
+  Assert.Visible("Front desk · " + App.Version, within: "Status");
+  Assert.Visible("platform " + App.PlatformVersion, within: "Status");
+}
+
+/// A mark has no words, so its badge is a dot on it and the badge's words are in the mark's name.
+[Test(Workshop)]
+void a_workbench_mark_with_a_badge_carries_the_badge_in_its_name() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk/quote");
+  Ui.Click("Offcuts — 3", within: "Main navigation");
+  Assert.OnPage("/desk/offcuts");
+}

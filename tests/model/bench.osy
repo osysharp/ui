@@ -43,10 +43,16 @@ component BenchQuotePage() {
 [Authorize(IsFramer)]
 component DeskShell() {
   render {
-    WorkbenchShell(new AppChrome { Product = "Workshop", Home = "/desk", Nav = [
+    // `ShowVersion` — the workbench's brand is a bare mark, so the versions go in its status line.
+    WorkbenchShell(new AppChrome { Product = "Workshop", Tagline = "Front desk", ShowVersion = true, Home = "/desk", Nav = [
       new NavItem { Label = "Bench", To = "/desk", Icon = Icons.Home, Exact = true },
       new NavItem { Label = "Quote", To = "/desk/quote", Icon = Icons.Tag },
-    ] }) { Outlet(retain: 4); }
+      new NavItem { Label = "Offcuts", To = "/desk/offcuts", Icon = Icons.Archive, Badge = "3", BadgeTone = Tone.Warning },
+    ] }) {
+      Outlet(retain: 4);
+      // A tree of records in the explorer — a row opens a page that is in NO section of the nav.
+      slot explorer { Link("/desk/job/ada") { Text("The Byrne job"); } }
+    }
   }
 }
 
@@ -68,4 +74,16 @@ component DeskPage() {
 [Route("/desk/quote")] [Layout(DeskShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Quote")]
 component DeskQuotePage() {
   render { Stack(gap: 4, p: 6) { PageHead("Quote"); Text("Prices by the metre."); } }
+}
+
+/// Off-cuts waiting to be used — a mark with a badge on it.
+[Route("/desk/offcuts")] [Layout(DeskShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Offcuts")]
+component DeskOffcutsPage() {
+  render { Stack(gap: 4, p: 6) { PageHead("Offcuts"); Text("Three lengths of walnut."); } }
+}
+
+/// One job, opened from the explorer's tree: a page that belongs to no section of the nav.
+[Route("/desk/job/{name}")] [Layout(DeskShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Job")]
+component DeskJobPage(string name) {
+  render { Stack(gap: 4, p: 6) { PageHead("Job " + name); Text("Mount cut, glass ordered."); } }
 }

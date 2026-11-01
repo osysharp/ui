@@ -5,14 +5,21 @@ namespace Osysharp.Ui;
 /// The shapes a stand-in block comes in — sized to match what each stands in for.
 public enum SkeletonShape { Line, HalfLine, Control, Circle, Block }
 
-/// The kit's shimmer — a slow opacity pulse.
+/// The kit's shimmer — a band of light sweeping across the block, over a gentle pulse.
+///
+/// The band is the part that reads as "still loading": an opacity pulse of a light grey on a light surface alone moves a
+/// handful of shades, and on a light board it read as hung, not loading. The band lives in
+/// the animation itself (an image three times the block's width, a light stripe in its middle third, swept across by its
+/// position), so every `Animation = KitShimmer` gets it with no second style. Under `prefers-reduced-motion` the platform
+/// drops the travel (`background-position` moves something) and keeps the pulse: at rest the stripe sits outside the block,
+/// so what remains is a quiet fade, not nothing.
 animation KitShimmer {
-  Duration = "1.4s";
+  Duration = "1.6s";
   Easing = EaseInOut;
   Repeat = Infinite;
-  0%   { Opacity = "0.45"; }
-  50%  { Opacity = "0.9"; }
-  100% { Opacity = "0.45"; }
+  0%   { BgImage = "linear-gradient(90deg, transparent 40%, color-mix(in srgb, var(--colors-bg, #fff) 80%, transparent) 50%, transparent 60%)"; BgSize = "300% 100%"; BgPosition = "100% 0"; Opacity = "0.55"; }
+  50%  { BgImage = "linear-gradient(90deg, transparent 40%, color-mix(in srgb, var(--colors-bg, #fff) 80%, transparent) 50%, transparent 60%)"; BgSize = "300% 100%"; Opacity = "1"; }
+  100% { BgImage = "linear-gradient(90deg, transparent 40%, color-mix(in srgb, var(--colors-bg, #fff) 80%, transparent) 50%, transparent 60%)"; BgSize = "300% 100%"; BgPosition = "0% 0"; Opacity = "0.55"; }
 }
 
 /// One shimmering placeholder block. `Skeleton()` is a full-width text line; `Skeleton(shape: SkeletonShape.Circle)` stands in

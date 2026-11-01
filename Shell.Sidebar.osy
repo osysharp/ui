@@ -78,6 +78,11 @@ public enum RailDrawer { Closed, Open }
 ///   `aside`     a right rail. A COLUMN beside the page at 1100+, a section under it below that — never dropped,
 ///               because a phone that silently loses a panel has lost content, not layout.
 ///
+/// As an icon strip each mark names itself on hover and keyboard focus (its label, its badge's words and its
+/// `Shortcut`), and `[` collapses and expands the rail in the docked bands (listed in the `?` sheet; nothing on a phone).
+/// `chrome.FootNav` pins NavItems at the rail's foot above the user: labelled rows open, marks with tips as the strip,
+/// and inside the phone drawer.
+///
 /// In a test the regions carry names, so scope to them: `Ui.Click("Users", within: "Main navigation")`.
 /// need: an app shell with a sidebar, a dashboard layout with nav, the frame around every page
 /// e.g. `SidebarShell(chrome) { Outlet(retain: 8); slot search { ShellSearch("Search", onPress: Palette); } }`
@@ -337,13 +342,25 @@ internal component SidebarRailGuarded(
       // beside a row and an `auto` overflow clips on BOTH axes — the collapsed rail's submenu would be cut off at
       // 68px. A transient panel is worth a transiently unscrollable list.
       Stack(gap: 1, grow: 1, minH: "0", overflowY: flyout != "" ? Overflow.Visible : Overflow.Auto,
-            px: 2, py: 2, scrollbarWidth: ScrollbarWidth.Thin) {
+            overflowX: Overflow.Visible, px: 2, py: 2, scrollbarWidth: ScrollbarWidth.Thin) {
         if (chrome.Loading) { ShellNavSkeleton(iconOnly); }
         if (!chrome.Loading) {
           // PINNED and RECENT first — the reader's own shortcuts, above the app's map.
           ShellShortcuts(chrome, iconOnly, onNavigated);
           if (chrome.Nav.Length == 0) { SidebarNavEmpty(iconOnly); }
           foreach (var item in chrome.Nav) {
+            SidebarNavNodeGuarded(item, iconOnly, current, opened, closed, flyout,
+                           onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
+          }
+        }
+      }
+      // FOOT NAV — `chrome.FootNav`, pinned under the scroller whatever the band: labelled rows open, marks with
+      // tips as the strip, and the same rail inside the phone drawer. Its own region does not scroll, so these
+      // rows are always one press away however long the nav above is.
+      if (!chrome.Loading && chrome.FootNav.Length > 0) {
+        Divider();
+        Stack(gap: 1, px: 2, py: 2, label: "Footer navigation") {
+          foreach (var item in chrome.FootNav) {
             SidebarNavNodeGuarded(item, iconOnly, current, opened, closed, flyout,
                            onToggleGroup, onToggleFlyout, onCloseFlyout, onNavigated, onAsk);
           }
@@ -364,7 +381,7 @@ internal component SidebarRailGuarded(
 component SidebarCollapseButton(bool iconOnly, Action onToggle) {
   live var name = iconOnly ? "Expand navigation" : "Collapse navigation";
   variants {
-    base { Display = Display.None; Laptop { Display = Display.InlineFlex; } W = Length.ControlSm; H = Length.ControlSm;
+    base { Position = Position.Relative; Display = Display.None; Laptop { Display = Display.InlineFlex; } W = Length.ControlSm; H = Length.ControlSm;
            Rounded = Radius.Md; Color = Colors.TextMuted; Transition = Motion.Fast; Shrink = 0;
            Hover { Bg = Colors.Muted; Color = Colors.OnSurface; }
            Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
@@ -374,10 +391,14 @@ component SidebarCollapseButton(bool iconOnly, Action onToggle) {
     //    a changing name is not a state: a screen reader announces the button's current purpose but never says the
     //    navigation IS collapsed, and `Ui.Check` has nothing to read at all. Its twin `RailExpandButton` has carried
     //    this since it was written; this button simply never got it.
-    Pressable(onClick: onToggle, label: name, expanded: !iconOnly) {
+    // ⌨ `shortcut: "["` binds the key HERE, so the `?` sheet lists it and the tip shows it from this one binding.
+    //   The button is not rendered on a phone, and a control that is not rendered binds nothing — which is how "["
+    //   does nothing on a drawer.
+    Pressable(onClick: onToggle, label: name, expanded: !iconOnly, shortcut: "[") {
       Row(align: Align.Center, justify: Justify.Center, w: "100%", h: "100%") {
         Icon(iconOnly ? Icons.ChevronRight : Icons.ChevronLeft, size: 16);
       }
+      SidebarTip(name, "", "[");
     }
   }
 }
@@ -695,11 +716,18 @@ internal component SidebarNavRowGuarded(
       // `current:` is what a reader hears as "current page"; the fill above is what a sighted reader sees. Both,
       // or the row is only half-marked.
       if (!Navigation.IsDirty) {
-        Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+        Link(href: item.To, label: item.Named(), current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
           Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
             Icon(item.Icon, size: 18);
-            Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
-                 textOverflow: TextOverflow.Ellipsis);
+            if (item.Hint == "") { Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis); }
+            // A HINT is a quiet second line under the label: what tells two rows of the same name apart.
+            if (item.Hint != "") {
+              Stack(gap: 0, grow: 1, minW: "0", py: 1) {
+                Text(item.Label, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+                Text(item.Hint, fontSize: FontSize.Label, fontWeight: FontWeight.Regular, color: Colors.TextMuted, whiteSpace: WhiteSpace.Nowrap,
+                     overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+              }
+            }
             if (item.Badge != "") { ShellNavBadge(item); }
           }
         }
@@ -708,14 +736,52 @@ internal component SidebarNavRowGuarded(
       //    router follows it before any `onClick` runs — so while the page is dirty the row is a button that raises
       //    the shell's `LeavePrompt` instead (the same two arms as `FocusedExit`).
       if (Navigation.IsDirty) {
-        Pressable(label: item.Label, onClick: () => onAsk(item.To)) {
+        Pressable(label: item.Named(), onClick: () => onAsk(item.To)) {
           Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: isNested ? 5 : 2, justify: Justify.Start) {
             Icon(item.Icon, size: 18);
-            Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
-                 textOverflow: TextOverflow.Ellipsis);
+            if (item.Hint == "") { Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis); }
+            // A HINT is a quiet second line under the label: what tells two rows of the same name apart.
+            if (item.Hint != "") {
+              Stack(gap: 0, grow: 1, minW: "0", py: 1) {
+                Text(item.Label, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+                Text(item.Hint, fontSize: FontSize.Label, fontWeight: FontWeight.Regular, color: Colors.TextMuted, whiteSpace: WhiteSpace.Nowrap,
+                     overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+              }
+            }
             if (item.Badge != "") { ShellNavBadge(item); }
           }
         }
+      }
+    }
+  }
+}
+
+/// A mark's name beside it, on hover and keyboard focus — the icon strip has no room for words. It says what the
+/// labelled row would: the page, its badge's words and the key that goes there ("Inbox — 4 waiting on you · G then I").
+/// The key is the row's own `Shortcut` (and the collapse button's own binding), so the tip cannot disagree with it.
+///
+/// ⚠ IT IS `Display.None` UNTIL REVEALED, not `Opacity = 0`: a transparent tip still holds its words in the layout,
+///   so `Assert.Visible` (a `textContent` match) would read every tip as on screen. Same rule as `RailTip` and
+///   `WorkbenchTip`. And it is `decorative`: the row already carries this text as its accessible name.
+[Composable, Part]
+internal component SidebarTip(string text, string badge = "", string shortcut = "") {
+  variants {
+    base { Display = Display.None; Position = Position.Absolute; Left = "100%"; Top = "50%";
+           TranslateY = "-50%"; Ml = 2; Px = 2; Py = 1; Rounded = Radius.Sm; Bg = Colors.OnSurface;
+           Color = Colors.Surface; FontSize = FontSize.Caption; WhiteSpace = WhiteSpace.Nowrap;
+           Z = ZIndex.Tooltip; Shadow = Shadow.Floating; PointerEvents = PointerEvents.None;
+           inside SidebarNavMarkRowGuarded.Hover { Display = Display.Flex; }
+           inside SidebarNavMarkRowGuarded.Focus { Display = Display.Flex; }
+           inside SidebarCollapseButton.Hover { Display = Display.Flex; }
+           inside SidebarCollapseButton.Focus { Display = Display.Flex; } }
+  }
+  render {
+    Row(gap: 2, align: Align.Center, decorative: true) {
+      Text(text);
+      if (badge != "") { Text("— " + badge, fontWeight: FontWeight.Semibold); }
+      if (shortcut != "") {
+        Text("·", opacity: "0.6");
+        Box(keycap: shortcut, fontFamily: Font.Mono, opacity: "0.75");
       }
     }
   }
@@ -737,7 +803,7 @@ internal component SidebarNavRowGuarded(
 internal component SidebarNavMarkRowGuarded(
     NavItem item, NavState state, bool discloses, bool open, Action onPress, Action onNavigated, Action<string> onAsk) {
   variants {
-    base { Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
+    base { Position = Position.Relative; Display = Display.Flex; MinH = Length.TouchDense; Rounded = Radius.Md; MinW = "0";
            Color = Colors.TextSecondary; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
            Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
@@ -755,26 +821,29 @@ internal component SidebarNavMarkRowGuarded(
         Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
           ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
         }
+        SidebarTip(item.Named(), item.Badge, item.Shortcut);
       }
     }
     if (!discloses) {
       // With no words on the row, its badge is a dot — so the badge's words go in the row's name, where a screen
       // reader and the tip say them.
       if (!Navigation.IsDirty) {
-        Link(href: item.To, label: item.Badge == "" ? item.Label : item.Label + " — " + item.Badge, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+        Link(href: item.To, label: item.NameWithBadge(), current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
           Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
             ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
           }
+          SidebarTip(item.Named(), item.Badge, item.Shortcut);
         }
       }
       // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT (leave guard). A `Link` cannot decline to go — the
       //    router follows it before any `onClick` runs — so while the page is dirty the row is a button that raises
       //    the shell's `LeavePrompt` instead (the same two arms as `FocusedExit`).
       if (Navigation.IsDirty) {
-        Pressable(label: item.Badge == "" ? item.Label : item.Label + " — " + item.Badge, onClick: () => onAsk(item.To)) {
+        Pressable(label: item.NameWithBadge(), onClick: () => onAsk(item.To)) {
           Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
             ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
           }
+          SidebarTip(item.Named(), item.Badge, item.Shortcut);
         }
       }
     }

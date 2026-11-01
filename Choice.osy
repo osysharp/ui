@@ -156,21 +156,21 @@ namespace Osysharp.Ui;
 }
 
 /// A time-zone picker: a dropdown over the app's declared zones (`zones {}`, or the platform's default set), each read
-/// as its place and its region — "Stockholm — Europe". `value` is a two-way `Binding<Zone>`; what it stores is the zone
-/// itself, so a `Zone` field binds straight to it and every clock that reads the field (`DateTime.UtcNow.InZone(z)`,
-/// `z.Resolve(day, time)`, `Date.Bucket(…, z)`) follows the choice.
-/// In a test it is chosen by the VALUE — `Ui.Select("Time zone", Zone.Of("Europe/Stockholm"))`.
+/// as its place and its region — "Stockholm — Europe". `value` is a two-way `Binding<TimeZoneInfo>`; what it stores is
+/// the zone itself, so a `TimeZoneInfo` field binds straight to it and every clock that reads the field
+/// (`TimeZoneInfo.ConvertTimeFromUtc(t, z)`, `z.GetUtcOffset(t)`, `Date.Bucket(…, z)`) follows the choice.
+/// In a test it is chosen by the VALUE — `Ui.Select("Time zone", TimeZoneInfo.FindSystemTimeZoneById("Europe/Stockholm"))`.
 /// need: pick a time zone, choose the zone a team, a shop or a report counts its days in, a zone dropdown
-/// e.g. `ZonePicker("Time zone", value: settings.TimeZone)`
-[Composable] component ZonePicker(string label, Binding<Zone> value, bool disabled = false) {
+/// e.g. `TimeZonePicker("Time zone", value: settings.TimeZone)`
+[Composable] component TimeZonePicker(string label, Binding<TimeZoneInfo> value, bool disabled = false) {
   render {
-    Dropdown(label, value: value, options: Zone.Declared, disabled: disabled) { z => Text(ZoneWords(z)); }
+    Dropdown(label, value: value, options: TimeZoneInfo.GetSystemTimeZones(), disabled: disabled) { z => Text(TimeZoneWords(z)); }
   }
 }
 
 /// How a zone reads to a person: the place, then the region — "Stockholm — Europe", "Los Angeles — America", "UTC".
-public string ZoneWords(Zone zone) {
-  var token = $"{zone}";
+public string TimeZoneWords(TimeZoneInfo zone) {
+  var token = zone.Id;
   var cut = token.LastIndexOf("/");
   if (cut < 0) { return token; }
   return token.Substring(cut + 1).Replace("_", " ") + " — " + token.Substring(0, cut).Replace("_", " ");
@@ -245,19 +245,6 @@ public string ZoneWords(Zone zone) {
   }
 }
 
-/// A switch — the same state as a Checkbox, for a setting that takes effect IMMEDIATELY. Use a Checkbox in a form
-/// that is submitted, a Switch for something that is on now. `value` is a two-way binding and the control WRITES
-/// it — `onToggle` applies the change, it does not make it.
-/// In a test it is flipped by its label: `Ui.Check("Email me")` / `Ui.Uncheck("Email me")`, and read back with `Assert.Checked("Email me")`.
-/// ⛔ As with `Checkbox`, `value` is ALREADY WRITTEN when `onToggle` runs — flipping it again there toggles it
-/// twice and the switch springs back. The handler applies the change; it does not make it.
-/// ⭐ LABEL FIRST — see `Checkbox` above for why, and it is the same reason.
-/// ⚠ `label` LOSES ITS DEFAULT in the move, and that is a gain rather than a cost: a switch with no label draws no
-/// text, so nothing on the page says what it does and no test can address it — which is exactly the harm
-/// `ui-control-call-without-an-accessible-name` exists to name. A required label makes it unrepresentable.
-/// need: a toggle that takes effect at once, turn a setting on or off, an immediate on off control
-/// e.g. `Switch("Live updates", value: live, onToggle: Apply)` — `value` writes itself; `onToggle` is what makes
-/// it take effect NOW, which is the whole difference from a Checkbox.
 /// ONE CHOICE OF A FEW, ALL IN VIEW — a radio per option, under a caption. Reach for it instead of a `Dropdown` when
 /// there are two to six options and the person should SEE them before choosing (a form anyone may have to fill in, a
 /// question whose answers explain each other). Same shape as `Dropdown`: `value` is a two-way `Binding<T>`, `options`
@@ -300,10 +287,18 @@ public string ZoneWords(Zone zone) {
   }
 }
 
-/// An on/off switch — a `Checkbox` drawn as a track and thumb, for a setting that takes effect as it is flipped, or a
-/// mode a page is in ("Customise"). `value` is a two-way `Binding<bool>`; `onToggle` runs after it changes.
-/// In a test press it by its label: `Ui.Click("Customise")`, and read it with `Assert.Checked("Customise")`.
-/// need: an on off toggle, a switch for a setting, turn a mode on and off, a toggle that shows its state
+/// An on/off switch — a `Checkbox` drawn as a track and thumb, for a setting that takes effect IMMEDIATELY, or a
+/// mode a page is in ("Customise"). Use a Checkbox in a form that is submitted, a Switch for something that is on
+/// now. `value` is a two-way binding and the control WRITES it — `onToggle` applies the change, it does not make it.
+/// ⛔ As with `Checkbox`, `value` is ALREADY WRITTEN when `onToggle` runs — flipping it again there toggles it
+/// twice and the switch springs back. The handler applies the change; it does not make it.
+/// ⭐ LABEL FIRST — see `Checkbox` above for why, and it is the same reason.
+/// ⚠ `label` has no default: a switch with no label draws no text, so nothing on the page says what it does and no
+/// test can address it — which is exactly the harm `ui-control-call-without-an-accessible-name` exists to name.
+/// In a test it is flipped by its label: `Ui.Check("Email me")` / `Ui.Uncheck("Email me")`, and read back with `Assert.Checked("Email me")`.
+/// need: a toggle that takes effect at once, an on off toggle, turn a setting on or off, an immediate on off control, a switch for a setting, turn a mode on and off
+/// e.g. `Switch("Live updates", value: live, onToggle: Apply)` — `value` writes itself; `onToggle` is what makes
+/// it take effect NOW, which is the whole difference from a Checkbox.
 /// e.g. `Switch("Send payment reminders", value: terms.Reminders)`
 [Composable] component Switch(string label, Binding<bool> value, Action onToggle = null, bool disabled = false) {
   // The same change as `Checkbox` above, for the same reason — see its note. A switch is the immediate-effect

@@ -64,3 +64,49 @@ component ShelvesPage() {
     }
   }
 }
+
+/// The mouldings on the books — a server read the stockroom's frame below asks as a live call.
+List<Moulding> OnTheBooks() { return Moulding.ToList(); }
+
+/// The stockroom's frame: a layout that reads the server itself — a live list and a live server call, with no
+/// `skeleton { }` — so its Outlet, and the page in it, wait until both land (FM-41, FM-70). Under a held server that is
+/// the screen `Ui.Visit` returns on (FM-95).
+[Layout]
+[Authorize(IsFramer)]
+component StockroomFrame() {
+  live var shelved = Moulding.ToList();
+  live var books = OnTheBooks();
+  render {
+    Stack(gap: 3, p: 6) {
+      Text("Stockroom");
+      Text($"{books.Count()} on the books, {shelved.Count()} shelved");
+      Outlet();
+    }
+  }
+}
+
+/// A page in that frame.
+[Route("/stock/counter")] [Authorize(IsFramer)] [Render(CSR)] [Layout(StockroomFrame)] [Title("Counter")]
+component StockCounterPage() {
+  render { Text("The counter is open"); }
+}
+
+/// The report again, read through a `live var` that CALLS the server function — asked once, and again when a moulding
+/// changes. Its skeleton shows while that answer is out (FM-111: a held server keeps it back like any server call).
+[Route("/stock/live-report")] [Authorize(IsFramer)] [Render(CSR)] [Title("Live stock report")]
+component LiveStockReportPage() {
+  live var summary = StockReport();
+
+  skeleton {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Live stock report");
+      LoadingNote("Counting the stock…");
+    }
+  }
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Live stock report");
+      Text($"{summary.Mouldings} mouldings counted");
+    }
+  }
+}

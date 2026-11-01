@@ -210,6 +210,7 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
 /// different frame from its other pages.
 /// In a test it is the frame around the page, so scope to the page's own regions: `Ui.Click("Save", within: "Workshop")`.
 /// need: a layout for settings pages, put the app's shell around every kit's settings page
+/// e.g. `[Route("/settings/workshop")] [Layout(SettingsFrame)] component WorkshopSettings() { … }`
 /// e.g. `component MyShell() : WorkspaceShell { render { AppShell(chrome) { Slot; } } }` (every settings page then stands in it)
 /// ⚑ ON ITS OWN IT IS THE WINDOW'S HEIGHT. The area fills its parent (`h: "100%"`), and an app's shell gives it one; the
 ///   bare shell gives it the window — otherwise the sections column ended where the page's content ended, a short page

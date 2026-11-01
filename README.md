@@ -75,3 +75,71 @@ Its words are translated (`locales/`), and every control is keyboard-reachable a
 
 To build your own look on top of it, declare a `theme` in your app — its tokens re-skin every control. To change a
 control itself, copy its file into your app or into a package of your own, rename the component, and use yours.
+
+## Examples
+
+Taken from this package's own tests, which compile and run on every release.
+
+```osy
+[Test]
+void a_danger_icon_button_asks_before_it_acts() {
+  Ui.Visit("/offcuts");
+  Ui.Click("Scrap Oak, 40cm");
+  Assert.Dialog("Scrap Oak, 40cm?");
+  Assert.Visible("3 offcuts");              // nothing has happened yet
+
+  Ui.Click("Cancel");
+  Assert.Visible("Oak, 40cm");
+  Assert.Visible("3 offcuts");
+
+  Ui.Click("Scrap Oak, 40cm");
+  Ui.Click("Scrap Oak, 40cm", within: "Scrap Oak, 40cm?");
+  Assert.Hidden("Oak, 40cm");
+  Assert.Visible("2 offcuts");
+}
+```
+
+From [`tests/ask-first.test.osy`](tests/ask-first.test.osy).
+
+```osy
+[Test(Mats)]
+void a_held_save_says_what_is_wrong_under_the_field() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/mats/" + MatCoded("IVO-2"));
+  Ui.Fill("Name", "");
+  Ui.Click("Save");
+  Assert.Visible("1 field needs attention.");
+  Assert.TextIs("A mat needs a name.");
+  Assert.Violation("Name", "A mat needs a name.");
+}
+```
+
+From [`tests/field-messages.test.osy`](tests/field-messages.test.osy).
+
+```osy
+[Test(ShelvedStock)]
+void a_grid_whose_columns_cannot_be_sorted_keeps_the_pages_order() {
+  Moulding? walnut = null;
+  Moulding? ash = null;
+  runas (ShelfPia) {
+    walnut = Moulding.Single(m => m.Moniker == "Walnut");
+    ash = Moulding.Single(m => m.Moniker == "Ash");
+  }
+  Ui.SignInAs(ShelfPia);
+  Ui.Visit("/stock/by-shelf");
+  Assert.Before(walnut, ash);
+}
+```
+
+From [`tests/grid-order.test.osy`](tests/grid-order.test.osy).
+
+## Learn more
+
+- [The Osysharp.Ui reference](https://osysharp.com/reference/ui/kit/)
+- [Osysharp.Ui in the package catalogue](https://osysharp.com/packages/#osysharp-ui)
+- [The Osy# reference](https://osysharp.com/reference/) — the language, the runtime and every kit
+- [`llms-full.txt`](https://osysharp.com/llms-full.txt) — the whole reference and specification as one Markdown file, for a coding agent
+
+## Licence
+
+MIT — see [`LICENSE`](LICENSE).

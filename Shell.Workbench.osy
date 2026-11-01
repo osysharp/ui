@@ -26,10 +26,13 @@ namespace Osysharp.Ui;
 ///
 /// Slots, all optional:
 ///   (default)   the routed page — `Outlet(retain: 8)`; it fills the panes, so give it a `Dock` or its own scroll
+///   `header`    a band across the TOP of the whole frame, above the activity bar — a product's lockup and the
+///               context it runs in (organization, host, environment). Unfilled it costs nothing
 ///   `explorer`  under the section's pages in the explorer — saved views, a queue's filters, a tree
 ///   `search`    in the top bar — `ShellSearch(…)` is shaped for it
 ///   `actions`   top-bar controls right of search
-///   `status`    the status line along the foot — a connection lamp, a count, the build
+///   `status`    the status line along the foot — a connection lamp, a count; with `chrome.ShowVersion` the app's
+///               and the platform's version follow at its far end
 ///
 /// In a test the regions carry names, so scope to them: `Ui.Click("Queues", within: "Main navigation")`,
 /// `Assert.Visible("Connected", within: "Status")`, and `Ui.Click("Hide the explorer")` folds the explorer.
@@ -110,6 +113,24 @@ component WorkbenchShell(AppChrome chrome) {
     return null;
   }
 
+  /// THE SECTION WHOSE EXPLORER IS SHOWN — the one the current page is in, or, on a page that is in no section (a
+  /// record opened from a row of the explorer: `/orders/42` from a tree in the `explorer` slot), the section of the
+  /// latest open route that is in one. Opening a row of the explorer must not take the explorer away: in every editor
+  /// the side bar stays on the view you opened the file from, and its mark stays lit. Without retention
+  /// (`Outlet(retain: …)`) the only open route is the current one, so a page outside the nav shows no explorer.
+  /// ⚑ Before this, the shell dropped the `explorer` slot on every such page — an app that put its tree there lost
+  /// the tree the moment a row of it was opened, which is the one moment the tree is for.
+  NavItem ExplorerSection(string here) {
+    var own = SectionOf(here);
+    if (own != null) { return own; }
+    NavItem? found = null;
+    foreach (var r in Navigation.Routes) {
+      var s = SectionOf(chrome.CurrentRoute(r.Path));
+      if (s != null) { found = s; }
+    }
+    return found;
+  }
+
   /// Every mark the activity bar carries: the top-level items, with a `NavKind.Section`'s children lifted to the top
   /// (a section heading is a word, and an activity bar has no room for words).
   NavItem[] Marks() {
@@ -126,12 +147,13 @@ component WorkbenchShell(AppChrome chrome) {
   render {
     if (Layout.AtLeast(Tablet)) {
       Stack(gap: 0, h: Length.Screen, w: "100%", minW: "0") {
+        Slot("header");
         Row(align: Align.Stretch, gap: 0, grow: 1, minH: "0", minW: "0") {
           WorkbenchActivityBar(label: "Main navigation") {
             Row(align: Align.Center, justify: Justify.Center, minH: Length.AppBarH) { ShellBrandGuarded(chrome, markOnly: true); }
             Stack(gap: 1, grow: 1, minH: "0", py: 1, overflowY: Overflow.Auto, scrollbarWidth: ScrollbarWidth.None) {
               foreach (var item in Marks()) {
-                if (SectionOf(current) != null && SectionOf(current).Key() == item.Key()) {
+                if (ExplorerSection(current) != null && ExplorerSection(current).Key() == item.Key()) {
                   // The section you are in: its mark folds the explorer, the way it does in every editor.
                   WorkbenchMark(item, NavState.Current, explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer);
                 } else {
@@ -143,8 +165,8 @@ component WorkbenchShell(AppChrome chrome) {
               RailIdentityGuarded(chrome.User, false, hasMenu, userMenuOpen, ToggleUserMenu, CloseUserMenu, DismissAll, AskBeforeLeave);
             }
           }
-          if (!explorerShut && SectionOf(current) != null) {
-            WorkbenchExplorerGuarded(SectionOf(current), current, Navigated, AskBeforeLeave) { Slot("explorer"); }
+          if (!explorerShut && ExplorerSection(current) != null) {
+            WorkbenchExplorerGuarded(ExplorerSection(current), current, Navigated, AskBeforeLeave) { Slot("explorer"); }
           }
           Stack(gap: 0, grow: 1, minW: "0", minH: "0") {
             RailTopBar(chrome, false, OpenDrawer) {
@@ -161,12 +183,13 @@ component WorkbenchShell(AppChrome chrome) {
             }
           }
         }
-        WorkbenchStatus() { Slot("status"); }
+        WorkbenchStatus(chrome) { Slot("status"); }
         KeyboardSheet();
         if (leaving != "") { LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing); }
       }
     } else {
       Stack(gap: 0, minH: Length.Screen, w: "100%", minW: "0") {
+        Slot("header");
         RailTopBar(chrome, true, OpenDrawer) {
           slot search { Slot("search"); }
           slot actions { Slot("actions"); }
@@ -177,11 +200,13 @@ component WorkbenchShell(AppChrome chrome) {
             Row(gap: 2, align: Align.Center, px: 3, minH: Length.AppBarH) { ShellBrandGuarded(chrome); }
             Stack(gap: 1, px: 2, py: 2, grow: 1, minH: "0", overflowY: Overflow.Auto) {
               foreach (var item in Marks()) { SidebarNavLeafGuarded(item, current, Navigated, AskBeforeLeave); }
+              // The app's explorer content goes in the drawer too: a slot an app filled is never silently dropped.
+              Stack(gap: 1, pt: 4) { Slot("explorer"); }
             }
           }
         }
         Stack(gap: 0, grow: 1, minW: "0", role: UiRole.Main, label: "Page") { Slot; }
-        WorkbenchStatus() { Slot("status"); }
+        WorkbenchStatus(chrome) { Slot("status"); }
         if (leaving != "") { LeavePrompt(canSaveLeaving, leaveError, SaveAndLeave, DiscardAndLeave, KeepEditing); }
         // The identity sheet — phone only, so it lives in the phone arm's root: drawn beside it, it would wear this
         // shell's `variants` (Display, Bg) and sit in the flow under the page.
@@ -219,17 +244,17 @@ internal component WorkbenchMarkLinkGuarded(NavItem item, NavState state, Action
   }
   render {
     if (!Navigation.IsDirty) {
-      Link(href: item.FirstRoute(), label: item.Label, current: false, onClick: onNavigated, shortcut: item.Shortcut) {
-        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state); }
-        WorkbenchTip(item.Label, item.Badge);
+      Link(href: item.FirstRoute(), label: item.NameWithBadge(), current: false, onClick: onNavigated, shortcut: item.Shortcut) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone); }
+        WorkbenchTip(item.Named(), item.Badge);
       }
     }
     // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT: a `Link` cannot decline to go, so while the page is dirty
     //    the mark is a button that raises the shell's `LeavePrompt` (the same two arms as `SidebarNavRow`).
     if (Navigation.IsDirty) {
-      Pressable(label: item.Label, onClick: () => onAsk(item.FirstRoute())) {
-        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state); }
-        WorkbenchTip(item.Label, item.Badge);
+      Pressable(label: item.NameWithBadge(), onClick: () => onAsk(item.FirstRoute())) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone); }
+        WorkbenchTip(item.Named(), item.Badge);
       }
     }
   }
@@ -244,9 +269,9 @@ component WorkbenchMark(NavItem item, NavState state, string action, Action onPr
            Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
   }
   render {
-    Pressable(onClick: onPress, label: item.Label + " — " + action, current: true) {
-      Row(align: Align.Center, justify: Justify.Center, w: "100%", ml: "-2px") { ShellNavMark(item.Icon, state); }
-      WorkbenchTip(item.Label, item.Badge);
+    Pressable(onClick: onPress, label: item.NameWithBadge() + " — " + action, current: true) {
+      Row(align: Align.Center, justify: Justify.Center, w: "100%", ml: "-2px") { ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone); }
+      WorkbenchTip(item.Named(), item.Badge);
     }
   }
 }
@@ -292,13 +317,28 @@ internal component WorkbenchExplorerGuarded(NavItem section, string current, Act
 }
 
 /// The status line along the foot — small type on the chrome's ground, the app's `status` slot laid out in a row.
+/// ⭐ VER-1 HERE TOO: with `chrome.ShowVersion` the app's version ("factory · 1.0.8") and the platform release
+///    ("platform 0.17.3") sit at the far end of the line, where an editor keeps its build. Every other shell draws
+///    them under the product's name; this one's brand is a bare mark, so without this the flag drew nothing at all —
+///    an app moving to the workbench silently lost the line its operators read to know what is running.
+/// The chrome is OPTIONAL because it was added after 3.0.0 published `WorkbenchStatus()`: a call written against that still
+/// binds, and draws the line without the version, as it did then.
 [Composable, Part]
-component WorkbenchStatus() {
+component WorkbenchStatus(AppChrome? chrome = null) {
   variants {
     base { Ground = Ground.Chrome; Bg = Colors.Surface; Color = Colors.TextMuted; BorderTW = 1; Border = Colors.Border;
            MinH = Length.StatusBarH; Px = 3; FontSize = FontSize.Caption; Shrink = 0; }
   }
-  render { Row(gap: 4, align: Align.Center, role: UiRole.ContentInfo, label: "Status") { Slot; } }
+  render {
+    Row(gap: 4, align: Align.Center, role: UiRole.ContentInfo, label: "Status") {
+      Slot;
+      if (chrome != null && chrome.ShowVersion) {
+        Spacer();
+        Text(chrome.Tagline == "" ? App.Version : chrome.Tagline + " · " + App.Version, whiteSpace: WhiteSpace.Nowrap);
+        Text("platform " + App.PlatformVersion, whiteSpace: WhiteSpace.Nowrap);
+      }
+    }
+  }
 }
 
 /// The phone's drawer — every section with its pages under it, over a scrim.

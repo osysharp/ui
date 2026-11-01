@@ -130,6 +130,11 @@ public sealed class NavItem {
   /// strip. For rows that are THINGS OF ONE KIND (projects, workspaces, customers): five of the same glyph in a
   /// strip say nothing, and their initials tell them apart. Empty draws the glyph. The labelled row is unchanged.
   public string Monogram = "";
+  /// A QUIET SECOND LINE under the label, in the muted colour — what tells apart two rows of the same name (two
+  /// projects both called "Harbour", in folders `harbour` and `harbour-2`). It joins the row's name too, so a reader
+  /// and a test hear "Harbour, harbour-2". Empty draws one line, as always. Spend it where names collide or need a
+  /// word of context, not on every row.
+  public string Hint = "";
 
   /// This entry's identity for expansion memory. `To` when it has one — routes are unique — else the label.
   /// ⚠ Two sibling groups with no route and the same label share a key and open together. Give one a `To`.
@@ -138,6 +143,14 @@ public sealed class NavItem {
   /// An address OUTSIDE the site (http/https) — a shell marks it as one, so nobody follows it thinking it is a page of
   /// the site (a menu staff edit may hold one).
   public bool Outside() { return To.StartsWith("https://") || To.StartsWith("http://"); }
+
+  /// The row's name where it has NO WORDS of its own — a mark in an activity bar or an icon strip: its label, and its
+  /// badge's words when it has one ("Inbox — 3"). The mark shows the badge as a dot in its tone (`ShellNavMark`), so
+  /// the count reaches a screen reader, a test and the tip through this name rather than being lost with the words.
+  public string NameWithBadge() { return Badge == "" ? Named() : Named() + " — " + Badge; }
+
+  /// The row's name with its hint, when it has one: "Harbour, harbour-2". Just the label otherwise.
+  public string Named() { return Hint == "" ? Label : Label + ", " + Hint; }
 
   /// WHERE THIS ENTRY GOES WHEN PRESSED — its own `To`, or the first route beneath it when it has none.
   ///
@@ -369,6 +382,12 @@ public sealed class AppChrome {
   public string Product = "";
   /// A second line under the product: the workspace, the tenant, the environment. Empty draws one line.
   public string Tagline = "";
+  /// ⭐ WHICH VERSION IS THIS (VER-1) — `ShowVersion = true` puts the app's version after the tagline
+  /// ("factory · 1.0.8") and the platform release on a small line under it ("platform 0.17.3"), read from
+  /// `App.Version` / `App.PlatformVersion`; a build with no release says "dev". Off by default: a product's own
+  /// readers rarely want it, the people running it always do. Drawn by every shell whose brand shows the tagline, and
+  /// by `WorkbenchShell` — whose brand is a bare mark — at the far end of its status line.
+  public bool ShowVersion = false;
   /// THE BRAND MARK, as a glyph — `Mark = Icons.MyOwnLogo`, the app's own `.svg` or a built-in, the SAME spelling
   /// a nav row and a menu row use. Left unset draws the product's first letter, so a shell still looks like
   /// something without one.
@@ -383,6 +402,12 @@ public sealed class AppChrome {
   public string Home = "/";
   /// The nav tree. Empty is legal and every shell draws its own empty state rather than a blank column.
   public NavItem[] Nav = [];
+  /// ⭐ ROWS PINNED AT THE FOOT OF THE RAIL, above the user — "Settings", "People": destinations that are always
+  /// there but are not the app's map. `SidebarShell` draws them as labelled rows when the rail is open, as marks with
+  /// tips when it is an icon strip, and inside the drawer on a phone; they are part of the one current route, so
+  /// exactly one row is lit across `Nav` and `FootNav`. The other shells do not draw a foot: they IGNORE this list,
+  /// so an app that must reach them everywhere also lists them in `Nav`. Same entries as `Nav` (a link, or a group).
+  public NavItem[] FootNav = [];
   /// The routes whose page OPENS ON A FULL-BLEED IMAGE — a hero photograph that runs to the top edge. A shell that can
   /// float its header over the picture does so on these routes (`EditorialShell` also does it on the home route by
   /// default); every other shell ignores it. Exact routes, as a page's `[Route]` declares them.
@@ -439,6 +464,10 @@ public sealed class AppChrome {
       if (item.To == best) { return item; }
       foreach (var d in item.Descendants()) { if (d.To == best) { return d; } }
     }
+    foreach (var item in FootNav) {
+      if (item.To == best) { return item; }
+      foreach (var d in item.Descendants()) { if (d.To == best) { return d; } }
+    }
     return null;
   }
 
@@ -458,6 +487,10 @@ public sealed class AppChrome {
   public string CurrentRoute(string path) {
     string best = "";
     foreach (var item in Nav) {
+      var found = item.BestMatch(path);
+      if (found.Length > best.Length) { best = found; }
+    }
+    foreach (var item in FootNav) {
       var found = item.BestMatch(path);
       if (found.Length > best.Length) { best = found; }
     }
@@ -671,8 +704,16 @@ component ShellBrandFace(AppChrome chrome, bool markOnly, bool tagline, string i
           Text(chrome.Product, fontSize: FontSize.Subhead, fontWeight: FontWeight.Semibold,
                color: Colors.OnSurface, letterSpacing: "-0.01em", whiteSpace: WhiteSpace.Nowrap,
                overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
-          if (tagline && chrome.Tagline != "") {
+          if (tagline && chrome.Tagline != "" && !chrome.ShowVersion) {
             Text(chrome.Tagline, fontSize: FontSize.Caption, color: Colors.TextMuted,
+                 whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+          }
+          // VER-1 — the app's version after the tagline, and the platform release under it.
+          if (tagline && chrome.ShowVersion) {
+            Text(chrome.Tagline == "" ? App.Version : chrome.Tagline + " · " + App.Version,
+                 fontSize: FontSize.Caption, color: Colors.TextMuted,
+                 whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+            Text("platform " + App.PlatformVersion, fontSize: FontSize.Caption, color: Colors.TextMuted,
                  whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
           }
         }

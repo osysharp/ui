@@ -62,6 +62,22 @@ component StockTopShelfFirstPage() {
   }
 }
 
+/// A column that FORMATS a number ("84") says which number it holds (`Number =`), and the reader's sort orders by that —
+/// not by the spelling, which puts 84 before 9. The rows arrive by name, so only the click can put them in numeric order.
+[Route("/stock/by-count")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock by count")]
+component StockByCountPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Moniker).ToList();
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Stock by count");
+      DataGrid("Mouldings by count", rows: mouldings,
+               columns: [ new GridColumn<Moulding> { Name = "Moniker", Label = "Moniker", Value = m => m.Moniker },
+                          new GridColumn<Moulding> { Name = "Shelf", Label = "Shelf", Value = m => $"{m.Shelf:N0}",
+                                                     Number = m => m.Shelf } ]);
+    }
+  }
+}
+
 /// The same stock as a plain list, paged by the button under it.
 [Route("/stock/list")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock list")]
 component StockListPage() {

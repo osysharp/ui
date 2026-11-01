@@ -130,8 +130,9 @@ component TextAreaField(
 /// number, a date, a date and time, a time of day, a length of time, an id, details written as JSON (a `Structure`) or
 /// a JSON list (a `Sequence`). `value` is the text an `ActionValue` stores — check it with `Actions.Check` before
 /// keeping it, which reads it exactly as the run will.
-/// `ActionArgumentField(p, choices, value: draft.Value)` · in a test it is filled by its label: `Ui.Fill("Due", "2026-11-02")`.
+/// In a test it is filled by its label: `Ui.Fill("Due", "2026-11-02")`.
 /// need: an input for an action's parameter, set up a step that runs an action, a value for a tool or a macro
+/// e.g. `ActionArgumentField(p, choices, value: draft.Value)`
 [Composable]
 component ActionArgumentField(ActionParameter p, List<ActionChoice> choices, Binding<string> value) {
   string Words(string k) {

@@ -8,8 +8,8 @@
 // Flat by declaration, not by convention: the kit has no `model/` folder, so it says so (design §5b ①, nothing
 // hardcodes a layout). `package.osy` is never matched by its own globs.
 package Osysharp.Ui {
-  version     "3.0.0";
-  minPlatform "0.15.0";
+  version     "3.1.0";
+  minPlatform "0.17.0";
   summary     "the general application vocabulary: buttons, fields, dialogs, the data grid, and the app shell.";
 
   model "*.osy";
@@ -17,4 +17,30 @@ package Osysharp.Ui {
   // embedded in the binary either (Platform.Core.csproj excludes `Capabilities\*\tests\**`), so the pre-warmed archive
   // stays byte-identical to the one `osy package pack` builds from this directory.
   tests "tests";
+
+  // RETIRED FORMS of this kit's surface (OsyDeprecations). An app recorded with one keeps rebuilding inside its window,
+  // with a warning on its version; new source is refused naming `use`, and `osy migrate code` rewrites it. A rebuild
+  // gives a now-required parameter the default it had, so a rebuilt version renders exactly what it rendered.
+  deprecated "ProgressBar(int percent = 0, Tone tone = Tone.Primary, string label = \"\")" {
+    since "0.16.0";
+    use   "ProgressBar(label, percent, tone)";
+    why   "a progress bar says what it measures, so `label` is required and first";
+  }
+  deprecated "Facts(string label = \"\")" {
+    since "0.16.0";
+    use   "Facts(label)";
+    why   "a facts table's label is its only name, the one a screen reader announces and a test scopes to, so it is required";
+  }
+  // RENAMED when the time-zone type became C#'s `TimeZoneInfo` (0.16.2). No entry declares a `refusedFrom`:
+  // a removal is a later release's decision, made once no deployed app writes the form.
+  deprecated "ZonePicker(string label, Binding<Zone> value, bool disabled = false)" {
+    since "0.16.2";
+    use   "TimeZonePicker(label, value, disabled)";
+    why   "the picker is named after the type it picks, C#'s `TimeZoneInfo`";
+  }
+  deprecated "ZoneWords(Zone zone)" {
+    since "0.16.2";
+    use   "TimeZoneWords(zone)";
+    why   "the words for a zone are named after the type they read, C#'s `TimeZoneInfo`";
+  }
 }

@@ -424,11 +424,17 @@ component RailNavLink(NavItem item, NavState state, Action onNavigated) {
     }
   }
   render {
-    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+    Link(href: item.To, label: item.Named(), current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
       Row(gap: 3, align: Align.Center, w: "100%", minW: "0", px: 2, justify: Justify.Start) {
         Icon(item.Icon, size: 18);
-        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
-             textOverflow: TextOverflow.Ellipsis);
+        if (item.Hint == "") { Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis); }
+        if (item.Hint != "") {
+          Stack(gap: 0, grow: 1, minW: "0", py: 1) {
+            Text(item.Label, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+            Text(item.Hint, fontSize: FontSize.Label, fontWeight: FontWeight.Regular, color: Colors.TextMuted, whiteSpace: WhiteSpace.Nowrap,
+                 overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+          }
+        }
         if (item.Badge != "") { ShellNavBadge(item); }
       }
     }
@@ -460,12 +466,13 @@ component RailNavMarkLink(NavItem item, NavState state, Action onNavigated) {
     }
   }
   render {
-    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+    // A mark has no words, so its badge is a dot on it and its words are in the row's name (`NameWithBadge`).
+    Link(href: item.To, label: item.NameWithBadge(), current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
       Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
-        ShellNavMark(item.Icon, state);
+        ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
       }
       // The label, beside the rail, on hover and on focus. Only where there is no room for it in the row itself.
-      RailTip(item.Label, item.Badge);
+      RailTip(item.Named(), item.Badge);
     }
   }
 }
@@ -514,11 +521,11 @@ component RailNavMarkDiscloser(NavItem item, NavState state, bool open, Action o
     }
   }
   render {
-    Pressable(onClick: onToggle, label: item.Label, expanded: open) {
+    Pressable(onClick: onToggle, label: item.NameWithBadge(), expanded: open) {
       Row(align: Align.Center, justify: Justify.Center, w: "100%", minW: "0") {
-        ShellNavMark(item.Icon, state);
+        ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
       }
-      RailTip(item.Label, item.Badge);
+      RailTip(item.Named(), item.Badge);
     }
   }
 }
@@ -619,11 +626,17 @@ component RailFlyoutRow(NavItem item, NavState state, bool nested, Action onNavi
     }
   }
   render {
-    Link(href: item.To, label: item.Label, current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
+    Link(href: item.To, label: item.Named(), current: state == NavState.Current, onClick: onNavigated, shortcut: item.Shortcut) {
       Row(gap: 3, align: Align.Center, w: "100%", minW: "0", pl: nested ? 5 : 2) {
         Icon(item.Icon, size: 16);
-        Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden,
-             textOverflow: TextOverflow.Ellipsis);
+        if (item.Hint == "") { Text(item.Label, grow: 1, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis); }
+        if (item.Hint != "") {
+          Stack(gap: 0, grow: 1, minW: "0", py: 1) {
+            Text(item.Label, whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+            Text(item.Hint, fontSize: FontSize.Label, fontWeight: FontWeight.Regular, color: Colors.TextMuted, whiteSpace: WhiteSpace.Nowrap,
+                 overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+          }
+        }
         if (item.Badge != "") { ShellNavBadge(item); }
       }
     }
