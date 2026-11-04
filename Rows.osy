@@ -1,0 +1,30 @@
+namespace Osysharp.Ui;
+
+// DES-BOUNDED-READS-5 — the bounded list is the shortest one to write (bounded-reads.md §3.4).
+
+/// A LIST THAT PAGES ITSELF — the shortest correct way to show the rows of a query, however many the table holds.
+/// It shows the first `pageSize` rows (50) and the next page arrives as the reader scrolls to its end; a "Load more"
+/// button stays under it for the keyboard. Each page is read just past the last row the list holds, in the query's
+/// order, so a row added above the reader's place never shows twice and the hundredth page costs what the first did.
+/// Hand it a `live var` holding the query itself — ordered, with no `.Take` and no `.ToList()`: the list decides how much
+/// to read. The template says what one row looks like; its argument is the row.
+/// ⚑ ORDER IT. A query with no `OrderBy` pages in an order the database chooses; one ordered by a plain column (a
+/// name, a date, a number) pages by that column and the row's id, which is what keeps every page stable.
+/// In a test count its rows with `Assert.Items(...)`, and `Ui.Click("Load more")` brings the next page.
+/// need: show a list of rows, list every row of a table, a long list, a feed, a list that pages, infinite scroll, load more as I scroll
+/// e.g. `live var bells = Bell.OrderBy(b => b.Inscription);` then `Rows(bells) { b => Text(b.Inscription); }`
+///   with its own page size: `Rows(tickets, pageSize: 20) { t => TicketRow(t); }`
+[Composable] component Rows<T>(T[] rows, int pageSize = 50, string label = "") {
+  action More() { rows.LoadMore(); }
+  render {
+    Stack(role: UiRole.List, label: label) {
+      foreach (var r in rows) { Slot(r); }
+      // THE END OF THE LIST asks for the next page when it scrolls into view (and again while it stays in view, so a
+      // short page fills the window); the button is the same request for the keyboard. Both go when nothing is left.
+      if (rows.HasMore) {
+        Box(onVisible: More);
+        LoadMoreButton(rows);
+      }
+    }
+  }
+}

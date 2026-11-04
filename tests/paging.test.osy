@@ -31,7 +31,41 @@ void ManySuppliers() {
   new Supplier { Name = "Zephyr Mouldings", Terms = terms };
 }
 
+// DES-BOUNDED-READS-5 — ten thousand mouldings: `/stock/rows` reads one page of them on first paint ([PageBudget]).
+[TestFixture]
+void TenThousandMouldings() {
+  var pia = new Framer { Email = "pia@frames.test" };
+  new RoleGrant { Member = pia, Role = WorkshopRole.Framer };
+  for (int i = 0; i < 10000; i++) { new Moulding { Moniker = "Profile " + i.ToString("D5"), Shelf = i }; }
+}
+
 principal Pia => Framer.Single(f => f.Email == "pia@frames.test");
+
+/// `Rows` holds its first page of 50, and "Load more" brings the next 50 — the rows just past the last one held.
+[Test(BigStock)]
+void rows_hold_one_page_and_load_the_next() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/stock/rows");
+  Assert.Items("Mouldings", 50);
+  Assert.Visible("Profile 049");
+  Assert.Hidden("Profile 050");
+  Ui.Click("Load more");
+  Assert.Items("Mouldings", 100);
+  Assert.Visible("Profile 099");
+}
+
+/// An inline `Rows(Moulding.OrderBy(…))` pages just like `Rows(liveVar)`: one page, then the next on "Load more".
+[Test(BigStock)]
+void inline_rows_hold_one_page_and_load_the_next() {
+  Ui.SignInAs(Pia);
+  Ui.Visit("/stock/rows-inline");
+  Assert.Items("Mouldings", 50);
+  Assert.Visible("Profile 049");
+  Assert.Hidden("Profile 050");
+  Ui.Click("Load more");
+  Assert.Items("Mouldings", 100);
+  Assert.Visible("Profile 099");
+}
 
 /// The stock table holds the first answer, offers the rest, and stops offering once it has it all.
 [Test(BigStock)]

@@ -91,6 +91,35 @@ component StockListPage() {
   }
 }
 
+/// DES-BOUNDED-READS-5 — the same stock as `Rows`: a page of 50, the next one as the reader scrolls (or presses "Load
+/// more"), each read just past the last row held. Over ten thousand mouldings its first paint reads one page: 4
+/// statements (the page of 50 mouldings and the lookups that sign the framer in: the person twice and their role grant)
+/// and 54 rows (50 + the one row past the page that says more lie past it + 3 sign-in rows). No COUNT of the set: it used
+/// to take a fifth statement on every page (DES-BOUNDED-READS-4). The budget allows one more of each, for a cold platform.
+[Route("/stock/rows")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock rows")]
+[PageBudget(Statements = 5, Rows = 55, Seed = TenThousandMouldings, As = Pia)]
+component StockRowsPage() {
+  live var mouldings = Moulding.OrderBy(m => m.Moniker);
+  render {
+    Stack(gap: 1, p: 6) {
+      PageTitle("Stock rows");
+      Rows(mouldings, label: "Mouldings") { m => Text(m.Moniker); }
+    }
+  }
+}
+
+/// DES-BOUNDED-READS-5b — `Rows` handed the query itself, not a `live var` holding it: it pages the same way.
+[Route("/stock/rows-inline")] [Authorize(IsFramer)] [Render(CSR)] [Title("Stock rows inline")]
+[PageBudget(Statements = 5, Rows = 55, Seed = TenThousandMouldings, As = Pia)]
+component StockRowsInlinePage() {
+  render {
+    Stack(gap: 1, p: 6) {
+      PageTitle("Stock rows inline");
+      Rows(Moulding.OrderBy(m => m.Moniker), label: "Mouldings") { m => Text(m.Moniker); }
+    }
+  }
+}
+
 /// A purchase: the supplier is found by typing, not by scrolling every supplier the workshop has ever used.
 [Route("/purchase")] [Authorize(IsFramer)] [Render(CSR)] [Title("Purchase")]
 component PurchasePage() {

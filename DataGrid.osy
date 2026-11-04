@@ -365,6 +365,8 @@ public sealed class GridBand<T> {
 
   /// Clears what THIS grid owns — the quick search and the filter row.
   action ClearFilters() { search = ""; typed = Blanks(); }
+  // DES-BOUNDED-READS-5b — the grid's end asks for the next page as it scrolls into view, exactly as `Rows` does.
+  action LoadNextPage() { rows.LoadMore(); }
 
   // ── A CALM HEADER — the filter row is ASKED FOR, not standing ───────────────────────────────
   //
@@ -834,6 +836,9 @@ public sealed class GridBand<T> {
         //   so every caller passing a query gets it with nothing to write; a list that is all it will ever be draws
         //   nothing here. Outside the scroll region, with the toolbar, for the same reason the toolbar is: a control you
         //   have to scroll sideways to find is not there. ⚠ The search, filters and sort above work on the rows LOADED.
+        //   The end of the grid ALSO asks for the next page as it scrolls into view (`Rows` does the same): the button is
+        //   the keyboard's way of making that request, and both go when nothing is left.
+        if (rows.HasMore) { Box(onVisible: LoadNextPage); }
         LoadMoreButton(rows);
       }
     }
@@ -884,6 +889,7 @@ public sealed class GridBand<T> {
           }
         }
         // The rest of the set, on the arm a phone renders — the same as the table's.
+        if (rows.HasMore) { Box(onVisible: LoadNextPage); }
         LoadMoreButton(rows);
       }
     }
