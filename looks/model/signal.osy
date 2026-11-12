@@ -38,7 +38,11 @@ public abstract theme Signal {
     Success       = Modes.Of(light: Palette.From("#0A7D55"), dark: Palette.From("#3CCB93"));
     Danger        = Modes.Of(light: Palette.From("#D0263C"), dark: Palette.From("#FF6B81"));
     Warning       = Modes.Of(light: Palette.From("#9A6200"), dark: Palette.From("#F5C04F"));
-    Waiting       = Modes.Of(light: "#4F6890", dark: "#9AB0D6");
+    Waiting       = Modes.Of(light: Palette.From("#4F6890"), dark: Palette.From("#9AB0D6"));
+    // Running, in progress — a blue the accent is not. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#1F64B5"), dark: Palette.From("#6AA8F2"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(12,13,18,.45)", dark: "rgba(0,0,0,.66)");
     // THE INK RAIL — the same near-black in both modes, with its own words, its own lines and a violet current row.
     Chrome          = Modes.Of(light: "#14151C", dark: "#08080B");

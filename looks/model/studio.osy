@@ -38,7 +38,11 @@ public abstract theme Studio {
     Success       = Modes.Of(light: Palette.From("#14804A"), dark: Palette.From("#4ADE80"));
     Danger        = Modes.Of(light: Palette.From("#D92D20"), dark: Palette.From("#F97066"));
     Warning       = Modes.Of(light: Palette.From("#B54708"), dark: Palette.From("#FDB022"));
-    Waiting       = Modes.Of(light: "#6941C6", dark: "#B692F6");
+    Waiting       = Modes.Of(light: Palette.From("#6941C6"), dark: Palette.From("#B692F6"));
+    // Running, in progress — a blue the accent is not. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#2E62C9"), dark: Palette.From("#7EA7F5"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(24,24,27,.32)", dark: "rgba(0,0,0,.6)");
     // A soft grey rail beside a white page; the row you are on is lifted white, as on a real bench.
     Chrome          = Modes.Of(light: "#F7F7F8", dark: "#111113");

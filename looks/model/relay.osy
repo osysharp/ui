@@ -38,7 +38,11 @@ public abstract theme Relay {
     Danger        = Modes.Of(light: Palette.From("#B0124F"), dark: Palette.From("#FF6B98"));
     Warning       = Modes.Of(light: Palette.From("#8C6A00"), dark: Palette.From("#E8C546"));
     Success       = Modes.Of(light: Palette.From("#11775A"), dark: Palette.From("#45C79A"));
-    Waiting       = Modes.Of(light: "#5E5F95", dark: "#A3A4D6");
+    Waiting       = Modes.Of(light: Palette.From("#5E5F95"), dark: Palette.From("#A3A4D6"));
+    // Running, in progress — a blue the accent is not. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#2563B8"), dark: Palette.From("#6EA6F2"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(10,12,16,.42)", dark: "rgba(0,0,0,.66)");
     // The rail is the console's frame: a step DARKER than the page, in both modes.
     Chrome          = Modes.Of(light: "#ECEEF2", dark: "#0A0B0D");

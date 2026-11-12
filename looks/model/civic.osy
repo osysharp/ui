@@ -39,7 +39,11 @@ public abstract theme Civic {
     Success       = Modes.Of(light: Palette.From("#00703C"), dark: Palette.From("#4CC38A"));
     Danger        = Modes.Of(light: Palette.From("#B91C1C"), dark: Palette.From("#F87171"));
     Warning       = Modes.Of(light: Palette.From("#8A5300"), dark: Palette.From("#F2B84B"));
-    Waiting       = Modes.Of(light: "#55528A", dark: "#ABA8DA");
+    Waiting       = Modes.Of(light: Palette.From("#55528A"), dark: Palette.From("#ABA8DA"));
+    // Running, in progress — a teal, because the accent is the blue. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#00677F"), dark: Palette.From("#5CC4DB"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(15,25,32,.50)", dark: "rgba(0,0,0,.68)");
     // White chrome on the blue-grey page; the row you are on is a clear blue wash with the accent's darkest ink — a
     // count or a badge on it stays readable, which a solid accent row would not allow.

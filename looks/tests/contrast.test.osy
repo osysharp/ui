@@ -30,6 +30,8 @@ void every_pair_reads_in_light() {
   Assert.Contrast("Colors.Success.Strong", "Colors.Success.Subtle", mode: "light");
   Assert.Contrast("Colors.Danger.Strong", "Colors.Danger.Subtle", mode: "light");
   Assert.Contrast("Colors.Warning.Strong", "Colors.Warning.Subtle", mode: "light");
+  Assert.Contrast("Colors.InfoInk", "Colors.InfoTint", mode: "light");
+  Assert.Contrast("Colors.WaitingInk", "Colors.WaitingTint", mode: "light");
   // The chrome — the rail and everything in it.
   Assert.Contrast("Colors.OnChrome", "Colors.Chrome", mode: "light");
   Assert.Contrast("Colors.ChromeMuted", "Colors.Chrome", mode: "light");
@@ -69,6 +71,8 @@ void every_pair_reads_in_dark() {
   Assert.Contrast("Colors.Success.Strong", "Colors.Success.Subtle", mode: "dark");
   Assert.Contrast("Colors.Danger.Strong", "Colors.Danger.Subtle", mode: "dark");
   Assert.Contrast("Colors.Warning.Strong", "Colors.Warning.Subtle", mode: "dark");
+  Assert.Contrast("Colors.InfoInk", "Colors.InfoTint", mode: "dark");
+  Assert.Contrast("Colors.WaitingInk", "Colors.WaitingTint", mode: "dark");
   // The chrome — the rail and everything in it.
   Assert.Contrast("Colors.OnChrome", "Colors.Chrome", mode: "dark");
   Assert.Contrast("Colors.ChromeMuted", "Colors.Chrome", mode: "dark");

@@ -38,9 +38,15 @@ public abstract theme Tempo {
     Success       = Modes.Of(light: Palette.From("#167A3E"), dark: Palette.From("#4AC98A"));
     Danger        = Modes.Of(light: Palette.From("#B42318"), dark: Palette.From("#FF8A5C"));
     Warning       = Modes.Of(light: Palette.From("#94600A"), dark: Palette.From("#F2B544"));
-    Waiting       = Modes.Of(light: "#45618E", dark: "#9DB4DD");
+    Waiting       = Modes.Of(light: Palette.From("#45618E"), dark: Palette.From("#9DB4DD"));
+    // Running, in progress — a blue the accent is not. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#2563A8"), dark: Palette.From("#79A9EC"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(28,21,32,.34)", dark: "rgba(0,0,0,.6)");
-    // The header is the page's own paper; the current item is ink, as a day ringed on a printed timetable.
+    // The header is the page's own paper; the current item is a plum wash under the ink, as a day shaded on a printed
+    // timetable — not an ink row, on which a count or a hint (`ChromeFaint`) could not be read (2.7:1 light, 2.3:1
+    // dark; it is over 5:1 on this).
     Chrome          = Modes.Of(light: "#FAFAF9", dark: "#141015");
     OnChrome        = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
     ChromeMuted     = Modes.Of(light: "#3E3443", dark: "#CFC6D3");
@@ -49,8 +55,8 @@ public abstract theme Tempo {
     ChromeSunken    = Modes.Of(light: "#F2F1EF", dark: "#0E0B0F");
     ChromeElevated  = Modes.Of(light: "#FFFFFF", dark: "#231D26");
     ChromeLine      = Modes.Of(light: "#E4E0DD", dark: "#2C2530");
-    ChromeCurrent   = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
-    OnChromeCurrent = Modes.Of(light: "#FFFFFF", dark: "#141015");
+    ChromeCurrent   = Modes.Of(light: "#E6DFE9", dark: "#322838");
+    OnChromeCurrent = Modes.Of(light: "#1C1520", dark: "#F1ECF2");
     ChromeFocus     = Colors.Focus;
   }
   Font {

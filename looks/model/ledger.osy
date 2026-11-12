@@ -38,7 +38,11 @@ public abstract theme Ledger {
     Success       = Modes.Of(light: Palette.From("#0F7049"), dark: Palette.From("#4CC38F"));
     Danger        = Modes.Of(light: Palette.From("#B3261E"), dark: Palette.From("#F2756C"));
     Warning       = Modes.Of(light: Palette.From("#8A5A00"), dark: Palette.From("#E5B451"));
-    Waiting       = Modes.Of(light: "#5A5D8C", dark: "#A6A9D2");
+    Waiting       = Modes.Of(light: Palette.From("#5A5D8C"), dark: Palette.From("#A6A9D2"));
+    // Running, in progress — a teal, because the accent is the navy. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#0B6E7A"), dark: Palette.From("#5EC2CC"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(14,20,28,.40)", dark: "rgba(0,0,0,.64)");
     // The chrome sits on the same paper as the page, a shade cooler, and divided from it by a rule.
     Chrome          = Modes.Of(light: "#F8F9FB", dark: "#0F131A");

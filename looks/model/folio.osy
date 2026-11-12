@@ -39,10 +39,15 @@ public abstract theme Folio {
     Success       = Modes.Of(light: Palette.From("#1F7A3A"), dark: Palette.From("#4CC38A"));
     Danger        = Modes.Of(light: Palette.From("#B3261E"), dark: Palette.From("#FF7A70"));
     Warning       = Modes.Of(light: Palette.From("#8F5B00"), dark: Palette.From("#F0B54A"));
-    Waiting       = Modes.Of(light: "#5B4FA8", dark: "#A99BF0");
+    Waiting       = Modes.Of(light: Palette.From("#5B4FA8"), dark: Palette.From("#A99BF0"));
+    // Running, in progress — a blue, because the accent is the teal. Both are palettes, so their pills (`…Tint` / `…Ink`) are
+    // this look's own ramp rather than the floor's.
+    Info          = Modes.Of(light: Palette.From("#2D5FA8"), dark: Palette.From("#79A6EE"));
+    WaitingTint = Waiting.Subtle;  WaitingInk = Waiting.Strong;
     Scrim         = Modes.Of(light: "rgba(18,20,23,.36)", dark: "rgba(0,0,0,.62)");
-    // The chrome IS the page: a reading site's header is printed on the same paper, and the current item is set in
-    // reverse — ink ground, white words — as a printed index marks where you are.
+    // The chrome IS the page: a reading site's header is printed on the same paper, and the current item is marked
+    // with a grey wash and the ink itself, as a printed index marks where you are — not set in reverse, because a
+    // count or a hint (`ChromeFaint`) on an ink row could not be read (2.9:1 light, 2.2:1 dark; it is 5:1 on this).
     Chrome          = Modes.Of(light: "#FFFFFF", dark: "#101214");
     OnChrome        = Modes.Of(light: "#121417", dark: "#ECEEEF");
     ChromeMuted     = Modes.Of(light: "#33383D", dark: "#C2C8CD");
@@ -51,8 +56,8 @@ public abstract theme Folio {
     ChromeSunken    = Modes.Of(light: "#F2F4F5", dark: "#0B0D0E");
     ChromeElevated  = Modes.Of(light: "#FFFFFF", dark: "#1D2125");
     ChromeLine      = Modes.Of(light: "#121417", dark: "#353C42");
-    ChromeCurrent   = Modes.Of(light: "#121417", dark: "#ECEEEF");
-    OnChromeCurrent = Modes.Of(light: "#FFFFFF", dark: "#101214");
+    ChromeCurrent   = Modes.Of(light: "#E3E7EA", dark: "#2A3035");
+    OnChromeCurrent = Modes.Of(light: "#121417", dark: "#ECEEEF");
     ChromeFocus     = Colors.Focus;
   }
   Font {
