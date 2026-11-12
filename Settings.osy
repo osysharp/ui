@@ -14,7 +14,8 @@
 //   `ISettingsProvider` and ships the pages its links open, under `[Layout(SettingsFrame)]`. `SettingsArea()` with no list
 //   gathers every provider in the app — the app's own and every kit's — so adding a kit adds its settings, and the whole
 //   app's configuration reads as one place. Nobody wires a provider: it is DISCOVERED (`App.Implementations<T>()`).
-//   An app passes its own list (`SettingsArea(MyLinks())`) to add, reorder or hide sections — the escape hatch.
+//   An app MOVES a section — a kit's included — to a group and place of its own with `ISettingsPlacement`, and passes
+//   its own list (`SettingsArea(MyLinks())`) to hide sections or build the nav itself — the escape hatch.
 //
 // ⚑ THE APP DESIGNS `WorkspaceShell` ONCE and every kit's settings page sits in the app's shell with no wiring; it may
 //   still take `SettingsFrame` over by name (a component of the same name, the rule an app's own `Card` follows over the
@@ -42,6 +43,17 @@ public List<SettingsLink> AnnouncedSettings() {
       if (link.Shown) { all.Add(link); }
     }
   }
+  // Where the app says a section sits (`ISettingsPlacement`), before anything is grouped or ordered — so a kit's
+  // section moved into one of the app's groups is ordered among that group's own.
+  foreach (var placing in App.Implementations<ISettingsPlacement>()) {
+    foreach (var place in placing.Placements()) {
+      foreach (var link in all) {
+        if (link.To != place.To) { continue; }
+        if (place.Group != null) { link.Group = place.Group!; }
+        if (place.Order != null) { link.Order = place.Order!.Value; }
+      }
+    }
+  }
   List<SettingsLink> ordered = [];
   // A section with NO group comes first, before every heading. Placed by its `Order` like a group, it landed after
   // whichever headed group sorted before it and read as one of that group's — in Harbour, "Time and date", "Feedback"
@@ -54,6 +66,29 @@ public List<SettingsLink> AnnouncedSettings() {
     }
   }
   return ordered;
+}
+
+/// A contract an APP implements to say WHERE a section sits in its settings area — the group it is listed under and
+/// its place there — whoever announced it: a kit's `ISettingsProvider`, a kit's declared `[Settings]` row, or the app's
+/// own. Discovered like a provider, never wired, and applied by `AnnouncedSettings()`, so the nav, the overview and a
+/// list an app builds from the announced sections all agree. A section it does not name stays where its provider put it.
+/// It moves a link and nothing else: who is shown it (`Shown`) and who may open its page stay the provider's.
+/// need: move a kit's settings link to another group, put a package's settings section under my own heading, reorder the settings nav, rename the group a kit's settings page is listed under
+/// e.g. `class DeskPlacement : ISettingsPlacement { public SettingsPlacement[] Placements() { return [new SettingsPlacement { To = "/settings/access", Group = "Security", Order = 40 }]; } }`
+public interface ISettingsPlacement {
+  /// Each section this app places, named by its route.
+  SettingsPlacement[] Placements();
+}
+
+/// Where one settings section sits (`ISettingsPlacement`): the section, by its route, and the group and order it takes.
+/// A value left out keeps what the section's provider said.
+public sealed class SettingsPlacement {
+  /// The section's route — the `To` its provider announced it with (`/settings/access`).
+  public string To = "";
+  /// The group it is listed under; `""` lists it before every heading. Left out, the provider's group stays.
+  public string? Group = null;
+  /// Its place in a gathered area, as `SettingsLink.Order`. Left out, the provider's order stays.
+  public int? Order = null;
 }
 
 /// What a declared settings page (`[Settings]`) reads of its row beside the values, in ONE call: the fields its
