@@ -531,7 +531,7 @@ component FocusedStepMark(int number, bool done, bool active) {
     // A BOOL dimension carries its styles directly — they apply when it is true, and there is no `False` arm.
     // The two are mutually exclusive by construction (`FlowStep.Done` is `i < active`, `Active` is `i == active`),
     // so neither needs to defend against the other.
-    done   { Bg = Colors.Success; Border = Colors.Success; Color = Colors.OnPrimary; }
+    done   { Bg = Colors.Success; Border = Colors.Success; Color = Success.OnColor; }
     active { Bg = Colors.Primary; Border = Colors.Primary; Color = Colors.OnPrimary; }
   }
   render {

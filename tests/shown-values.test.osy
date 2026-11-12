@@ -1,0 +1,14 @@
+// ENG-KIT-TONES-TABS-4 — a text box that shows a value nobody edits: `Input(value: …, readonly: true)` paints the value
+// one way (a literal, an expression, a `live var`, a field of a `class` value), and a TextArea's value is its body. No `--pixels` needed.
+
+[Test(Workshop)]
+void a_read_only_text_box_shows_the_value_it_is_given() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/shown-values");
+  Assert.Value("Order number", "A-1042");
+  Assert.Value("Address", "tom.frames.test");
+  Assert.Value("Grade", "Museum");
+  Assert.Value("Spec", "Glass: museum grade\nMount: 2 inch");
+  // …and a box bound two-way beside them still is
+  Assert.Value("Note", "Hang at eye height");
+}

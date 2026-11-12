@@ -96,7 +96,7 @@ animation KitNudge {
 /// A LIVE LAMP — the Switchboard floor's mark for "live, and yours": a dot in the accent with a breathing ring when
 /// `live`, or a hollow ring when it is not. Beside a queue with work in it, a ticket someone is typing on, a channel
 /// that is connected. `tone` picks the colour for a lamp that means something else (`Tone.Warning` for time running
-/// out, `Tone.Danger` for breached). `waiting` draws it in the floor's slate-violet — paused on somebody else (a
+/// out, `Tone.Danger` for breached, `Tone.Info` for running, `Tone.Success` for done — the six status tones). `waiting` draws it in the floor's slate-violet — paused on somebody else (a
 /// ticket on hold, a request with a third party); hollow when unlit, like every lamp. Under reduced motion the ring
 /// holds still and the lamp stays lit.
 /// In a test it carries no text; assert the thing it sits beside.
@@ -112,6 +112,8 @@ component Lamp(bool lit = true, bool live = false, Tone tone = Tone.Primary, boo
       Danger  { Bg = Colors.Danger; }
       Success { Bg = Colors.Success; }
       Warning { Bg = Colors.Warning; }
+      Info    { Bg = Colors.Info; }
+      Waiting { Bg = Colors.Waiting; }
       Ghost   { Bg = Colors.TextMuted; }
     }
     waiting { Bg = Colors.Waiting; }
@@ -151,6 +153,8 @@ component Done(string label = "Saved", Tone tone = Tone.Success) {
       Danger  { Color = Danger.Text; }
       Success { Color = Success.Text; }
       Warning { Color = Colors.Warning; }
+      Info    { Color = Colors.Info; }
+      Waiting { Color = Colors.Waiting; }
       Ghost   { Color = Colors.TextMuted; }
     }
   }

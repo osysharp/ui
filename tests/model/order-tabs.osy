@@ -1,0 +1,25 @@
+// ENG-KIT-TONES-TABS: a framing order's pages as LINK tabs (`Tabs(links: true)` + `Tab(to:)`), each its own address,
+// and its status in the six tones, one count filled — what a status board draws with the kit alone.
+
+[Route("/order-pages/{view}")] [Authorize(IsFramer)] [Render(CSR)] [Title("Order")]
+component OrderTabsPage(string view) {
+  render {
+    Stack(gap: 4, p: 6) {
+      Tabs("Order sections", links: true) {
+        Tab("Overview", to: "/order-pages/overview", selected: view == "overview");
+        Tab("Lines", to: "/order-pages/lines", selected: view == "lines");
+        Tab("History", to: "/order-pages/history", selected: view == "history");
+      }
+      Text(view == "lines" ? "Two mats, one frame." : "The order at a glance.");
+      Row(gap: 2) {
+        Badge("Cut", tone: Tone.Success);
+        Badge("Cutting", tone: Tone.Info);
+        Badge("Waiting for glass", tone: Tone.Waiting);
+        Badge("Needs you", tone: Tone.Warning);
+        Badge("Blocked", tone: Tone.Danger);
+        Badge("Fixed price", tone: Tone.Default);
+        Badge("3", filled: true);
+      }
+    }
+  }
+}

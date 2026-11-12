@@ -5,7 +5,10 @@ namespace Osysharp.Ui;
 
 /// Semantic intent of a control's chrome — the `tone` variant dimension (see Button, Badge). The platform ships
 /// these defaults; an app extends the set with its own members.
-public enum Tone { Default, Primary, Danger, Success, Warning, Ghost }
+/// The six STATUS tones a badge, a lamp and a nav count say: `Success` done · `Info` running, in progress ·
+/// `Waiting` paused on somebody else · `Warning` needs a person · `Danger` blocked, failed · `Default` neutral, fixed.
+/// `Primary` is the accent (yours, current, a draft); `Ghost` an outline.
+public enum Tone { Default, Primary, Danger, Success, Warning, Ghost, Info, Waiting }
 
 /// T-shirt size scale — the `size` variant dimension. Design-system-owned; apps add `Xs`/`Xl`.
 public enum Size { Sm, Md, Lg }

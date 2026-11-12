@@ -1,0 +1,101 @@
+// ENG-KIT-TONES-TABS-2: a design's exact count pill and tab, reached through the kit's own tokens. The page draws the
+// kit's `Badge` and `Tab` beside the same thing in plain elements at the design's stated values (`12px/600, 1px 7px`
+// for the pill; `10px 14px, min-height 44px` for the tab), and the `design` variant of the theme (`theme.osy`) sets
+// the tokens to those values — so a test can show the kit's part IS the design's once the theme says so.
+
+theme Workshop {
+  // A VARIANT laid over the floor: `light`/`dark` are the floor's own values (what every other page and test here
+  // draws), and `design` the design's. ⚠ Both must be written — an app's token shadows the kit's WHOLE, so a map that
+  // named only `design` would leave light and dark with no value at all. An app matching a design writes plain values.
+  Space {
+    SettingsSectionX      = Modes.Of(light: "0", dark: "0", roomy: "20px");
+    SettingsSectionBottom = Modes.Of(light: "0", dark: "0", roomy: "20px");
+    // KIT-BADGE-COUNT: the design draws its state chip (`3px 8px`, 6px corners, `normal` line) apart from its count pill
+    // (`1px 7px`, round, line 1.4) — the chip is the Md badge, the count `Size.Sm`.
+    BadgeX = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 2)", dark: "calc(var(--space-step, 0.25rem) * 2)", design: "8px");
+    BadgeY = Modes.Of(light: "0", dark: "0", design: "3px");
+    BadgeXSm = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 2)", dark: "calc(var(--space-step, 0.25rem) * 2)", design: "7px");
+    BadgeYSm = Modes.Of(light: "0", dark: "0", design: "1px");
+    TabCountGap = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 1.5)", dark: "calc(var(--space-step, 0.25rem) * 1.5)", design: "6px");
+    TabX   = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 3)", dark: "calc(var(--space-step, 0.25rem) * 3)", design: "14px");
+    TabY   = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 3)", dark: "calc(var(--space-step, 0.25rem) * 3)", design: "10px");
+    // ENG-KIT-TONES-TABS-8: the v3 board's bulleted list is a plain `<ul>` — its points sit line on line.
+    BulletGap = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 1)", dark: "calc(var(--space-step, 0.25rem) * 1)", design: "0");
+    // KIT-SECTIONLIST-V9: `seclist` — a section list drawn one line a row (the section-list-geometry page measures it):
+    // 2px between rows, a group header spaced 12 10 4, and 8px under the open group.
+    SectionRowGap      = Modes.Of(light: "1px", dark: "1px", seclist: "2px");
+    SectionGroupTop    = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 2.5)", dark: "calc(var(--space-step, 0.25rem) * 2.5)", seclist: "12px");
+    SectionGroupBottom = Modes.Of(light: "calc(var(--space-step, 0.25rem) * 1)", dark: "calc(var(--space-step, 0.25rem) * 1)", seclist: "4px");
+    SectionGroupAfter  = Modes.Of(light: "0", dark: "0", seclist: "8px");
+  }
+  Length {
+    BadgeH  = Modes.Of(light: "22px", dark: "22px", design: "auto");
+    BadgeLine   = Modes.Of(light: "inherit", dark: "inherit", design: "normal");
+    BadgeLineSm = Modes.Of(light: "inherit", dark: "inherit", design: "1.4");
+    // `tall`: a tab far taller than its words, so where the words sit is plain to see (a variant names only what it
+    // changes; every other token keeps its light/dark value).
+    TabMinH = Modes.Of(light: "auto", dark: "auto", design: "44px", tall: "72px");
+    // KIT-SETTINGS-TOKENS: `roomy` — a settings area drawn to a design of its own: a wider nav and page, a narrower
+    // label column, and its sections on cards (the settings-geometry page measures them).
+    SettingsNavW   = Modes.Of(light: "232px", dark: "232px", roomy: "248px");
+    SettingsPageW  = Modes.Of(light: "880px", dark: "880px", roomy: "960px");
+    SettingsLabelW = Modes.Of(light: "240px", dark: "240px", roomy: "220px");
+    SettingsSectionEdge = Modes.Of(light: "0px", dark: "0px", roomy: "1px");
+    // KIT-SECTIONLIST-V9: `seclist` — a 232px column of fixed 36px rows.
+    SectionListW = Modes.Of(light: "196px", dark: "196px", seclist: "232px");
+    SectionRow   = Modes.Of(light: "auto", dark: "auto", seclist: "36px");
+  }
+  FontSize { SectionGroup = Modes.Of(light: "11px", dark: "11px", seclist: "12px"); }
+  Colors {
+    SettingsSectionBg = Modes.Of(light: Colors.Transparent, dark: Colors.Transparent, roomy: Colors.Surface);
+  }
+  FontWeight { Badge = Modes.Of(light: 530, dark: 530, design: 600); }
+  Radius { SettingsSection = Modes.Of(light: "0", dark: "0", roomy: "12px");
+           Tag = Modes.Of(light: "999px", dark: "999px", design: "6px"); TagSm = Modes.Of(light: "999px", dark: "999px", design: "999px"); }
+}
+
+
+[Route("/geometry")] [Authorize(IsFramer)] [Render(CSR)] [Title("Geometry")]
+component GeometryPage() {
+  action Design() { Theme.Variant("design"); }
+  action Tall() { Theme.Variant("tall"); }
+  render {
+    Stack(gap: 4, p: 6) {
+      Button("Design geometry", onPress: Design);
+      Button("Tall tabs", onPress: Tall);
+      Row(gap: 4, align: Align.Start) {
+        Box(label: "Kit pill", display: Display.Flex) { Badge("1 frozen", tone: Tone.Danger, size: Size.Sm); }
+        Box(label: "Design pill", display: Display.Flex) {
+          Text("1 frozen", fontSize: FontSize.Caption, fontWeight: 600, px: "7px", py: "1px", rounded: "999px", lineHeight: "1.4",
+               bg: Colors.DangerTint, color: Colors.DangerInk, whiteSpace: WhiteSpace.Nowrap);
+        }
+      }
+      Row(gap: 4, align: Align.Start) {
+        Box(label: "Kit chip", display: Display.Flex) { Badge("Published", tone: Tone.Success); }
+        Box(label: "Design chip", display: Display.Flex) {
+          Text("Published", fontSize: FontSize.Caption, fontWeight: 600, px: "8px", py: "3px", rounded: "6px", lineHeight: "normal",
+               bg: Colors.SuccessTint, color: Colors.SuccessInk, whiteSpace: WhiteSpace.Nowrap);
+        }
+      }
+      Row(gap: 4, align: Align.Start) {
+        Box(label: "Kit counted tab", display: Display.Flex) { Tab("Versions", to: "/geometry/versions", count: "23", countTone: Tone.Warning); }
+        Box(label: "Design counted tab", display: Display.Flex) {
+          Row(gap: "6px", align: Align.Center, fontSize: FontSize.Body, fontWeight: FontWeight.Medium, px: "14px", py: "10px", minH: "44px",
+              borderBW: 2, border: Colors.Transparent, whiteSpace: WhiteSpace.Nowrap) {
+            Text("Versions");
+            Text("23", fontSize: FontSize.Caption, fontWeight: 600, px: "7px", py: "1px", rounded: "999px", lineHeight: "1.4",
+                 bg: Colors.WarningTint, color: Colors.WarningInk);
+          }
+        }
+        Box(label: "Not built", display: Display.Flex) { Tab("Later", to: "/geometry/later", disabled: true, count: "2"); }
+      }
+      Row(gap: 4, align: Align.Start) {
+        Box(label: "Kit tab", display: Display.Flex) { Tab("Lines", to: "/geometry"); }
+        Box(label: "Design tab", display: Display.Flex) {
+          Text("Lines", fontSize: FontSize.Body, fontWeight: FontWeight.Medium, px: "14px", py: "10px", minH: "44px",
+               display: Display.InlineFlex, alignItems: Align.Center, borderBW: 2, border: Colors.Transparent, whiteSpace: WhiteSpace.Nowrap);
+        }
+      }
+    }
+  }
+}

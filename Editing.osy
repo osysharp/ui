@@ -1,0 +1,383 @@
+// Ui — the parts of EDITING A THING IN PLACE (ENG-KIT-TONES-TABS-7, KIT-2): a drawer beside a list, the banner a draft
+// carries, a scope header over setting rows that say where each value comes from, a change someone proposes, a row of
+// history, a settings section list, and the impact dialog a save opens. Every metric is a theme token, so an app that
+// matches a design states its numbers in its theme and the part IS the design's (Docs/reference/ui/kit.md, "Editing in place").
+namespace Osysharp.Ui;
+
+// ── the drawer ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A LIGHT ITEM OPENED BESIDE ITS LIST — about eight fields, no facets of its own. The list stays, the open row is
+/// marked, ↑ ↓ step to the item before and after. Its title (a key, a name) heads it with `slot badge` beside it and
+/// `subtitle` under it ("Rule 4 of 12"); the body is the slot; `slot actions` is its footer (Cancel, Apply). Put it in
+/// a wrapping `Row` after the list: it takes `Length.DrawerW` and gives way to the list when the window narrows.
+/// An item with tabs or sections of its own opens its own page instead; a drawer has neither.
+/// In a test it is a region named by its title: `Assert.Visible("Should", within: "AF-04")`, `Ui.Click("Close", within: "AF-04")`.
+/// need: open a row beside the list, a side panel to edit one item, master detail without leaving the list, a details drawer
+/// e.g. `Drawer(rule.Key, onClose: Close, subtitle: "Rule 4 of 12", onPrevious: Prev, onNext: Next) { Field("Text", value: rule.Text); slot actions { Button("Apply", onPress: Apply, tone: Tone.Primary); } }`
+[Composable]
+component Drawer(string title, Action onClose, string subtitle = "", Action? onPrevious = null, Action? onNext = null,
+                 string previousLabel = "Previous", string nextLabel = "Next", string closeLabel = "Close") {
+  variants {
+    base {
+      Bg = Colors.Surface; BorderW = 1; Border = Colors.DrawerLine; Rounded = Radius.Sheet; Shadow = Shadow.DrawerLift;
+      Px = Space.DrawerX; Py = Space.DrawerY; Basis = Length.DrawerW; Grow = 0; Shrink = 1; MinW = "0";
+    }
+  }
+  render {
+    Stack(gap: Space.DrawerGap, role: UiRole.Region, label: title) {
+      Row(justify: Justify.Between, align: Align.Start, gap: 2) {
+        Stack(gap: 1, minW: "0") {
+          Row(gap: 2, align: Align.Center) {
+            Text(title, fontFamily: Font.DrawerFace, fontSize: FontSize.DrawerTitle, fontWeight: FontWeight.Semibold);
+            Slot("badge");
+          }
+          if (subtitle != "") { Text(subtitle, fontSize: FontSize.Label, color: Colors.DetailText); }
+        }
+        Row(gap: "6px", shrink: 0) {
+          if (onPrevious != null) { SquareButton("↑", previousLabel, onPrevious); }
+          if (onNext != null) { SquareButton("↓", nextLabel, onNext); }
+          SquareButton("×", closeLabel, onClose, big: true);
+        }
+      }
+      Slot;
+      DrawerFoot { Slot("actions"); }
+    }
+  }
+}
+
+/// The drawer's footer — its actions on a rule, side by side.
+[Composable][Part] component DrawerFoot() {
+  variants { base { BorderTW = 1; Border = Colors.RowLine; Pt = Space.DrawerFootGap; } }
+  render { Row(gap: 2, wrap: Wrapping.Wrap) { Slot; } }
+}
+
+/// A square glyph button on the control line — a drawer's ↑ ↓ ×, a dialog's close. `label` is its name; the glyph is
+/// decoration. `big` sets × a size up, as the eye reads it smaller than an arrow.
+[Composable][Part] component SquareButton(string glyph, string label, Action onPress, bool big = false) {
+  variants {
+    base {
+      W = Length.SquareButton; H = Length.SquareButton; MinW = Length.SquareButton; P = 0; Display = Display.Flex;
+      AlignItems = Align.Center; Bg = Colors.Surface; Color = Colors.OnSurface; BorderW = 1; Border = Colors.ControlBorder;
+      Rounded = Radius.Md; FontSize = FontSize.Body; FontWeight = FontWeight.Semibold; Cursor = Cursor.Pointer;
+      Hover { Bg = Colors.Muted; }
+    }
+    big { FontSize = FontSize.Subhead; }
+  }
+  render { Pressable(onClick: onPress, label: label, justify: Justify.Center) { Text(glyph, decorative: true); } }
+}
+
+// ── the editing banner and a pending change ─────────────────────────────────────────────────────────────────────────
+
+/// THE BANNER A DRAFT CARRIES — "Editing workflow Reviewed v7 · 3 unsaved changes", with Discard and the save that
+/// opens its impact (`ImpactDialog`). It stays above every tab while the draft has changes, so one draft spans tabs.
+/// Its ground is the accent's deep ink (`Colors.BannerBg`), its words `Colors.OnBanner`.
+/// In a test it is the region "Unsaved changes": `Ui.Click("Review and save", within: "Unsaved changes")`.
+/// need: unsaved changes bar, a draft is being edited, discard or save a draft, an editing mode banner
+/// e.g. `EditingBanner("Editing workflow Reviewed v7 · 3 unsaved changes", onDiscard: Discard, onSave: Review)`
+[Composable]
+component EditingBanner(string text, Action onDiscard, Action onSave, string discard = "Discard", string save = "Review and save") {
+  variants {
+    base { Bg = Colors.BannerBg; Color = Colors.OnBanner; Rounded = Radius.Banner; Px = Space.BannerX; Py = Space.BannerY; }
+  }
+  render {
+    Row(justify: Justify.Between, align: Align.Center, wrap: Wrapping.Wrap, gap: 2, role: UiRole.Region, label: "Unsaved changes") {
+      Text(text, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold);
+      Row(gap: 2) {
+        BannerButton(discard, onDiscard, quiet: true);
+        BannerButton(save, onSave);
+      }
+    }
+  }
+}
+
+/// A button on the banner's dark ground: the quiet one an outline, the save one solid in the banner's words' colour.
+[Composable][Part] component BannerButton(string label, Action onPress, bool quiet = false) {
+  variants {
+    base {
+      Display = Display.InlineFlex; AlignItems = Align.Center; MinH = Length.BannerButtonH; Px = Space.BannerButtonX;
+      Py = Space.BannerButtonY; Rounded = Radius.Md; FontSize = FontSize.Label; FontWeight = FontWeight.Semibold;
+      Bg = Colors.OnBanner; Color = Colors.BannerBg; BorderW = 0; Cursor = Cursor.Pointer;
+    }
+    quiet { Bg = Colors.Transparent; Color = Colors.OnBanner; BorderW = 1; Border = Colors.BannerLine; }
+  }
+  render { Pressable(onClick: onPress, label: label) { Text(label); } }
+}
+
+/// A CHANGE SOMEBODY PROPOSES, waiting on you — who proposes it in strong words, what it is after them, and Accept,
+/// Edit and Reject as links beside it. Drawn on a dashed accent line (`Colors.PendingLine`): not yet a value.
+/// In a test it is the group named by `who`: `Ui.Click("Accept", within: "Planner proposes:")`.
+/// need: a proposed change to approve, an agent suggests a value, accept or reject a suggestion, a pending edit
+/// e.g. `PendingChange("Planner proposes:", "session budget 220k (was 160k) for BOOK-14", onAccept: Take, onEdit: Edit, onReject: Drop)`
+[Composable]
+component PendingChange(string who, string what, Action onAccept, Action onEdit, Action onReject,
+                        string accept = "Accept", string edit = "Edit", string reject = "Reject") {
+  variants {
+    base {
+      Bg = Colors.Surface; BorderW = 1; BorderStyle = BorderStyle.Dashed; Border = Colors.PendingLine; Rounded = Radius.Banner;
+      Px = Space.PendingX; Py = Space.PendingY;
+    }
+  }
+  render {
+    Row(wrap: Wrapping.Wrap, align: Align.Center, gap: Space.PendingGap, role: UiRole.Group, label: who) {
+      Box(fontSize: FontSize.Label) { Text(who, fontWeight: FontWeight.Emphasis); Text(" " + what); }
+      Row(gap: 3) { WordAction(accept, onAccept); WordAction(edit, onEdit); WordAction(reject, onReject); }
+    }
+  }
+}
+
+/// An action that is only its word, in the accent — a pending change's Accept, a history row's Undo.
+[Composable][Part] component WordAction(string label, Action onPress) {
+  variants {
+    base { FontSize = FontSize.Label; FontWeight = FontWeight.Semibold; Color = Colors.Primary; Bg = Colors.Transparent;
+           BorderW = 0; P = 0; Cursor = Cursor.Pointer; Hover { TextDecoration = TextDecoration.Underline; } }
+  }
+  render { Pressable(onClick: onPress, label: label) { Text(label); } }
+}
+
+// ── the scope header and setting rows ───────────────────────────────────────────────────────────────────────────────
+
+/// Where a setting's value comes from — what a `ScopedSetting` says under it, and how.
+public enum SettingFrom { Inherited, [Label("Set here")] SetHere, Locked, Default }
+
+/// THE HEAD OF A SCOPE'S SETTINGS — which scope you are editing and what it inherits (`title` strong, `summary` after
+/// it), the chain of scopes with this one strong (`trail`, `current`), and a link that explains how they combine.
+/// In a test it is the group "Scope": `Assert.Visible("6 set here", within: "Scope")`.
+/// need: which level am I editing, inherited settings header, organization product repo scopes, a breadcrumb of scopes
+/// e.g. `ScopeHeader("Editing: Patient Portal", summary: "inherits Northwind Health defaults · 6 set here", trail: ["Organization", "Product: Patient Portal", "Repo"], current: "Product: Patient Portal", help: "How scopes combine ▸", helpTo: "/docs/scopes")`
+[Composable]
+component ScopeHeader(string title, string summary = "", string[]? trail = null, string current = "", string help = "", string helpTo = "") {
+  variants {
+    base { Bg = Colors.ScopeBg; BorderW = 1; Border = Colors.ScopeLine; Rounded = Radius.Banner; Px = Space.ScopeX; Py = Space.ScopeY; }
+  }
+  render {
+    Stack(gap: 2, role: UiRole.Group, label: "Scope") {
+      Box(fontSize: FontSize.Body) {
+        Text(title, fontWeight: FontWeight.Emphasis);
+        if (summary != "") { Text(" · " + summary); }
+      }
+      if (trail != null) {
+        Row(gap: "6px", wrap: Wrapping.Wrap, fontSize: FontSize.Label, color: Colors.DetailText) {
+          foreach (var step in trail) {
+            if (step != trail[0]) { Text("›", decorative: true); }
+            if (step == current) { Text(step, fontWeight: FontWeight.Emphasis, color: Colors.OnSurface); } else { Text(step); }
+          }
+        }
+      }
+      if (help != "") {
+        if (helpTo != "") { Link(helpTo, label: help) { Text(help, fontSize: FontSize.Label, fontWeight: FontWeight.Semibold); } }
+        else { Text(help, fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.Primary); }
+      }
+    }
+  }
+}
+
+/// ONE SETTING, SAYING WHERE ITS VALUE COMES FROM — its name and what it does beside its value, and under both the
+/// provenance: inherited ("From organization: 45 minutes"), set here ("● Set here (organization: 2)"), locked by a
+/// policy (its value on a closed ground) or the default. Rows rule off from each other (`Colors.RowLine`).
+/// In a test it is the group named by `label`: `Assert.Visible("Locked by policy floor v4", within: "Model for agent steps")`.
+/// need: a setting row with inheritance, where does this value come from, set here or inherited, a locked setting
+/// `action` beside the provenance ("Reset", "Set here") presses `onAction`.
+/// e.g. `ScopedSetting("Stuck after", "How long a lane may go without progress.", "45 minutes", "From organization: 45 minutes")`
+[Composable]
+component ScopedSetting(string label, string what, string value, string provenance, SettingFrom from = SettingFrom.Inherited,
+                        string action = "", Action? onAction = null) {
+  variants {
+    base {
+      Display = Display.Grid; Cols = Length.SettingCols; Px = Space.SettingX; Py = Space.SettingY; BorderTW = 1; Border = Colors.RowLine;
+    }
+  }
+  render {
+    Box(gap: Space.SettingGap, role: UiRole.Group, label: label) {
+      Stack(gap: "2px") {
+        Text(label, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold);
+        Text(what, fontSize: FontSize.Label, color: Colors.MetaText);
+      }
+      SettingValue(value, locked: from == SettingFrom.Locked);
+      Box(colSpan: "1 / -1") { ProvenanceLine(provenance, from: from, action: action, onAction: onAction); }
+    }
+  }
+}
+
+/// Where a setting's value comes from, in words — "From organization: 45 minutes", "Set here by Ada" (a step darker
+/// and strong), "Locked by policy floor v4" — with `action` beside it ("Reset", "Set here"). Under a `ScopedSetting`
+/// and a `SettingRow`.
+[Composable][Part]
+component ProvenanceLine(string text, SettingFrom from = SettingFrom.Inherited, string action = "", Action? onAction = null) {
+  render {
+    Row(gap: 2, align: Align.Baseline, wrap: Wrapping.Wrap) {
+      Text(text, fontSize: FontSize.Caption,
+           color: from == SettingFrom.SetHere ? Colors.DetailText : (from == SettingFrom.Locked ? Colors.OnSurface : Colors.MetaText),
+           fontWeight: from == SettingFrom.SetHere || from == SettingFrom.Locked ? FontWeight.Semibold : FontWeight.Regular);
+      if (action != "" && onAction != null) { WordAction(action, onAction); }
+    }
+  }
+}
+
+/// A setting's value in its box — the control line, or a closed ground when a policy locks it.
+[Composable][Part] component SettingValue(string value, bool locked = false) {
+  variants {
+    base { FontSize = FontSize.Body; Px = Space.SettingValueX; Py = Space.SettingValueY; Rounded = Radius.Md; BorderW = 1;
+           Border = Colors.ControlBorder; Bg = Colors.Surface; Color = Colors.OnSurface; AlignSelf = AlignSelf.Center; }
+    locked { Bg = Colors.LockedValueBg; Color = Colors.DetailText; }
+  }
+  render { Text(value); }
+}
+
+// ── a history row ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ONE CHANGE IN A HISTORY — when, who, what changed (in the key face, "Session budget: 120k → 160k") with why under
+/// it, and Undo while it can still be undone. Rows rule off from each other; their columns line up down the list.
+/// In a test it is the group "<when> · <who>": `Ui.Click("Undo", within: "Today 09:12 · Anna Berg")`.
+/// need: an audit trail row, who changed what and why, change history with undo, a log of edits
+/// e.g. `HistoryRow("Today 09:12", "Anna Berg", "Performance review: Advisory → Gate", why: "Two slow pages reached users.", onUndo: Undo)`
+[Composable]
+component HistoryRow(string when, string who, string what, string why = "", Action? onUndo = null, string undo = "Undo") {
+  variants {
+    base { Display = Display.Grid; Cols = Length.HistoryCols; Px = Space.HistoryX; Py = Space.HistoryY; BorderTW = 1;
+           Border = Colors.RowLine; FontSize = FontSize.Label; LineHeight = Length.HistoryLine; AlignItems = Align.Baseline; }
+  }
+  render {
+    Box(gap: 3, role: UiRole.Group, label: when + " · " + who) {
+      Text(when, color: Colors.MetaText);
+      Text(who, fontWeight: FontWeight.Semibold);
+      // A block, not a Stack: the change is an INLINE run in the row's own line (the key face, a size down), so its line is
+      // the row's strut — 13px at the row's line height — not the smaller face's own line box; "Why" takes the next line.
+      Box() {
+        Text(what, fontFamily: Font.Mono, fontSize: FontSize.Caption);
+        if (why != "") { Text("Why: " + why, color: Colors.DetailText, display: Display.Block); }
+      }
+      Box() { if (onUndo != null) { WordAction(undo, onUndo); } }
+    }
+  }
+}
+
+// ── the section list ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A SETTINGS AREA'S SECTIONS DOWN THE SIDE — grouped one level deep (`SectionGroup`), each `SectionLink` a link to
+/// its section's address with what is set there beside it. Only in a settings tab or area; put the section's content
+/// beside it in a `Row`.
+/// ⭐ `oneLine: true` keeps every row to one line: a label never wraps (an ellipsis only if it cannot fit), and a count
+///   or badge never wraps either. Its measures are the theme's (`osy docs ui-kit#signature`, the section list): `Length.SectionListW`
+///   the column, `Length.SectionRow` a row's fixed height ("auto" on the floor: a row grows to its words),
+///   `Space.SectionRowGap` between rows, and the group headers' `FontSize.SectionGroup`, `Space.SectionGroupTop`/
+///   `SectionGroupBottom` and `Space.SectionGroupAfter` (the room under an open group).
+/// In a test it is a navigation landmark: `Ui.Click("Workflows", within: "Settings sections")`, `Assert.Current("Workflows")`.
+/// need: settings sections list, grouped navigation down the side, settings menu with counts, one line per section, only the open group expanded
+/// e.g. `SectionList("Settings sections") { SectionGroup("Definition"); SectionLink("Workflows", "/settings/workflows", count: "3", current: true); }`
+/// e.g. `SectionList("Settings sections", oneLine: true) { SectionGroup("Definition") { SectionLink("Workflows", "/settings/workflows", current: true); } SectionGroup("People", open: false, to: "/settings/people", badge: "2", badgeSays: "2 to approve"); }`
+[Composable]
+component SectionList(string label, bool oneLine = false) {
+  variants {
+    base { W = Length.SectionListW; MinW = Length.SectionListW; Shrink = 0; }
+    // White space is inherited, so every label, count and group header in the list keeps to its line; each of them
+    // clips with an ellipsis, so a label too long for the column is cut rather than pushing the badge off the row.
+    oneLine { WhiteSpace = WhiteSpace.Nowrap; }
+  }
+  render { Stack(gap: Space.SectionRowGap, role: UiRole.Navigation, label: label) { Slot; } }
+}
+
+/// A group of a `SectionList` — its heading in small, tracked-out capitals, with its sections inside it
+/// (`SectionGroup("Definition") { SectionLink(…); }`) or after it as siblings (`SectionGroup("Definition");`).
+/// ⭐ `open: false` draws the group as ONE row instead — its name linking to `to` (its first section), with `badge` on
+///   the right — so only the group that holds the current section is expanded. The app passes the badge: the sum of
+///   its sections' badges, in the worst tone (`badgeTone`); `badgeSays` is the full phrase a screen reader hears.
+/// In a test it is read as text: `Assert.Visible("Definition")`; a closed group is a link: `Ui.Click("People")`.
+/// e.g. `SectionGroup("Definition")` · `SectionGroup("People", open: false, to: "/settings/people", badge: "2", badgeTone: Tone.Danger)`
+[Composable]
+component SectionGroup(string label, bool open = true, string to = "", string badge = "", Tone badgeTone = Tone.Warning,
+                       string badgeSays = "") {
+  render {
+    if (open) {
+      Stack(gap: Space.SectionRowGap, pb: Space.SectionGroupAfter) {
+        Text(label, fontSize: FontSize.SectionGroup, fontWeight: FontWeight.Semibold, letterSpacing: "0.06em",
+             textTransform: TextTransform.Uppercase, color: Colors.MetaText, pt: Space.SectionGroupTop, px: Space.SectionX,
+             pb: Space.SectionGroupBottom, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        Slot;
+      }
+    } else {
+      SectionRow(label, to, group: true, badge: badge, badgeTone: badgeTone, badgeSays: badgeSays);
+    }
+  }
+}
+
+/// One section of a `SectionList`: a link to its address, what is set there on the right ("2 set"), the current one
+/// on the accent's tint and announced as the current page.
+/// ⭐ `badge` is the pill on the right while the section needs someone — a number ("2") or one word ("Frozen") — in
+///   `badgeTone` (`Tone.Warning` waiting on a person, `Tone.Danger` open or lost); `badgeSays` is the full phrase
+///   ("2 to approve") a screen reader hears after the label. The badge never wraps and never shrinks.
+/// In a test it is followed by its label: `Ui.Click("Workflows")`.
+/// e.g. `SectionLink("Workflows", "/settings/workflows", count: "3", current: true)` · `SectionLink("Alarms", "/settings/alarms", badge: "2", badgeTone: Tone.Danger, badgeSays: "2 open")`
+[Composable]
+component SectionLink(string label, string to, string count = "", bool current = false, string badge = "",
+                      Tone badgeTone = Tone.Warning, string badgeSays = "") {
+  render { SectionRow(label, to, count: count, current: current, badge: badge, badgeTone: badgeTone, badgeSays: badgeSays); }
+}
+
+/// The row a `SectionLink` and a closed `SectionGroup` draw: one link, the label left, the count and badge right.
+[Composable][Part]
+component SectionRow(string label, string to, string count = "", bool current = false, bool group = false, string badge = "",
+                     Tone badgeTone = Tone.Warning, string badgeSays = "") {
+  variants {
+    base { Display = Display.Flex; AlignItems = Align.Center; MinH = Length.SectionRowH; H = Length.SectionRow; Px = Space.SectionX;
+           Rounded = Radius.Md; FontSize = FontSize.Body; Color = Colors.OnSurface; TextDecoration = TextDecoration.None;
+           Hover { Bg = Colors.Muted; } }
+    group { FontWeight = FontWeight.Medium; }
+    current { Bg = Colors.PrimaryTint; Color = Colors.PrimaryInk; FontWeight = FontWeight.Semibold; Hover { Bg = Colors.PrimaryTint; } }
+  }
+  render {
+    Link(to, label: badgeSays != "" ? label + ", " + badgeSays : label, current: current) {
+      Row(justify: Justify.Between, align: Align.Center, gap: 2, w: "100%") {
+        Text(label, minW: "0", overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+        if (count != "") { Text(count, fontSize: FontSize.Caption, color: Colors.DetailText, fontWeight: FontWeight.Regular, shrink: 0); }
+        if (badge != "") { Box(shrink: 0) { Badge(badge, tone: badgeTone, size: Size.Sm); } }
+      }
+    }
+  }
+}
+
+// ── the impact dialog ───────────────────────────────────────────────────────────────────────────────────────────────
+
+/// WHAT A SAVE WILL DO, BEFORE IT DOES IT — the modal a draft's "Review and save" opens: an overline naming the
+/// change, `title` saying its effect in one sentence, then the slot (its consequences as `Bullets`, the policy's
+/// verdict, a required "Why"), and `slot actions` (Back to editing, Save). Closing it keeps every change.
+/// `ImpactPanel` is the same card without the scrim, for a page that shows it in place.
+/// In a test it is the dialog named by `title`: `Assert.Dialog("Makes Performance review a gate.")`.
+/// need: review before saving, impact preview, what will this change do, confirm a draft with consequences
+/// e.g. `ImpactDialog("Makes Performance review a gate for new slices.", onDismiss: Back, overline: "Review and save · v8") { Bullets { Bullet("12 active slices keep v7."); } slot actions { Button("Save as v8", onPress: Save, tone: Tone.Primary); } }`
+[Composable]
+component ImpactDialog(string title, Action onDismiss, string overline = "", string closeLabel = "Close and keep editing") {
+  render {
+    Box {
+      Scrim(onDismiss);
+      Box(position: Position.Fixed, top: "0", left: "0", right: "0", bottom: "0", z: ZIndex.Modal, display: Display.Flex,
+          align: Align.Center, justify: Justify.Center, pointerEvents: PointerEvents.None, p: 4) {
+        Box(pointerEvents: PointerEvents.Auto, w: "100%", maxW: Length.ImpactW, role: UiRole.Dialog, label: title) {
+          ImpactPanel(title, onDismiss, overline: overline, closeLabel: closeLabel) { Slot; slot actions { Slot("actions"); } }
+        }
+      }
+    }
+  }
+}
+
+/// The impact dialog's card, in place — what `ImpactDialog` shows over its scrim.
+/// In a test it is read by its title, `Assert.Visible("Makes it a global default")`, and closed with `Ui.Click(closeLabel)`.
+/// e.g. `ImpactPanel("Makes it a global default", onDismiss: Close) { Text("Every team sees it from now on."); }`
+[Composable]
+component ImpactPanel(string title, Action onDismiss, string overline = "", string closeLabel = "Close and keep editing") {
+  variants {
+    base { Bg = Colors.Elevated; Rounded = Radius.Sheet; Shadow = Shadow.Dialog; Px = Space.ImpactX; Py = Space.ImpactY;
+           W = "100%"; MaxW = Length.ImpactW; }
+  }
+  render {
+    Stack(gap: Space.ImpactGap, label: title) {
+      Row(justify: Justify.Between, align: Align.Start, gap: 2) {
+        Text(overline, fontSize: FontSize.Caption, fontWeight: FontWeight.Semibold, letterSpacing: "0.06em",
+             textTransform: TextTransform.Uppercase, color: Colors.MetaText);
+        SquareButton("×", closeLabel, onDismiss, big: true);
+      }
+      Text(title, role: UiRole.Heading, level: 3, fontSize: FontSize.ImpactTitle, fontWeight: FontWeight.Emphasis);
+      Slot;
+      Row(gap: 2, wrap: Wrapping.Wrap, justify: Justify.End) { Slot("actions"); }
+    }
+  }
+}

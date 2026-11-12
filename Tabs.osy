@@ -2,10 +2,14 @@
 
 namespace Osysharp.Ui;
 
-/// The tab strip — a row of `Tab`s over a full-width hairline that the selected tab's underline sits on.
+/// The tab strip — a row of `Tab`s over a full-width hairline. The hairline is its own 1px rule BELOW the tabs, each tab
+/// a full box (its underline inside it); a look that wants the selected tab's underline to sit ON the hairline sets
+/// `Space.TabOverlap = "-1px"`.
 /// Over a fixed set the strip is a `foreach` over `T.Members`, and "All" is a `T?` filter holding `null`
 /// ([[enum-declaration]] `#all-filter` compiles the whole page).
 /// In a test you drive the TAB, not the strip: `Ui.Click("Active")`.
+/// ⭐ TABS THAT ARE PAGES — each view its own address — are links: `Tabs("Order sections", links: true)` is a labelled
+/// nav, and each `Tab(label, to: "/orders/7/lines", selected: here == "/orders/7/lines")` a link marked current.
 /// need: switch between panels on one page, a tab strip, several views in one place
 /// e.g. `Tabs { Tab("All", selected: only == null, onPress: ShowAll); foreach (var c in Cuisine.Members) { Tab(c.Label, selected: only == c, onPress: () => Show(c)); } }`
 // ⛔ A TAB STRIP SCROLLS, because the number of tabs is the APP's business and the width is not. Without
@@ -14,24 +18,59 @@ namespace Osysharp.Ui;
 //    sat 39px past the strip's right edge where the card clipped it — visible to nobody and reachable by nothing.
 //    ⚑ EVERY TEXT ASSERTION PASSED: the word "Other" is in the DOM, so `Assert.Visible` is happy and happy-dom, which
 //    has no compositor, cannot tell. A SCREENSHOT is what showed it.
-[Composable] component Tabs() {
+[Composable] component Tabs(string label = "", bool links = false) {
   variants { base { BorderBW = 1; Border = Colors.Border; Gap = Space.Gutter; OverflowX = Overflow.Auto; } }
-  render { Row(role: UiRole.TabList, align: Align.End, gap: 1) { Slot; } }
+  render {
+    // A strip of links is a NAVIGATION, not a tablist: a tablist's tabs switch panels in place and say `selected`, a
+    // nav's links open addresses and say `current` (ARIA's tab pattern forbids links as tabs).
+    if (links) { Row(role: UiRole.Navigation, label: label, align: Align.End, gap: 1) { Slot; } }
+    else { Row(role: UiRole.TabList, label: label, align: Align.End, gap: 1) { Slot; } }
+  }
 }
 
-/// One tab. `selected` decides the underline and the weight; `onPress` is what makes it current.
-/// In a test it is pressed by its label: `Ui.Click("Active")`, and the current one is `Assert.Selected(...)`.
-/// e.g. `Tab(c.Label, selected: only == c, onPress: () => Show(c))`
-[Composable] component Tab(string label, bool selected = false, Action onPress = null, bool disabled = false) {
+/// One tab. `selected` decides the underline and the weight; `onPress` is what makes it current — or `to:`, the
+/// address of its view, which makes it a LINK (in a `Tabs(links: true)` strip): `selected` is then announced as the
+/// current page (`aria-current`), and middle-click, open-in-new-tab and the back button work.
+/// In a test it is pressed by its label: `Ui.Click("Active")`; the current one is `Assert.Selected(...)`, and the
+/// current link tab `Assert.Current("Lines")`.
+/// `count` is the number beside its words ("Versions 23"), drawn as the count pill (`Badge(size: Size.Sm)`) in
+/// `countTone`; a link tab's name is then "Versions, 23". A link tab that is `disabled` is its words and its count —
+/// never a dead link (a view not built yet).
+/// e.g. `Tab(c.Label, selected: only == c, onPress: () => Show(c))` · `Tab("Lines", to: "/orders/7/lines", selected: here == "lines")`
+///      · `Tab("Versions", to: "/flow/versions", count: "23", countTone: Tone.Warning)`
+[Composable] component Tab(string label, bool selected = false, Action onPress = null, bool disabled = false, string to = "",
+                           string count = "", Tone countTone = Tone.Default) {
   variants {
     base {
-      Px = 3; Py = 3; FontSize = FontSize.Body; FontWeight = FontWeight.Medium; Color = Colors.TextMuted;
-      BorderBW = 2; Border = Colors.Transparent; Mb = "-1px";
+      Px = Space.TabX; Py = Space.TabY; MinH = Length.TabMinH; FontSize = FontSize.Body; FontWeight = FontWeight.Medium; Color = Colors.TabInk;
+      TextDecoration = TextDecoration.None;
+      // Its words sit in the MIDDLE of a tab made taller than they are (a design's 44px `TabMinH`): a link tab is
+      // otherwise a block with its words at the top. A tab at the floor's height is the same box either way.
+      Display = Display.InlineFlex; AlignItems = Align.Center;
+      BorderBW = 2; Border = Colors.Transparent; Mb = Space.TabOverlap;
       Transition = Motion.Fast; WhiteSpace = WhiteSpace.Nowrap;
       Hover { Color = Colors.OnSurface; }
       Disabled { Opacity = "0.5"; }
     }
-    selected { Color = Primary.Text; FontWeight = FontWeight.Semibold; Border = Colors.Primary; }
+    selected { Color = Colors.TabCurrentInk; FontWeight = FontWeight.Semibold; Border = Colors.Primary;
+               Hover { Color = Colors.TabCurrentInk; } }
   }
-  render { Pressable(label, role: UiRole.Tab, selected: selected, onClick: onPress, disabled: disabled); }
+  render {
+    if (to != "" && !disabled) {
+      Link(to, label: count == "" ? label : label + ", " + count, current: selected) {
+        Text(label);
+        if (count != "") { Box(ml: Space.TabCountGap, display: Display.InlineFlex) { Badge(count, tone: countTone, size: Size.Sm); } }
+      }
+    } else if (to != "") {
+      Box(label: count == "" ? label : label + ", " + count) {
+        Text(label);
+        if (count != "") { Box(ml: Space.TabCountGap, display: Display.InlineFlex) { Badge(count, tone: countTone, size: Size.Sm); } }
+      }
+    } else if (count != "") {
+      Pressable(label + ", " + count, role: UiRole.Tab, selected: selected, onClick: onPress, disabled: disabled) {
+        Text(label);
+        Box(ml: Space.TabCountGap, display: Display.InlineFlex) { Badge(count, tone: countTone, size: Size.Sm); }
+      }
+    } else { Pressable(label, role: UiRole.Tab, selected: selected, onClick: onPress, disabled: disabled); }
+  }
 }

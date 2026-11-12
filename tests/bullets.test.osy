@@ -1,0 +1,17 @@
+// ENG-KIT-TONES-TABS-3 — a bulleted list from the kit: its points one under another, hung inside the list's indent.
+
+/// The points are drawn one under the other, and each sits to the RIGHT of where the list starts — the indent the
+/// markers hang in (`Space.BulletIndent`), each with its marker drawn beside it. Needs `--pixels` for the geometry.
+[Test(Workshop)]
+void bullets_hang_their_points_in_the_list_s_indent() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/bullets");
+  Assert.Visible("Ready to build");
+  Assert.Visible("Waiting on a decision");
+  Assert.Below("Waiting on a decision", "Ready to build");
+  Assert.Inside("Ready to build", "Checks");
+  Assert.Wider("Checks", "Ready to build");
+  // ENG-KIT-TONES-TABS-4: and each point is drawn WITH its marker — the disc no order or size claim can see
+  Assert.HasListMarker("Ready to build");
+  Assert.HasListMarker("Waiting on a decision");
+}

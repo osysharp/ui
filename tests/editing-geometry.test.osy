@@ -1,0 +1,22 @@
+// ENG-KIT-TONES-TABS-8 — the editing parts keep the v3 board's geometry.
+
+/// The editing banner, a history row and a setting row are exactly as tall as the board's markup for them at the same
+/// values, and a design whose list sits line on line (`Space.BulletGap = "0"`) gets bullets as tall as plain lines.
+/// Needs `--pixels`: under plain `osy test` the measures report NOT CHECKED.
+[Test(Workshop)]
+void the_editing_parts_keep_the_board_s_geometry() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/editing-geometry");
+  Assert.SameHeight("Kit banner", "Board banner");
+  Assert.SameHeight("Kit history rows", "Board history rows");
+  Assert.SameHeight("Kit tab strips", "Board tab strips");
+  Assert.SameHeight("Kit setting", "Board setting");
+  // the floor keeps a step between points
+  Assert.Taller("Kit bullets", "Board bullets");
+  Ui.Click("Design geometry");
+  Assert.SameHeight("Kit bullets", "Board bullets");
+  Assert.SameHeight("Kit banner", "Board banner");
+  // at the design's 44px tabs the strip is still the tab and its rule
+  Assert.SameHeight("Kit tab strips", "Board tab strips");
+  Assert.SameHeight("Kit history rows", "Board history rows");
+}

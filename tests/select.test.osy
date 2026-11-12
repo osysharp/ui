@@ -1,0 +1,52 @@
+// KT4-1 — the native Select: choosing an option writes the bound field (a string, and an enum through the kit's
+// SelectField), the bound value is the option shown as chosen, and the keyboard moves it as the browser's own control does.
+
+[Test(Workshop)]
+void choosing_an_option_writes_the_bound_field() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/select");
+  // the bound value is chosen as the page opens — set after the options exist
+  Assert.Value("Finish", "walnut");
+  Assert.Visible("Finish is walnut");
+  Ui.Select("Finish", "oak");
+  Assert.Visible("Finish is oak");
+  // an option valued by its words
+  Ui.Select("Finish", "Cherry");
+  Assert.Visible("Finish is Cherry");
+  // the field changes and the options do not: the select follows the field
+  Ui.Click("Choose oak");
+  Assert.Value("Finish", "oak");
+  // an option arrives after the field already holds its value: the select lands on it
+  Ui.Click("Add beech");
+  Assert.Value("Finish", "Beech");
+  // an enum binds: the option carries the member, and the field takes the member back
+  Assert.Visible("Mount is Float");
+  Ui.Select("Mount", Mount.Shadow);
+  Assert.Visible("Mount is Shadow");
+  // an enum's option shows its LABEL, and is chosen by it
+  Ui.Select("Mount", "Float");
+  Ui.Select("Mount", "Shadow box");
+  Assert.Visible("Mount is Shadow");
+  Ui.Select("Mount", "Flush");
+  Assert.Visible("Mount is Flush");
+  // a number-keyed enum: the option carries the key, and the field takes the MEMBER back, so it compares equal
+  Assert.Value("Grade", Grade.Fine);
+  Assert.Hidden("Grade is the select grade");
+  Ui.Select("Grade", Grade.Select);
+  Assert.Visible("Grade is the select grade");
+  // a string select takes its options as data
+  Assert.Value("Glass", "Clear");
+  Ui.Select("Glass", "Museum");
+  Assert.Visible("Glass is Museum");
+}
+
+[Test(Workshop)]
+void the_keyboard_moves_a_select_as_the_browser_does() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/select");
+  Ui.Click("Mount");
+  Ui.Press("ArrowDown");
+  Assert.Visible("Mount is Shadow");
+  Ui.Press("Home");
+  Assert.Visible("Mount is Flush");
+}

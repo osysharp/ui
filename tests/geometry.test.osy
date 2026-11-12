@@ -1,0 +1,36 @@
+// ENG-KIT-TONES-TABS-2 — a design's count pill and tab geometry is a theme setting, and the floor does not move.
+
+/// The kit's `Badge` and `Tab` are drawn at the kit's own geometry until a theme sets `Space.BadgeX`/`BadgeY`,
+/// `Length.BadgeH`, `FontWeight.Badge` and `Space.TabX`/`TabY`/`Length.TabMinH` — then they ARE the design's pill
+/// (`12px/600, 1px 7px`, round ends) and tab (`10px 14px`, at least 44px), measured against the same thing drawn in
+/// plain elements at those values. Needs `--pixels`: under plain `osy test` the measures report NOT CHECKED.
+[Test(Workshop)]
+void a_design_s_pill_and_tab_geometry_is_a_theme_setting() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/geometry");
+  // the floor: the kit's 22px pill padded two steps, and a tab padded three
+  Assert.Taller("Kit pill", "Design pill");
+  Assert.Wider("Kit pill", "Design pill");
+  Assert.Taller("Kit tab", "Design tab");
+  Assert.Narrower("Kit tab", "Design tab");
+  // a tab's count names its link (a link, not current here), and a tab whose view is not built is its words and count
+  Assert.Current("Versions, 23", false);
+  Assert.Visible("Later", within: "Later, 2");
+  Ui.Click("Design geometry");
+  Assert.SameHeight("Kit pill", "Design pill");
+  Assert.SameWidth("Kit pill", "Design pill");
+  Assert.SameHeight("Kit tab", "Design tab");
+  Assert.SameWidth("Kit tab", "Design tab");
+  // KIT-BADGE-COUNT: the state chip (Md) and the count pill (Sm) are each the design's, and a tab's count is the count pill
+  // beside its words, the tab still the design's 44px.
+  Assert.SameHeight("Kit chip", "Design chip");
+  Assert.SameWidth("Kit chip", "Design chip");
+  Assert.SameHeight("Kit counted tab", "Design counted tab");
+  Assert.SameWidth("Kit counted tab", "Design counted tab");
+  // ENG-KIT-TONES-TABS-3: and its words sit in the middle of the tab, as the design's do — not at the top. At 44px
+  // the top would be a pixel or two out; a 72px tab makes it plain.
+  Assert.VerticallyCentred("Design tab");
+  Assert.VerticallyCentred("Lines");
+  Ui.Click("Tall tabs");
+  Assert.VerticallyCentred("Lines");
+}

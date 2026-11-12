@@ -1,0 +1,23 @@
+// KIT-SETTINGS-TOKENS — the settings area's nav, page and section are measured by the theme, and the floor does not move.
+
+/// On the floor the area is what it always was — a 232px nav, an 880px page, sections ruled with a 240px label column —
+/// so each is narrower (or, the controls, wider) than the design's. Once the theme's `roomy` variant sets
+/// `Length.SettingsNavW` 248, `SettingsPageW` 960, `SettingsLabelW` 220 and the card tokens, each IS the design's,
+/// measured against the same thing drawn in plain elements. Needs `--pixels`: under plain `osy test` the measures
+/// report NOT CHECKED.
+[Test(Workshop)]
+void settings_metrics_follow_the_theme() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Ines);
+  Ui.Visit("/settings/geometry");
+  Assert.Narrower("Settings sections", "Design nav");
+  Assert.Narrower("Geometry page", "Design page");
+  Assert.Wider("Kit controls", "Design controls");
+  Assert.Shorter("Kit section", "Design section");
+  Ui.Theme("roomy");
+  Assert.SameWidth("Settings sections", "Design nav");
+  Assert.SameWidth("Geometry page", "Design page");
+  Assert.SameWidth("Kit controls", "Design controls");
+  Assert.SameWidth("Kit section", "Design section");
+  Assert.SameHeight("Kit section", "Design section");
+}

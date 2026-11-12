@@ -1,0 +1,21 @@
+// ENG-KIT-TONES-TABS-4: a text box that SHOWS a value nobody edits — `value:` one way, because the box says
+// `readonly: true` — beside one bound two-way as ever.
+
+[Route("/shown-values")] [Authorize(IsFramer)] [Render(CSR)] [Title("Shown values")]
+component ShownValuesPage() {
+  string note = "Hang at eye height";
+  live var address = "tom" + ".frames.test";
+  Glass glass = new Glass { Grade = "Museum" };
+  render {
+    Stack(gap: 4, p: 6) {
+      Input(value: "A-1042", readonly: true, label: "Order number");
+      Input(value: address, readonly: true, label: "Address");
+      Input(value: glass.Grade, readonly: true, label: "Grade");
+      TextArea(value: "Glass: museum grade" + "\n" + "Mount: 2 inch", readonly: true, label: "Spec");
+      Input(value: note, label: "Note");
+    }
+  }
+}
+
+// A `class` value: a field of it is no two-way target, and shown read-only it needs none.
+class Glass { public string Grade; }

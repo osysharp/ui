@@ -1,0 +1,49 @@
+// KIT-FORM-GRID — the kit's form parts on one grid: fields in the same logical column are the same width (the owner's
+// rule, settings-v3 DESIGN-CRITIQUE-1). Needs `--pixels`: under plain `osy test` the measures report NOT CHECKED.
+
+/// `SettingsGrid(columns: 2)` is two equal halves whatever the width would fit — not as many 180px columns as there is
+/// room for, which put a 900px grid's fields at a quarter each.
+[Test(Workshop)]
+void a_settings_grid_with_fixed_columns_keeps_its_halves() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Tom);
+  Ui.Visit("/form-grid");
+  Assert.SameWidth("Bank", "Design half");
+  Assert.SameWidth("Receivables", "Design half");
+}
+
+/// A `Dropdown` fills its column, as wide as the text field above it — not as wide as its words.
+[Test(Workshop)]
+void a_dropdown_is_as_wide_as_the_field_above_it() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Tom);
+  Ui.Visit("/form-grid");
+  Assert.SameWidth("Mount", "Note");
+}
+
+/// `NumberField(fill: true)` fills its column and carries its unit inside the box, before the steppers — never as
+/// free text after them.
+[Test(Workshop)]
+void a_filled_number_field_fills_its_column_with_its_unit_inside() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Tom);
+  Ui.Visit("/form-grid");
+  // the box fills its column: its unit and its steppers sit past most of the column's width…
+  Assert.RightOf("slots", "Most of a column");
+  Assert.RightOf("Decrease Step each time", "Most of a column");
+  // …and its unit is inside the box, before the steppers
+  Assert.LeftOf("slots", "Decrease Step each time");
+}
+
+/// `SettingsSection(columns: 2)` lays its fields on two equal columns: a pair side by side as halves, and the next
+/// pair under them at the same widths.
+[Test(Workshop)]
+void a_settings_section_lays_its_fields_on_equal_columns() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Tom);
+  Ui.Visit("/form-grid");
+  Assert.RightOf("Under", "Over");
+  Assert.SameWidth("Over", "Under");
+  Assert.RightOf("Never above", "Never below");
+  Assert.SameWidth("Never below", "Over");
+}

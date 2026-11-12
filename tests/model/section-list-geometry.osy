@@ -1,0 +1,62 @@
+// KIT-SECTIONLIST-V9: the section list drawn one line a row, beside the same list in plain elements at the stated values
+// (a 232px column; fixed 36px rows 2px apart; an open group's 12/600 header spaced 12 10 4 and 8px under it; every other
+// group one row). Under the theme's `seclist` variant the kit's list IS that drawing; on the floor it is what it always was.
+
+[Route("/section-list-geometry")] [Authorize(IsFramer)] [Render(CSR)] [Title("Section list geometry")]
+component SectionListGeometryPage() {
+  action OneLine() { Theme.Variant("seclist"); }
+  render {
+    Stack(gap: 4, p: 6) {
+      Button("One-line geometry", onPress: OneLine);
+      Row(gap: 6, align: Align.Start) {
+        Box(label: "Kit sections") {
+          SectionList("Kit list", oneLine: true) {
+            SectionGroup("Definition") {
+              SectionLink("Repos", "/section-list-geometry#repos");
+              SectionLink("Workflows", "/section-list-geometry", current: true, badge: "2", badgeTone: Tone.Danger, badgeSays: "2 open");
+              SectionLink("Dependencies and the standards every product inherits", "/section-list-geometry#dependencies");
+            }
+            SectionGroup("People", open: false, to: "/section-list-geometry#people", badge: "1", badgeSays: "1 to approve");
+            SectionGroup("Delivery", open: false, to: "/section-list-geometry#delivery");
+          }
+        }
+        Box(label: "Board sections") {
+          Stack(gap: "2px", w: "232px") {
+            Stack(gap: "2px", pb: "8px") {
+              Text("Definition", fontSize: "12px", fontWeight: FontWeight.Semibold, letterSpacing: "0.06em", textTransform: TextTransform.Uppercase,
+                   pt: "12px", px: "10px", pb: "4px", whiteSpace: WhiteSpace.Nowrap);
+              BoardSectionRow("Repos", "");
+              BoardSectionRow("Workflows", "2");
+              BoardSectionRow("Dependencies and the standards every product inherits", "");
+            }
+            BoardSectionRow("People", "1");
+            BoardSectionRow("Delivery", "");
+          }
+        }
+        // The same list without `oneLine`: its long label takes two lines, so the list is taller on the floor.
+        Box(label: "Kit wrapping sections") {
+          SectionList("Wrapping list") {
+            SectionGroup("Definition") {
+              SectionLink("Repos", "/section-list-geometry#repos");
+              SectionLink("Workflows", "/section-list-geometry", current: true, badge: "2", badgeTone: Tone.Danger, badgeSays: "2 open");
+              SectionLink("Dependencies and the standards every product inherits", "/section-list-geometry#dependencies");
+            }
+            SectionGroup("People", open: false, to: "/section-list-geometry#people", badge: "1", badgeSays: "1 to approve");
+            SectionGroup("Delivery", open: false, to: "/section-list-geometry#delivery");
+          }
+        }
+      }
+    }
+  }
+}
+
+/// One row of the drawn list: a fixed 36px line, the label left and cut rather than wrapped, the badge right.
+[Composable]
+component BoardSectionRow(string label, string badge) {
+  render {
+    Row(justify: Justify.Between, align: Align.Center, gap: "8px", h: "36px", px: "10px", fontSize: FontSize.Body) {
+      Text(label, minW: "0", whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis);
+      if (badge != "") { Text(badge, fontSize: FontSize.Caption, px: "7px", rounded: "999px", shrink: 0, whiteSpace: WhiteSpace.Nowrap); }
+    }
+  }
+}

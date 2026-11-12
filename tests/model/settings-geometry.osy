@@ -1,0 +1,31 @@
+// KIT-SETTINGS-TOKENS: the settings area's measures are the theme's. This page stands in the area (`SettingsFrame`)
+// and draws a kit `SettingsSection` beside the same section in plain elements at a design's stated values (a 248px nav,
+// a 960px page, a card: 20px in, 1px edge, 12px corners, a 220px label column) — so a test can show the kit's area IS
+// the design's once the theme's `roomy` variant (geometry.osy) says so, and is not on the floor.
+
+[Route("/settings/geometry")] [Layout(SettingsFrame)] [Authorize(IsFramer)] [Render(CSR)] [Title("Settings geometry")]
+component SettingsGeometryPage() {
+  render {
+    SettingsPage("Geometry", description: "The area's measures, beside a design's.") {
+      // Boxed, to be measured as a whole: the section's own name is also its title's words, which a measure would read.
+      Box(label: "Kit section") {
+        SettingsSection("Mounting", description: "How a print is held.") {
+          Box(w: "100%", label: "Kit controls") { Text("Hinged with tissue"); }
+        }
+      }
+      Row(gap: 6, align: Align.Start, wrap: Wrapping.Wrap, label: "Design section", pt: "20px", pb: "20px", px: "20px",
+          borderW: 1, border: Colors.Border, rounded: "12px", bg: Colors.Surface) {
+        Stack(gap: 1, w: "220px", shrink: 0) {
+          // Other words of the same shape: one line each, so the two are the same height without being one match.
+          Text("Backing", fontWeight: FontWeight.Semibold);
+          Text("How a print is kept.", fontSize: FontSize.Caption, color: Colors.TextMuted);
+        }
+        Stack(gap: 3, grow: 1, minW: "0", basis: "360px", w: "auto") {
+          Box(w: "100%", label: "Design controls") { Text("Hinged with tissue"); }
+        }
+      }
+      Box(w: "248px", h: "4px", label: "Design nav") { }
+      Box(w: "960px", h: "4px", label: "Design page") { }
+    }
+  }
+}

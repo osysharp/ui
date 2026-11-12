@@ -114,6 +114,9 @@ public sealed class NavItem {
   public string Badge = "";
   /// The badge's tone. `Tone.Warning` for something waiting on the reader, `Tone.Danger` for something wrong.
   public Tone BadgeTone = Tone.Default;
+  /// The badge painted SOLID in its tone rather than tinted — the one count that is the reader's own (an inbox waiting
+  /// on them: `BadgeFilled = true` with the default tone is an ink pill). Spend it on one row.
+  public bool BadgeFilled = false;
   /// The row holds something LIVE and the reader's own — work offered to them, their own items — so its count wears
   /// a breathing accent lamp (the Switchboard floor's one signal for "live, and yours"). Spend it on one or two rows;
   /// a rail of lamps says nothing. Drawn beside the badge, so it needs one.
@@ -964,9 +967,11 @@ component ShellCountButton(string label, int count, Action onPress, Tone tone = 
     tone {
       Default { Bg = Colors.TextMuted; Color = Colors.Surface; }
       Primary { Bg = Colors.Primary;   Color = Colors.OnPrimary; }
-      Danger  { Bg = Colors.Danger;    Color = Colors.OnPrimary; }
-      Success { Bg = Colors.Success;   Color = Colors.OnPrimary; }
-      Warning { Bg = Colors.Warning;   Color = Colors.OnPrimary; }
+      Danger  { Bg = Colors.Danger;    Color = Danger.OnColor; }
+      Success { Bg = Colors.Success;   Color = Success.OnColor; }
+      Warning { Bg = Colors.Warning;   Color = Warning.OnColor; }
+      Info    { Bg = Colors.Info;   Color = Info.OnColor; }
+      Waiting { Bg = Colors.Waiting;   Color = Waiting.OnColor; }
       Ghost   { Bg = Colors.Muted;     Color = Colors.OnSurface; }
     }
   }
@@ -984,7 +989,7 @@ component ShellNavBadge(NavItem item) {
     Row(gap: 2, align: Align.Center, shrink: 0) {
       if (item.Live) { Lamp(live: true); }
       Box(display: Display.InlineFlex, shrink: 0, animation: KitNudge, animationKey: item.Badge) {
-        Badge(item.Badge, tone: item.BadgeTone);
+        Badge(item.Badge, tone: item.BadgeTone, filled: item.BadgeFilled);
       }
     }
   }
@@ -1121,6 +1126,8 @@ internal component ShellMenuRowGuarded(MenuAction item, Tone tone, Action onPick
       Danger  { Color = Colors.Danger;    Hover { Bg = Danger.Subtle; } }
       Success { Color = Colors.Success;   Hover { Bg = Success.Subtle; } }
       Warning { Color = Colors.Warning;   Hover { Bg = Warning.Subtle; } }
+      Info    { Color = Colors.Info;   Hover { Bg = Info.Subtle; } }
+      Waiting { Color = Colors.Waiting;   Hover { Bg = Colors.WaitingTint; } }
       Ghost   { Color = Colors.TextMuted; Hover { Bg = Colors.Muted; } }
     }
   }

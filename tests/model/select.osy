@@ -1,0 +1,43 @@
+// KT4-1: the native Select — bound to a string (bare atom, its options in a loop) and to an enum (the kit's SelectField),
+// by name and by number.
+
+[Route("/select")] [Authorize(IsFramer)] [Render(CSR)] [Title("Select")]
+component SelectPage() {
+  string finish = "walnut";
+  List<string> more = ["Ash", "Cherry"];
+  Mount mount = Mount.Float;
+  Grade grade = Grade.Fine;
+  string glass = "Clear";
+
+  // the bound value changes with no change to the options — the select must follow it
+  action ChooseOak() { finish = "oak"; }
+  // an option arrives AFTER the select took a value only it carries — the select must land on it once it exists
+  action AddBeech() { more.Add("Beech"); finish = "Beech"; }
+  render {
+    Stack(gap: 4, p: 6) {
+      Select(value: finish, label: "Finish") {
+        Option("Oak", value: "oak");
+        Option("Walnut", value: "walnut");
+        foreach (var w in more) { Option(w); }
+      }
+      Text("Finish is " + finish);
+      Row(gap: 2) {
+        Button("Choose oak", onPress: ChooseOak);
+        Button("Add beech", onPress: AddBeech);
+      }
+      SelectField("Mount", value: mount);
+      Text("Mount is " + mount.ToString());
+      SelectField("Small mount", value: mount, size: Size.Sm);
+      SelectField("Grade", value: grade);
+      // a string select: its options are data, shown as themselves
+      SelectField("Glass", value: glass, options: ["Clear", "Non-glare", "Museum"]);
+      Text("Glass is " + glass);
+      if (grade == Grade.Select) { Text("Grade is the select grade"); }
+    }
+  }
+}
+
+enum Mount { Flush, Float, [Label("Shadow box")] Shadow }
+
+// A NUMBER-keyed enum: its options carry the stored key (`"2"`), which the field must take back as the member.
+enum Grade { Common = 1, Fine = 2, Select = 3 }

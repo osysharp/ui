@@ -1,0 +1,48 @@
+// KIT-FORM-GRID: the form grid (the owner's rule, settings-v3 DESIGN-CRITIQUE-1) — fields in the same logical column have
+// the same width and left edge. This page draws the kit's parts on that grid in a 900px column, with plain boxes at the
+// widths the grid should give them, so a test can measure the kit against them.
+
+[Route("/form-grid")] [Authorize(IsFramer)] [Render(CSR)] [Title("Form grid")]
+component FormGridPage() {
+  string name = "Ash frame";
+  string note = "";
+  string bank = "";
+  string receivables = "";
+  string over = "";
+  string under = "";
+  string below = "";
+  string above = "";
+  int step = 1;
+  int hold = 4;
+  Mount mount = Mount.Float;
+  render {
+    Stack(gap: 6, p: 6, w: "900px") {
+      // A grid fixed at two columns: two equal halves of the 852px inside, a 16px gutter between — whatever would fit.
+      SettingsGrid(columns: 2) {
+        Field("Bank", value: bank);
+        Field("Receivables", value: receivables);
+      }
+      Box(w: "418px", h: "4px", label: "Design half") { }
+      // A dropdown in the second column, under a text field in the same column.
+      SettingsGrid(columns: 2) {
+        Field("Name", value: name);
+        Field("Note", value: note);
+        NumberField("Hold up to", value: hold, fill: true);
+        Dropdown("Mount", value: mount);
+      }
+      // A filled number field: its box fills the column, its unit inside it.
+      SettingsGrid(columns: 2) {
+        NumberField("Step each time", value: step, unit: "slots", fill: true);
+      }
+      // Most of a column: a filled box reaches past it before its steppers; the kit's four-digit box does not.
+      Box(w: "300px", h: "4px", label: "Most of a column") { }
+      // A section whose fields sit on two equal columns: pairs as halves.
+      SettingsSection("Bounds", description: "Where the rule acts.", columns: 2) {
+        Field("Over", value: over);
+        Field("Under", value: under);
+        Field("Never below", value: below);
+        Field("Never above", value: above);
+      }
+    }
+  }
+}

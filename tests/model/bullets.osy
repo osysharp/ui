@@ -1,0 +1,11 @@
+// ENG-KIT-TONES-TABS-3: the kit's bulleted list, beside the same list drawn by hand in a plain element.
+
+[Route("/bullets")] [Authorize(IsFramer)] [Render(CSR)] [Title("Bullets")]
+component BulletsPage() {
+  render {
+    Stack(gap: 4, p: 6) {
+      Text("Before you build", label: "Heading");
+      Bullets("Checks") { Bullet("Ready to build"); Bullet("Waiting on a decision"); }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+// KIT-SETTINGS-AREA-SLOTS — an app puts its own home in the settings area and wraps the area in a frame of its own.
+
+/// The area's home is the app's when it fills `slot home`: the workshop's own words, and not the kit's overview — while
+/// an area that fills nothing (the kit's `SettingsFrame`) still opens on the overview.
+[Test(Workshop)]
+void an_app_home_replaces_the_overview() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Ines);
+  Ui.Visit("/workshop-settings");
+  Assert.Visible("Start with the hours the counter is open.", within: "Workshop home");
+  Assert.Hidden("Everything you can change, by area. Nothing on a settings page is saved until you press Save.");
+  Ui.Visit("/settings");
+  Assert.Visible("Price list", within: "All settings");
+}
+
+/// An app composable carrying the layout's `Outlet` into the area (CFG-LOOK-FRAME): the app's bar stands over every
+/// page, the sections are the area's, drawn as a section list, the app's line sits above the page, and moving between
+/// sections keeps the frame.
+[Test(Workshop)]
+void an_app_layout_wraps_the_area() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Ines);
+  Ui.Visit("/workshop-settings/hours");
+  Assert.Visible("Ines's framing workshop", within: "Workshop bar");
+  Assert.Inside("Workshop sections", "Workshop frame");
+  Assert.Visible("9:00 to 17:00", within: "Weekdays");
+  Assert.Above("Changes here reach every order from tomorrow.", "Opening hours page");
+  Assert.Current("Opening hours");
+  Ui.Click("Glass", within: "Workshop sections");
+  Assert.Visible("Museum glass on every frame", within: "Every frame");
+  Assert.Current("Glass");
+  Assert.Visible("Ines's framing workshop", within: "Workshop bar");
+}

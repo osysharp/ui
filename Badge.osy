@@ -2,7 +2,13 @@
 
 namespace Osysharp.Ui;
 
-/// A small status pill. `Badge("Shipped", tone: Tone.Success)`.
+/// A small status pill. `Badge("Shipped", tone: Tone.Success)`. Six status tones (`Success` · `Info` · `Waiting` ·
+/// `Warning` · `Danger` · `Default`), the accent (`Primary`) and an outline (`Ghost`). `filled: true` paints the pill
+/// solid in its tone — the one count that is yours (`Badge("3", filled: true)` is an ink pill, the default tone).
+/// `size: Size.Sm` is the COUNT pill — a tab's count, a rail row's badge — beside the state chip a row or a header wears:
+/// a design that draws the two differently (a chip `3px 8px` at 6px corners, a count `1px 7px` round) sets each through
+/// its own tokens (`Space.BadgeX/BadgeY`, `Length.BadgeH`, `Length.BadgeLine`, `Radius.Tag`, and their `…Sm`). On the
+/// floor the `…Sm` tokens ARE the Md ones, so `Size.Sm` draws the same pill until a theme says otherwise.
 /// In a test it is read as text: `Assert.Visible("Shipped")`.
 ///
 /// ⚠ AN ENUM GOES IN AS `value.Label`, never bare and never `.ToString()`. `label` is a `string`, so `Badge(m.Cuisine)`
@@ -17,7 +23,18 @@ namespace Osysharp.Ui;
 /// `Badge { … }` names itself with its content and the parameter is the fallback rather than the only name. On a
 /// control whose slot carries something ELSE — `IconButton`'s glyph, `Toolbar`'s controls — an empty label really
 /// is the absence of a name, and those two are required as of 2026-08-29.
-component Badge(string label = "", Tone tone = Tone.Default) {
+component Badge(string label = "", Tone tone = Tone.Default, bool filled = false, Size size = Size.Md) {
+  // ⚑ THE LOOK IS IN TWO PARTS BECAUSE A VARIANT CANNOT BE TONE × FILLED. A bool dimension says one thing whatever the
+  //   tone is, so a solid pill's colour per tone cannot be written beside the tinted one; each part carries its own
+  //   `tone` dimension and the badge picks one. Both share `BadgeBase`, so the two forms are the same size.
+  render {
+    if (filled) { BadgeSolid(tone, size) { Slot { Text(label); } } }
+    else { BadgeTint(tone, size) { Slot { Text(label); } } }
+  }
+}
+
+/// The tinted pill — a tone's pale ground and its ink (`Colors.SuccessTint` / `Colors.SuccessInk` …).
+[Composable][Part] component BadgeTint(Tone tone, Size size = Size.Md) {
   variants {
     base {
       // ⚠ `W = "fit-content"` IS WHAT MAKES IT HUG ITS TEXT. `Display = Display.InlineFlex` does NOT: a flex item is
@@ -32,20 +49,42 @@ component Badge(string label = "", Tone tone = Tone.Default) {
       //    overrode the row's own alignment and floated above every control beside it. An explicit width overrides
       //    `align-items: stretch` just as well and says nothing about POSITION, so the parent's alignment applies
       //    in both directions — otherwise an overdue pill in a row of buttons sits about 6px above them.
-      Display = Display.InlineFlex; W = "fit-content"; H = "22px"; Px = 2; Rounded = Radius.Tag;
-      FontSize = FontSize.Caption; FontWeight = FontWeight.Medium; WhiteSpace = WhiteSpace.Nowrap;
+      Display = Display.InlineFlex; W = "fit-content"; H = Length.BadgeH; Px = Space.BadgeX; Py = Space.BadgeY;
+      Rounded = Radius.Tag; LineHeight = Length.BadgeLine; FontSize = FontSize.Caption; FontWeight = FontWeight.Badge; WhiteSpace = WhiteSpace.Nowrap;
     }
+    size { Sm { H = Length.BadgeHSm; Px = Space.BadgeXSm; Py = Space.BadgeYSm; Rounded = Radius.TagSm; LineHeight = Length.BadgeLineSm; } }
     tone {
-      Default { Bg = Colors.Muted;           Color = Colors.TextMuted; }
-      Primary { Bg = Primary.Subtle;  Color = Primary.Strong; }
-      Danger  { Bg = Danger.Subtle;   Color = Danger.Strong; }
-      Success { Bg = Success.Subtle;  Color = Success.Strong; }
-      Warning { Bg = Warning.Subtle;  Color = Warning.Strong; }
-      Ghost   { Bg = Colors.Transparent;     Color = Colors.TextMuted; BorderW = 1; Border = Colors.Border; }
+      Default { Bg = Colors.DefaultTint; Color = Colors.DefaultInk; }
+      Primary { Bg = Colors.PrimaryTint; Color = Colors.PrimaryInk; }
+      Danger  { Bg = Colors.DangerTint;  Color = Colors.DangerInk; }
+      Success { Bg = Colors.SuccessTint; Color = Colors.SuccessInk; }
+      Warning { Bg = Colors.WarningTint; Color = Colors.WarningInk; }
+      Info    { Bg = Colors.InfoTint;    Color = Colors.InfoInk; }
+      Waiting { Bg = Colors.WaitingTint; Color = Colors.WaitingInk; }
+      Ghost   { Bg = Colors.Transparent; Color = Colors.TextMuted; BorderW = 1; Border = Colors.Border; }
     }
   }
+  render { Row(align: Align.Center, justify: Justify.Center) { Slot; } }
+}
 
-  render {
-    Row(align: Align.Center, justify: Justify.Center) { Slot { Text(label); } }
+/// The solid pill — the tone's own colour with words on it; the neutral one is an ink pill (`OnSurface` on `Surface`).
+[Composable][Part] component BadgeSolid(Tone tone, Size size = Size.Md) {
+  variants {
+    base {
+      Display = Display.InlineFlex; W = "fit-content"; H = Length.BadgeH; Px = Space.BadgeX; Py = Space.BadgeY;
+      Rounded = Radius.Tag; LineHeight = Length.BadgeLine; FontSize = FontSize.Caption; FontWeight = FontWeight.BadgeFilled; WhiteSpace = WhiteSpace.Nowrap;
+    }
+    size { Sm { H = Length.BadgeHSm; Px = Space.BadgeXSm; Py = Space.BadgeYSm; Rounded = Radius.TagSm; LineHeight = Length.BadgeLineSm; } }
+    tone {
+      Default { Bg = Colors.OnSurface; Color = Colors.Surface; }
+      Primary { Bg = Colors.Primary;   Color = Colors.OnPrimary; }
+      Danger  { Bg = Colors.Danger;    Color = Danger.OnColor; }
+      Success { Bg = Colors.Success;   Color = Success.OnColor; }
+      Warning { Bg = Colors.Warning;   Color = Warning.OnColor; }
+      Info    { Bg = Colors.Info;      Color = Info.OnColor; }
+      Waiting { Bg = Colors.Waiting;   Color = Waiting.OnColor; }
+      Ghost   { Bg = Colors.Transparent; Color = Colors.OnSurface; BorderW = 1; Border = Colors.OnSurface; }
+    }
   }
+  render { Row(align: Align.Center, justify: Justify.Center) { Slot; } }
 }

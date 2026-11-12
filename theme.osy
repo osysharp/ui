@@ -33,6 +33,23 @@ theme Ui {
     Warning      = Modes.Of(light: Palette.From("#9A5B00"), dark: Palette.From("#F5B738"));
     // Paused on somebody else — waiting on a customer, an approval, a reply. Neither good nor bad, so not green or red.
     Waiting      = Modes.Of(light: "#5E6196", dark: "#9A9DC4");
+    // Running, in progress, informational — neither the accent (yours) nor a verdict. A blue the accent's cyan is not.
+    Info         = Modes.Of(light: Palette.From("#2B62B0"), dark: Palette.From("#6AA3F0"));
+    // ⭐ THE TONES' PILLS — a `Badge`'s ground (…Tint) and words (…Ink) for each `Tone`. Each defaults to the step of its
+    //    tone the kit always painted a badge in, so on the floor nothing moves; a look or an app that specifies its
+    //    status colours exactly (a design's tint and ink, not a ramp's) sets these. A lamp's dot and a filled pill are
+    //    the tone's own colour (`Colors.Success` …; `Colors.OnSurface` for the neutral one).
+    DefaultTint  = Colors.Muted;        DefaultInk = Colors.TextMuted;
+    PrimaryTint  = Primary.Subtle;      PrimaryInk = Primary.Strong;
+    DangerTint   = Danger.Subtle;       DangerInk  = Danger.Strong;
+    SuccessTint  = Success.Subtle;      SuccessInk = Success.Strong;
+    WarningTint  = Warning.Subtle;      WarningInk = Warning.Strong;
+    InfoTint     = Info.Subtle;         InfoInk    = Info.Strong;
+    WaitingTint  = Modes.Of(light: "#ECEDF6", dark: "#23253A");
+    WaitingInk   = Modes.Of(light: "#45487A", dark: "#C4C6E4");
+    // A tab's words at rest, and the current tab's (its underline is `Primary`).
+    TabInk        = Colors.TextMuted;
+    TabCurrentInk = Primary.Text;
     Scrim        = Modes.Of(light: "rgba(16,24,40,.45)", dark: "rgba(0,0,0,.62)");
     Transparent  = "transparent";
     // Type set ON a photograph — an editorial header floating over a hero, a split panel's wordmark. Not moded: it is
@@ -60,28 +77,109 @@ theme Ui {
     // A card's edge — the hairline round a `Card`. A look that sets its cards on a tinted ground rather than ruling them
     // gives it the surface colour, and the line disappears without the border's width moving anything.
     CardLine        = Colors.Border;
+
+    // ⭐ THE EDITING PARTS (Editing.osy — Drawer, EditingBanner, PendingChange, ScopeHeader, ScopedSetting, HistoryRow,
+    //    SectionList, ImpactDialog). Each defaults to a token the kit already had; a design states its own.
+    RowLine       = Colors.Border;          // the rule between rows of a list (a setting, a history entry, a drawer's foot)
+    ControlBorder = Colors.Border;          // the outline of a control's box — a setting's value, a square button
+    MetaText      = Colors.TextMuted;       // metadata and captions: when, what a setting does, where a value comes from
+    LabelInk      = Colors.TextMuted;       // THE ONE FIELD LABEL (KIT-FORM-GRID): the words above every field, dropdown and picker
+    DetailText    = Colors.TextSecondary;   // secondary words a step darker: a subtitle, a scope chain, "Why: …"
+    BannerBg      = Colors.PrimaryInk;      // the editing banner's ground — the accent's deep ink…
+    OnBanner      = Colors.OnPrimary;       // …its words, and the save button's ground
+    BannerLine    = Colors.PrimaryTint;     // the outline of its quiet button (Discard)
+    PendingLine   = Colors.PrimaryTint;     // the dashed line round a proposed change
+    DrawerLine    = Colors.Border;          // a drawer's edge
+    ScopeBg       = Colors.Sunken;          // the scope header's ground…
+    ScopeLine     = Colors.Border;          // …and its edge
+    LockedValueBg = Colors.Muted;           // a setting's value when a policy locks it
+
+    // ⭐ THE SETTINGS AREA (Settings.osy — SettingsArea, SettingsPage, SettingsSection). Each defaults to what the area
+    //    always drew, so on the floor nothing moves; an app whose settings follow a design of its own states these.
+    SettingsNavCurrent   = Colors.Muted;       // the nav row you are on…
+    OnSettingsNavCurrent = Colors.OnSurface;   // …and its words
+    // A section's ground and its line. The floor RULES its sections (a line above each, no ground); a look that sets
+    // them on cards gives them the surface colour here, with `Length.SettingsSectionEdge`, `Radius.SettingsSection`
+    // and `Space.SettingsSectionX`/`SettingsSectionBottom` (`osy docs ui-settings#look`).
+    SettingsSectionBg    = Colors.Transparent;
+    SettingsSectionLine  = Colors.Border;
   }
 
   // ONE radius rule (floor.md §3): chips and key hints 6, controls and row highlights 8, panels, menus and dialogs 12,
   // counts and status pills round.
   Radius { Sm = "6px"; Md = "8px"; Lg = "12px"; Pill = "999px"; Circle = "50%";
-           Tag = Radius.Pill; }   // a badge's corners — a look that wants square tags says so here
+           Tag = Radius.Pill;   // a badge's corners — a look that wants square tags says so here
+           TagSm = Radius.Tag;  // a count pill's (`Badge(size: Size.Sm)`): the badge's own until a design draws counts apart
+           Sheet = Radius.Lg;   // a drawer's and the impact dialog's corners
+           Banner = Radius.Lg;
+           SettingsSection = "0"; }   // the editing banner's, a proposed change's and the scope header's   // a badge's corners — a look that wants square tags says so here
 
   // `Step` IS THE DENSITY: every spacing number in every control and page is a count of it (`P = 4` is four steps).
   // A look moves it a few hundredths of a rem and the whole app tightens or opens up together.
-  Space { Step = "0.25rem"; Gutter = "1rem"; PagePad = "1.5rem"; SectionGap = "2.5rem"; FieldGap = "0.375rem"; }
+  Space { Step = "0.25rem"; Gutter = "1rem"; PagePad = "1.5rem"; SectionGap = "2.5rem"; FieldGap = "0.375rem";
+          // ⭐ A BADGE'S AND A TAB'S PADDING — the two parts whose geometry a design states exactly (a count pill at
+          //    `1px 7px`, a tab at `10px 14px`). Each defaults to the count of steps the kit always drew it with, so on
+          //    the floor and in every look nothing moves (a look that changes `Step` still moves them with it); an
+          //    app that matches a design sets them, with `Length.BadgeH`/`Length.TabMinH` and `FontWeight.Badge…`.
+          //    ⚠ The default is SPELLED as the step count lowers (`Px = 2` is this string): a token cannot multiply.
+          BadgeX = "calc(var(--space-step, 0.25rem) * 2)"; BadgeY = "0";
+          //    The count pill (`Badge(size: Size.Sm)` — a tab's count, a rail badge) is the badge until a design draws
+          //    it apart (a state chip `3px 8px`, a count `1px 7px`).
+          BadgeXSm = Space.BadgeX; BadgeYSm = Space.BadgeY;
+          //    The room between a tab's words and its count (`Tab(count:)`): one and a half steps.
+          TabCountGap = "calc(var(--space-step, 0.25rem) * 1.5)";
+          TabX   = "calc(var(--space-step, 0.25rem) * 3)"; TabY   = "calc(var(--space-step, 0.25rem) * 3)";
+          //    How far a tab is pulled down over the strip's hairline. "0" — the tab is a whole box and the hairline a separate
+          //    1px rule under it (a design's `nav` of 44px tabs + 1px is 45px). "-1px" — the tab's underline sits ON the hairline.
+          TabOverlap = "0";
+          // A bulleted list's indent — the room its markers hang in (`Bullets`); five steps, a design states its own.
+          BulletIndent = "calc(var(--space-step, 0.25rem) * 5)";
+          // …and the room between its points: one step; a design whose points sit line on line (a plain `<ul>`) says "0".
+          BulletGap = "calc(var(--space-step, 0.25rem) * 1)";
+          // A `SelectField`'s padding — the native select's, at `Size.Md` and `Size.Sm`. The floor is the text box's
+          // (`0.5rem 0.75rem`, in steps); a design that states its select (`10px 12px`, small `7px 10px`) sets them.
+          SelectX   = "calc(var(--space-step, 0.25rem) * 3)"; SelectY   = "calc(var(--space-step, 0.25rem) * 2)";
+          SelectXSm = "calc(var(--space-step, 0.25rem) * 2)"; SelectYSm = "calc(var(--space-step, 0.25rem) * 1)";
+          // THE EDITING PARTS' PADDING AND GAPS (Editing.osy), in steps; a design states its own.
+          DrawerX = "calc(var(--space-step, 0.25rem) * 5)"; DrawerY = "calc(var(--space-step, 0.25rem) * 4.5)"; DrawerGap = "calc(var(--space-step, 0.25rem) * 3.5)"; DrawerFootGap = "calc(var(--space-step, 0.25rem) * 3)";
+          BannerX = "calc(var(--space-step, 0.25rem) * 4)"; BannerY = "calc(var(--space-step, 0.25rem) * 3)"; BannerButtonX = "calc(var(--space-step, 0.25rem) * 3)"; BannerButtonY = "calc(var(--space-step, 0.25rem) * 2)";
+          PendingX = "calc(var(--space-step, 0.25rem) * 3.5)"; PendingY = "calc(var(--space-step, 0.25rem) * 3)"; PendingGap = "calc(var(--space-step, 0.25rem) * 2) calc(var(--space-step, 0.25rem) * 3.5)";
+          ScopeX = "calc(var(--space-step, 0.25rem) * 4)"; ScopeY = "calc(var(--space-step, 0.25rem) * 3.5)";
+          SettingX = "calc(var(--space-step, 0.25rem) * 6)"; SettingY = "calc(var(--space-step, 0.25rem) * 3.5)"; SettingGap = "calc(var(--space-step, 0.25rem) * 1.5) calc(var(--space-step, 0.25rem) * 4)";
+          SettingValueX = "calc(var(--space-step, 0.25rem) * 3)"; SettingValueY = "calc(var(--space-step, 0.25rem) * 2.25)";
+          HistoryX = "calc(var(--space-step, 0.25rem) * 6)"; HistoryY = "calc(var(--space-step, 0.25rem) * 2.75)";
+          SectionX = "calc(var(--space-step, 0.25rem) * 2.5)"; SectionGroupTop = "calc(var(--space-step, 0.25rem) * 2.5)";
+          // A section list's rows and group headers (SectionList): the gap between rows, a header's foot, and the room
+          // under an open group before the next — on the floor what the list always drew.
+          SectionRowGap = "1px"; SectionGroupBottom = "calc(var(--space-step, 0.25rem) * 1)"; SectionGroupAfter = "0";
+          ImpactX = "calc(var(--space-step, 0.25rem) * 5.5)"; ImpactY = "calc(var(--space-step, 0.25rem) * 5)"; ImpactGap = "calc(var(--space-step, 0.25rem) * 2.5)";
+          // THE SETTINGS AREA'S PADDING (Settings.osy), in steps: a page's sides, and a section's sides, top and foot —
+          // a ruled section has none at its sides or foot; a card states them.
+          SettingsPageX = "calc(var(--space-step, 0.25rem) * 5)";
+          // THE FORM GRID (KIT-FORM-GRID): the gutter between the columns of a `SettingsGrid(columns: n)` and of a
+          // `SettingsSection(columns: n)` — four steps, what `SettingsGrid` always spaced its fields by.
+          FormGutter = "calc(var(--space-step, 0.25rem) * 4)";
+          SettingsSectionX = "0"; SettingsSectionTop = "calc(var(--space-step, 0.25rem) * 5)"; SettingsSectionBottom = "0"; }
 
   FontSize   { Caption = "12px"; Label = "13px"; Body = "14px"; Subhead = "16px"; Heading = "20px"; Title = "28px"; Code = "13px";
                StoreBrand = "24px";     // a storefront's centred wordmark (StorefrontShell)
                EditorialBrand = "26px"; // an editorial site's wordmark in the header (EditorialShell, SplitShell)
                SignOff = "clamp(4rem, 15vw, 13rem)";    // the brand set ENORMOUS across a footer (EditorialFooter)
                MarqueeBrand = "clamp(4rem, 11vw, 10rem)";  // the wordmark at poster size (MarqueeShell)
-               MarqueeNav = "clamp(1.4rem, 2.4vw, 2.2rem)"; }  // its shelves in the display face (MarqueeShell)
+               MarqueeNav = "clamp(1.4rem, 2.4vw, 2.2rem)";   // its shelves in the display face (MarqueeShell)
+               Overline = "11px";       // tracked-out capitals over a group…
+               SectionGroup = FontSize.Overline;   // …a section list's group header (SectionGroup)
+               DrawerTitle = "18px";    // a drawer's title (Drawer)
+               ImpactTitle = "17px"; }  // the impact dialog's one-sentence effect (ImpactDialog)  // its shelves in the display face (MarqueeShell)
   // A VARIABLE face sits between the usual stops, and the tools people live in use that (Linear sets text at 510,
   // Superhuman at 540): text a touch fuller than 400 reads better at 13-14px on a screen, and headings a little short
   // of a full 600 keep a dense page calm.
   FontWeight { Regular = 420; Medium = 530; Semibold = 630; Bold = 720;
-               Headings = FontWeight.Semibold; }   // a page's title, a card's, a statistic — the weight a look's headings are set in
+               Headings = FontWeight.Semibold;     // a page's title, a card's, a statistic — the weight a look's headings are set in
+               Badge = FontWeight.Medium;          // a tinted `Badge`'s words…
+               BadgeFilled = FontWeight.Semibold;   // …and a filled one's (`Badge(filled: true)`, the count that is yours)
+               LabelWeight = FontWeight.Medium;    // the words above every field, dropdown and picker (with Colors.LabelInk, FontSize.Label)
+               Emphasis = FontWeight.Bold; }          // words set strong inside a line ("Planner proposes:", a scope's name)   // …and a filled one's (`Badge(filled: true)`, the count that is yours)
   Font {
     // ⭐ SHIPPED WITH THE PLATFORM (UiBuiltInFonts): every app can name these and they render, with no `osy font add`.
     //    A declared face costs nothing until text is set in it, so an app that names its own never downloads these.
@@ -97,6 +195,8 @@ theme Ui {
     // The FIGURES face — a statistic, and the cells of a number column (set with tabular digits). The text face
     // until a look gives numbers their own: a mono for a ledger, a condensed face for a dashboard.
     Figure = Font.Sans;
+    // A drawer's title — often an item's key; a design that sets keys in its mono says `Font.Mono` here (Drawer).
+    DrawerFace = Font.Sans;
   }
 
   // ⚑ `Length`, NOT `Size`. `Size` is the control-size ENUM (`Sm`/`Md`/`Lg`), and one spelling
@@ -169,6 +269,39 @@ theme Ui {
     //    on a row whose label wraps clips the second line.
     Touch      = "44px";
     TouchDense = "40px";
+
+    // A badge's height — a fixed pill by default, so a row of them lines up whatever their words; `"auto"` lets the
+    // padding (`Space.BadgeY`) and the line decide, which is how a design that states `padding: 1px 7px` is drawn.
+    BadgeH     = "22px";
+    BadgeHSm   = Length.BadgeH;   // the count pill's (`Badge(size: Size.Sm)`)
+    // A badge's line height — the page's own by default; a design that states its chip's (`normal`, a count's `1.4`)
+    // sets it, which with `BadgeH = "auto"` decides the pill's height.
+    BadgeLine   = "inherit";
+    BadgeLineSm = Length.BadgeLine;
+    // A tab's least height — none by default (its padding decides); `Length.Touch` makes every tab a 44px target.
+    TabMinH    = "auto";
+    // A `SelectField`'s least height at `Size.Md` / `Size.Sm` — the controls' own heights unless a design states the
+    // select's (`44px`, small `36px`).
+    SelectH    = Length.ControlMd;
+    SelectHSm  = Length.ControlSm;
+    // THE EDITING PARTS' SIZES (Editing.osy).
+    DrawerW       = "420px";    // a drawer's width beside its list
+    SquareButton  = "36px";     // a drawer's ↑ ↓ × and a dialog's close
+    BannerButtonH = "36px";     // the editing banner's buttons
+    SettingCols   = "minmax(0, 1fr) 190px";              // a setting's name and its value
+    HistoryCols   = "110px 190px minmax(0, 1fr) 56px";   // a history row: when · who · what · undo
+    HistoryLine   = "1.45";     // a history row's line height (each line of it, the change's too: the row's strut) — "normal" for a design that draws it so
+    SectionListW  = "196px";    // a section list's width
+    SectionRowH   = "34px";     // one section's least height
+    SectionRow    = "auto";     // one section's fixed height — "auto" lets a row grow to its words; a one-line list states it
+    ImpactW       = "480px";    // the impact dialog's width
+    // THE SETTINGS AREA'S MEASURES (Settings.osy).
+    SettingsNavW   = "232px";   // the sections column beside the page, on a wide screen
+    SettingsPageW  = "880px";   // the widest a settings page (and the area's overview) reads
+    SettingsLabelW = "240px";   // a section's left column: its title and what it is for
+    // The width of a section's sides and foot — "0px" on the floor, which rules a section with only the line above it;
+    // "1px" draws the line all round it, a card (`Colors.SettingsSectionLine` is its colour).
+    SettingsSectionEdge = "0px";
   }
 
   Shadow {
@@ -177,6 +310,8 @@ theme Ui {
     Raised   = "0 1px 2px rgba(8,20,19,.06), 0 0 0 1px rgba(8,20,19,.04)";
     Floating = "0 12px 32px -12px rgba(8,20,19,.30), 0 2px 6px rgba(8,20,19,.06), 0 0 0 1px rgba(8,20,19,.05)";
     Deep     = "0 32px 64px -24px rgba(8,20,19,.40), 0 0 0 1px rgba(8,20,19,.06)";
+    DrawerLift = Shadow.Floating;   // a drawer lifted beside its list
+    Dialog   = Shadow.Deep;       // the impact dialog
     Ring     = "0 0 0 3px color-mix(in srgb, var(--colors-focus) 35%, transparent)";
   }
 

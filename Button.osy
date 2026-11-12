@@ -66,9 +66,11 @@ component Button(
     tone {
       Default { Bg = Colors.Surface;     Color = Colors.OnSurface; Border = Colors.Border; BorderW = 1; Hover { Bg = Colors.Muted; } }
       Primary { Bg = Colors.Primary;     Color = Colors.OnPrimary; Hover { Bg = Primary.Hover; } }
-      Danger  { Bg = Colors.Danger;      Color = Colors.OnPrimary; Hover { Bg = Danger.Hover; } }
-      Success { Bg = Colors.Success;     Color = Colors.OnPrimary; Hover { Bg = Success.Hover; } }
-      Warning { Bg = Colors.Warning;     Color = Colors.OnPrimary; Hover { Bg = Warning.Hover; } }
+      Danger  { Bg = Colors.Danger;      Color = Danger.OnColor; Hover { Bg = Danger.Hover; } }
+      Success { Bg = Colors.Success;     Color = Success.OnColor; Hover { Bg = Success.Hover; } }
+      Warning { Bg = Colors.Warning;     Color = Warning.OnColor; Hover { Bg = Warning.Hover; } }
+      Info    { Bg = Colors.Info;     Color = Info.OnColor; Hover { Bg = Info.Hover; } }
+      Waiting { Bg = Colors.Waiting;     Color = Waiting.OnColor; Hover { Bg = Colors.Waiting; } }
       Ghost   { Bg = Colors.Transparent; Color = Primary.Text;     Hover { Bg = Colors.Muted; } }
     }
     size {

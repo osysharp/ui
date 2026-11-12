@@ -232,6 +232,8 @@ component TextLink(string label, string to, Tone tone = Tone.Primary) {
       Danger  { Color = Danger.Text; }
       Success { Color = Success.Text; }
       Warning { Color = Warning.Text; }
+      Info    { Color = Info.Text; }
+      Waiting { Color = Colors.WaitingInk; }
       Ghost   { Color = Colors.TextMuted; }
     }
   }

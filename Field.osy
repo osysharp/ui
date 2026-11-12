@@ -63,7 +63,7 @@ component Field(
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       // ⭐ THE HONEST FLOOR when the box genuinely cannot hold the text — a phone, or a placeholder that is a
       //   sentence. `Ellipsis` renders "who wrote it — can be…", which SAYS there is more; the default `clip` cuts
       //   mid-word and leaves nothing on screen to say so. Degrading gracefully means the reader gets less, not that
@@ -113,7 +113,7 @@ component TextAreaField(
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       TextArea(value: value, id: box, describedBy: note, placeholder: placeholder, disabled: disabled,
                rows: rows, label: label, invalid: shownError != "");
       if (shownError != "" || hint != "") {
@@ -166,6 +166,52 @@ component ActionArgumentField(ActionParameter p, List<ActionChoice> choices, Bin
       TextAreaField(p.Label, value: value, rows: 3, placeholder: "[\"first\", \"second\"]", hint: Hint("Several values, written as a JSON list."));
     } else {
       Field(p.Label, value: value, hint: Hint(""));
+    }
+  }
+}
+
+/// A labelled NATIVE select — the browser's own `<select>`, its chevron, its keyboard and its screen reader — over a
+/// short closed list. `SelectField("Severity", value: rule.Severity)` binds an ENUM and offers its members, worded by
+/// their labels; pass `options:` for a subset or for any other values (`options: ["Main", "Preview"]` over a `string`).
+/// `value` is a two-way binding: choosing an option writes it straight into the bound field.
+/// `size: Size.Sm` is the compact one a toolbar filter wants. Its geometry is theme tokens — `Length.SelectH`/`SelectHSm`,
+/// `Space.SelectX`/`SelectY` (+ `Sm`), `Radius.Md` — so a design that states its select sets them once.
+/// `Dropdown` is the styled list (rows with content, a tick on the current one); this is the plain control.
+/// In a test it is chosen by its label: `Ui.Select("Severity", Severity.Should)` (or by an option's words), read back
+/// with `Assert.Value("Severity", …)`, and moved with the keyboard like any select (`Ui.Press("ArrowDown")`).
+/// need: a native select box, a plain select element, pick one of a short fixed list in a form or a toolbar filter
+/// e.g. `SelectField("Severity", value: rule.Severity)` · `SelectField("Show", value: show, options: ["All", "Changed"], size: Size.Sm)`
+[Composable]
+component SelectField<T>(
+    string label,
+    Binding<T> value,
+    T[] options = T.Members,
+    string hint = "",
+    string error = "",
+    bool disabled = false,
+    Size size = Size.Md)
+{
+  variants {
+    // The same inline-axis statement `Field` makes: a `<select>` otherwise takes its width from its longest option.
+    base { Gap = Space.FieldGap; W = "100%"; MinW = 0; }
+  }
+
+  live var shownError = error != "" ? error : Validation.MessageFor(value);
+
+  render {
+    Stack(gap: 1) {
+      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
+      Select(value: value, id: box, describedBy: note, disabled: disabled, label: label, invalid: shownError != "",
+             minH: size == Size.Sm ? Length.SelectHSm : Length.SelectH,
+             px: size == Size.Sm ? Space.SelectXSm : Space.SelectX,
+             py: size == Size.Sm ? Space.SelectYSm : Space.SelectY,
+             fontSize: FontSize.Body) {
+        foreach (var m in options) { Option(m, value: m); }
+      }
+      if (shownError != "" || hint != "") {
+        Text(shownError != "" ? shownError : hint, id: note, fontSize: FontSize.Caption,
+             color: shownError != "" ? Colors.Danger : Colors.TextMuted);
+      }
     }
   }
 }

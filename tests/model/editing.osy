@@ -1,0 +1,61 @@
+// ENG-KIT-TONES-TABS-7 (KIT-2): the editing parts on one page — a list with a drawer, the banner a draft carries, a
+// proposed change, a scope header over setting rows, a history, a section list, and the impact dialog Save opens.
+
+[Route("/editing")] [Authorize(IsFramer)] [Render(CSR)] [Title("Editing")]
+component EditingPage() {
+  int open = 4;
+  bool reviewing = false;
+  string said = "";
+  action Previous() { open = open - 1; }
+  action Next() { open = open + 1; }
+  action Close() { open = 0; said = "Drawer closed"; }
+  action Discard() { said = "Draft discarded"; }
+  action Review() { reviewing = true; }
+  action Back() { reviewing = false; said = "Still editing"; }
+  action Save() { reviewing = false; said = "Saved as v8"; }
+  action Accept() { said = "Proposal accepted"; }
+  action Edit() { said = "Proposal opened"; }
+  action Reject() { said = "Proposal rejected"; }
+  action Undo() { said = "Change undone"; }
+  render {
+    Stack(gap: 4, p: 6) {
+      Text(said, label: "Said");
+      EditingBanner("Editing mat cutting rules · 3 unsaved changes", onDiscard: Discard, onSave: Review);
+      PendingChange("Head office proposes:", "bevel 45° (was 30°) for museum glass", onAccept: Accept, onEdit: Edit, onReject: Reject);
+      Row(wrap: Wrapping.Wrap, gap: 4, align: Align.Start) {
+        Stack(gap: 0, grow: 1, minW: "0", label: "Rules") { Text("Rule " + open + " of 12"); }
+        if (open > 0) {
+          Drawer("MC-0" + open, onClose: Close, subtitle: "Rule " + open + " of 12", onPrevious: Previous, onNext: Next) {
+            slot badge { Badge("Changed", tone: Tone.Info); }
+            Text("Cut the bevel before the window.");
+            slot actions { Button("Apply", onPress: Close, tone: Tone.Primary); }
+          }
+        }
+      }
+      Stack(gap: 0) {
+        ScopeHeader("Editing: Riverside shop", summary: "inherits head office defaults · 2 set here",
+                    trail: ["Head office", "Shop: Riverside", "Bench"], current: "Shop: Riverside", help: "How scopes combine ▸");
+        ScopedSetting("Glass", "The glass a new order gets.", "Museum glass", "From head office: Museum glass");
+        ScopedSetting("Mat margin", "The margin round the picture.", "6 cm", "● Set here (head office: 5 cm)", from: SettingFrom.SetHere);
+        ScopedSetting("Wood", "The moulding a frame may use.", "Oak", "Locked by head office", from: SettingFrom.Locked);
+      }
+      Stack(gap: 0, label: "History") {
+        HistoryRow("Today 09:12", "Tom", "Mat margin: 5 cm → 6 cm", why: "Wide prints looked cramped.", onUndo: Undo);
+        HistoryRow("Fri 30 Oct", "Head office", "Wood: any → Oak", why: "One supplier this season.");
+      }
+      Row(gap: 5, align: Align.Start) {
+        SectionList("Settings sections") {
+          SectionGroup("Shop");
+          SectionLink("Editing", "/editing", count: "2 set", current: true);
+          SectionLink("Geometry", "/geometry");
+        }
+      }
+      if (reviewing) {
+        ImpactDialog("Makes a 6 cm margin the rule for new orders.", onDismiss: Back, overline: "Review and save · rules v8") {
+          Bullets { Bullet("Open orders keep 5 cm."); Bullet("New orders get 6 cm."); }
+          slot actions { Button("Back to editing", onPress: Back); Button("Save as v8", onPress: Save, tone: Tone.Primary); }
+        }
+      }
+    }
+  }
+}

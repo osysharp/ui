@@ -48,7 +48,7 @@ component DatePicker(
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       Box(position: Position.Relative) {
         PickerTrigger(text: value == null ? placeholder : (value ?? month).ToString("d MMM yyyy"), label: label, open: open,
                       invalid: shownError != "", disabled: disabled, onPress: Toggle);
@@ -102,7 +102,7 @@ component TimePicker(
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       Box(position: Position.Relative) {
         PickerTrigger(text: use12Hour ? value.ToString("h:mm tt") : value.ToString("HH:mm"), label: label,
                       open: open, invalid: shownError != "", disabled: disabled, onPress: Toggle);
@@ -167,7 +167,7 @@ component DateTimePicker(
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       Box(position: Position.Relative) {
         PickerTrigger(text: value.ToString("d MMM yyyy HH:mm"), label: label, open: open,
                       invalid: shownError != "", disabled: disabled, onPress: Toggle);
@@ -231,7 +231,7 @@ component DurationField(
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       Box(position: Position.Relative) {
         PickerTrigger(text: DurationWords(value), label: label, open: open, invalid: shownError != "", disabled: disabled,
                       onPress: Toggle);

@@ -1,0 +1,104 @@
+// ENG-KIT-TONES-TABS-8: the editing parts drawn beside the v3 board's markup for them, in plain elements reading the
+// same tokens — so a part that drifts from the board's structure (a gap, a padding, a line height it adds or drops)
+// stops being the same size as the board's. The parts were pixel-compared to Components.dc.html §5, §6, §13–§15 with
+// the v3 values (Docs/reference/ui/kit.md, "Editing in place"); this page keeps them there.
+
+[Route("/editing-geometry")] [Authorize(IsFramer)] [Render(CSR)] [Title("Editing geometry")]
+component EditingGeometryPage() {
+  action Nothing() { }
+  action Design() { Theme.Variant("design"); }
+  render {
+    Stack(gap: 4, p: 6, w: "720px") {
+      Button("Design geometry", onPress: Design);
+      Box(label: "Kit banner") { EditingBanner("Editing mat rules v7 · 3 unsaved changes", onDiscard: Nothing, onSave: Nothing); }
+      Box(label: "Board banner") {
+        Row(justify: Justify.Between, align: Align.Center, wrap: Wrapping.Wrap, gap: 2, px: Space.BannerX, py: Space.BannerY, rounded: Radius.Banner,
+            bg: Colors.BannerBg, color: Colors.OnBanner) {
+          Text("Editing mat rules v7 · 3 unsaved changes", fontSize: FontSize.Body, fontWeight: FontWeight.Semibold);
+          Row(gap: 2) {
+            Text("Discard", fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, px: Space.BannerButtonX, py: Space.BannerButtonY, minH: Length.BannerButtonH,
+                 display: Display.InlineFlex, alignItems: Align.Center, borderW: 1, border: Colors.BannerLine, rounded: Radius.Md);
+            Text("Review and save", fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, px: Space.BannerButtonX, py: Space.BannerButtonY, minH: Length.BannerButtonH,
+                 display: Display.InlineFlex, alignItems: Align.Center, rounded: Radius.Md, bg: Colors.OnBanner, color: Colors.BannerBg);
+          }
+        }
+      }
+      // THREE rows each, because the kit and the board differ by a fraction of a pixel a row and `SameHeight` allows one.
+      // The board's markup is the design's (Components.dc.html §6): a 13px block whose line is the 1.45 strut, the key-face
+      // change an INLINE span in it, "Why" on the next line — so the change line is the strut's 18.85px, not 12px × 1.45.
+      Box(label: "Kit history rows") {
+        HistoryRow("Today 09:12", "Tom", "Mat margin: 5 cm → 6 cm", why: "Wide prints looked cramped.", onUndo: Nothing);
+        HistoryRow("Today 08:40", "Tom", "Glass: Museum → Plain", why: "Cheaper for the school order.", onUndo: Nothing);
+        HistoryRow("Fri 30 Oct", "Anna", "Frame width: 20 mm → 25 mm", why: "Heavier prints sagged.");
+      }
+      Box(label: "Board history rows") {
+        BoardHistoryRow("Today 09:12", "Tom", "Mat margin: 5 cm → 6 cm", "Wide prints looked cramped.", "Undo");
+        BoardHistoryRow("Today 08:40", "Tom", "Glass: Museum → Plain", "Cheaper for the school order.", "Undo");
+        BoardHistoryRow("Fri 30 Oct", "Anna", "Frame width: 20 mm → 25 mm", "Heavier prints sagged.", "");
+      }
+      // ENG-KIT-EXACT-2: the tab strip is the tabs and ONE rule under them — the rule is not overlapped by the tabs.
+      // Three strips each, as above (the overlap is exactly one pixel).
+      Box(label: "Kit tab strips") {
+        Tabs("Kit sections one") { Tab("Home", selected: true, onPress: Nothing); Tab("Designs", onPress: Nothing); Tab("History", onPress: Nothing); }
+        Tabs("Kit sections two") { Tab("Home", onPress: Nothing); Tab("Designs", selected: true, onPress: Nothing); Tab("History", onPress: Nothing); }
+        Tabs("Kit sections three") { Tab("Home", onPress: Nothing); Tab("Designs", onPress: Nothing); Tab("History", selected: true, onPress: Nothing); }
+      }
+      Box(label: "Board tab strips") {
+        BoardTabStrip(0);
+        BoardTabStrip(1);
+        BoardTabStrip(2);
+      }
+      Box(label: "Kit setting") { ScopedSetting("Glass", "The glass a new order gets.", "Museum glass", "From head office: Museum glass"); }
+      Box(label: "Board setting") {
+        Box(display: Display.Grid, cols: Length.SettingCols, gap: Space.SettingGap, px: Space.SettingX, py: Space.SettingY, borderTW: 1, border: Colors.RowLine) {
+          Stack(gap: "2px") { Text("Glass", fontSize: FontSize.Body, fontWeight: FontWeight.Semibold); Text("The glass a new order gets.", fontSize: FontSize.Label, color: Colors.MetaText); }
+          Text("Museum glass", fontSize: FontSize.Body, px: Space.SettingValueX, py: Space.SettingValueY, rounded: Radius.Md, borderW: 1, border: Colors.ControlBorder, alignSelf: AlignSelf.Center);
+          Text("From head office: Museum glass", colSpan: "1 / -1", fontSize: FontSize.Caption, color: Colors.MetaText);
+        }
+      }
+      Box(label: "Kit bullets", fontSize: FontSize.Body, lineHeight: "1.6") { Bullets { Bullet("Open orders keep 5 cm."); Bullet("New orders get 6 cm."); Bullet("Museum glass stays."); } }
+      Box(label: "Board bullets", fontSize: FontSize.Body, lineHeight: "1.6") {
+        Stack(gap: 0, pl: Space.BulletIndent) { Text("Open orders keep 5 cm."); Text("New orders get 6 cm."); Text("Museum glass stays."); }
+      }
+    }
+  }
+}
+
+/// One row of the board's history list as the design draws it (Components.dc.html §6), in plain elements on the same tokens.
+[Composable]
+component BoardHistoryRow(string when, string who, string what, string why, string undo) {
+  render {
+    Box(display: Display.Grid, cols: Length.HistoryCols, gap: 3, px: Space.HistoryX, py: Space.HistoryY, borderTW: 1, border: Colors.RowLine,
+        fontSize: FontSize.Label, lineHeight: "1.45", alignItems: Align.Baseline) {
+      Text(when, color: Colors.MetaText);
+      Text(who, fontWeight: FontWeight.Semibold);
+      Box() {
+        Text(what, fontFamily: Font.Mono, fontSize: FontSize.Caption);
+        Text("Why: " + why, color: Colors.DetailText, display: Display.Block);
+      }
+      Text(undo, color: Colors.Primary, fontWeight: FontWeight.Semibold);
+    }
+  }
+}
+
+/// The board's nav as the design draws it (Components.dc.html, Tabs): the tab row, then a separate 1px rule under it —
+/// each tab its own height (padding, minimum height, a 2px underline inside it) and nothing pulled over the rule.
+[Composable]
+component BoardTabStrip(int current) {
+  render {
+    Row(gap: 1, align: Align.End, borderBW: 1, border: Colors.Border) {
+      BoardTab("Home", current == 0);
+      BoardTab("Designs", current == 1);
+      BoardTab("History", current == 2);
+    }
+  }
+}
+
+[Composable]
+component BoardTab(string label, bool selected) {
+  render {
+    Text(label, fontSize: FontSize.Body, fontWeight: selected ? FontWeight.Semibold : FontWeight.Medium, px: Space.TabX, py: Space.TabY,
+         minH: Length.TabMinH, display: Display.InlineFlex, alignItems: Align.Center, borderBW: 2,
+         border: selected ? Colors.Primary : Colors.Transparent, whiteSpace: WhiteSpace.Nowrap);
+  }
+}

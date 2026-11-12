@@ -63,9 +63,12 @@ namespace Osysharp.Ui;
     //   green — and a SCREENSHOT is what showed it, because happy-dom has no
     //   compositor and a missing label is not a missing word.
     //   ⚑ A parameter that is accepted and paints nothing is the inert-affordance failure CLAUDE.md names.
-      if (label != "") { Text(label, labelFor: trigger, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, labelFor: trigger, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
     Box(position: Position.Relative) {
-      Pressable(onClick: Toggle, disabled: disabled, role: UiRole.ComboBox, expanded: open, label: label, id: trigger) {
+      // ⭐ THE TRIGGER FILLS ITS COLUMN (KIT-FORM-GRID), as a `Field`'s box does, so a dropdown in a form is as wide as the
+      //   text input above it. It used to be as wide as its words, and a page could not widen it. In a row of
+      //   filters its column is its own content, so there it is still as wide as its words.
+      Pressable(onClick: Toggle, disabled: disabled, role: UiRole.ComboBox, expanded: open, label: label, id: trigger, w: "100%") {
         Row(align: Align.Center, gap: 2, h: Length.ControlMd, px: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md,
             bg: Colors.Surface, color: Colors.OnSurface, fontSize: FontSize.Body) {
           // Nothing chosen is `null` — and, for a text value, "" too: a `<select>`'s empty value is its placeholder
@@ -84,7 +87,8 @@ namespace Osysharp.Ui;
         //   ("both the trigger button and the popup stack carry the same label"), and a driver test reproduced it
         //   exactly.
         //   The options carry their own names and the panel is reached through the trigger, so it needs none.
-        Stack(role: UiRole.ListBox, position: Position.Absolute, z: ZIndex.Popover, mt: 1, minW: Length.MenuW, bg: Colors.Surface, borderW: 1, border: Colors.Border,
+        // The panel is as wide as the field it opens from, and never narrower than a menu.
+        Stack(role: UiRole.ListBox, position: Position.Absolute, z: ZIndex.Popover, mt: 1, w: "100%", minW: Length.MenuW, bg: Colors.Surface, borderW: 1, border: Colors.Border,
               rounded: Radius.Md, shadow: Shadow.Floating, p: 1, gap: 0) {
           foreach (var m in options) {
             Pressable(onClick: () => Choose(m)) {
@@ -121,7 +125,7 @@ namespace Osysharp.Ui;
 
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted); }
+      if (label != "") { Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
       if (value != null && !searching) {
         Pressable(onClick: Change, disabled: disabled, role: UiRole.ComboBox, expanded: false, label: label) {
           Row(align: Align.Center, gap: 2, h: Length.ControlMd, px: 3, borderW: 1, border: Colors.Border, rounded: Radius.Md,
@@ -257,7 +261,7 @@ public string TimeZoneWords(TimeZoneInfo zone) {
   action Choose(T m) { value = m; }
   render {
     Stack(gap: 2, role: UiRole.RadioGroup, label: label) {
-      Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.TextMuted);
+      Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk);
       if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
       foreach (var m in options) {
         Pressable(onClick: () => Choose(m), role: UiRole.Radio, checked: m == value, disabled: disabled) {

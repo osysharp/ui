@@ -102,36 +102,44 @@ void a_danger_icon_button_asks_before_it_acts() {
 From [`tests/ask-first.test.osy`](tests/ask-first.test.osy).
 
 ```osy
-[Test(Mats)]
-void a_held_save_says_what_is_wrong_under_the_field() {
+[Test(Workshop)]
+void bullets_hang_their_points_in_the_list_s_indent() {
   Ui.SignInAs(Tom);
-  Ui.Visit("/mats/" + MatCoded("IVO-2"));
-  Ui.Fill("Name", "");
-  Ui.Click("Save");
-  Assert.Visible("1 field needs attention.");
-  Assert.TextIs("A mat needs a name.");
-  Assert.Violation("Name", "A mat needs a name.");
+  Ui.Visit("/bullets");
+  Assert.Visible("Ready to build");
+  Assert.Visible("Waiting on a decision");
+  Assert.Below("Waiting on a decision", "Ready to build");
+  Assert.Inside("Ready to build", "Checks");
+  Assert.Wider("Checks", "Ready to build");
+  // ENG-KIT-TONES-TABS-4: and each point is drawn WITH its marker — the disc no order or size claim can see
+  Assert.HasListMarker("Ready to build");
+  Assert.HasListMarker("Waiting on a decision");
 }
 ```
 
-From [`tests/field-messages.test.osy`](tests/field-messages.test.osy).
+From [`tests/bullets.test.osy`](tests/bullets.test.osy).
 
 ```osy
-[Test(ShelvedStock)]
-void a_grid_whose_columns_cannot_be_sorted_keeps_the_pages_order() {
-  Moulding? walnut = null;
-  Moulding? ash = null;
-  runas (ShelfPia) {
-    walnut = Moulding.Single(m => m.Moniker == "Walnut");
-    ash = Moulding.Single(m => m.Moniker == "Ash");
-  }
-  Ui.SignInAs(ShelfPia);
-  Ui.Visit("/stock/by-shelf");
-  Assert.Before(walnut, ash);
+[Test(Workshop)]
+void the_editing_parts_keep_the_board_s_geometry() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/editing-geometry");
+  Assert.SameHeight("Kit banner", "Board banner");
+  Assert.SameHeight("Kit history rows", "Board history rows");
+  Assert.SameHeight("Kit tab strips", "Board tab strips");
+  Assert.SameHeight("Kit setting", "Board setting");
+  // the floor keeps a step between points
+  Assert.Taller("Kit bullets", "Board bullets");
+  Ui.Click("Design geometry");
+  Assert.SameHeight("Kit bullets", "Board bullets");
+  Assert.SameHeight("Kit banner", "Board banner");
+  // at the design's 44px tabs the strip is still the tab and its rule
+  Assert.SameHeight("Kit tab strips", "Board tab strips");
+  Assert.SameHeight("Kit history rows", "Board history rows");
 }
 ```
 
-From [`tests/grid-order.test.osy`](tests/grid-order.test.osy).
+From [`tests/editing-geometry.test.osy`](tests/editing-geometry.test.osy).
 
 ## Learn more
 

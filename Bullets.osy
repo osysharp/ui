@@ -1,0 +1,21 @@
+// Bullets — a bulleted list: `Bullets { Bullet("…"); Bullet("…"); }` (ENG-KIT-TONES-TABS-3).
+namespace Osysharp.Ui;
+
+/// A BULLETED LIST — each `Bullet` a point with a disc beside it, hung in the list's indent (`Space.BulletIndent`, five
+/// steps by default; a design's `padding-left: 18px` list is `Space { BulletIndent = "18px"; }`). It is announced as a
+/// list of so many items, as a `<ul>` is. `label:` names it for a reader and for a test.
+/// In a test each point is read as text: `Assert.Visible("Ready to build")`.
+/// e.g. `Bullets { Bullet("Ready to build"); Bullet("Waiting on a decision"); }`
+[Composable] component Bullets(string label = "") {
+  variants { base { Pl = Space.BulletIndent; M = 0; } }
+  render { Stack(role: UiRole.List, label: label, gap: Space.BulletGap) { Slot; } }
+}
+
+/// One point of a `Bullets` list: its words, with the list's marker beside them (a disc; `ListStyle` in a variant
+/// changes it).
+/// In a test it is read as text: `Assert.Visible("Waiting on a decision")`.
+/// e.g. `Bullet("Waiting on a decision")`
+[Composable] component Bullet(string text) {
+  variants { base { Display = Display.ListItem; ListStyle = ListStyle.Disc; } }
+  render { Box(role: UiRole.ListItem) { Text(text); } }
+}

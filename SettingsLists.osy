@@ -1,0 +1,141 @@
+// Ui — settings as a TABLE and as a CHOICE OF SCOPE (KIT-SETTINGS-LISTS): the table a settings section lists rows or
+// values in, with the drawer that edits one beside it, and the "Showing" chooser over a scoped section's base and its
+// scopes. What a `[Settings]` section draws for `[SettingsList]`, `Layout = Table` and `Scope = …`; reach for them on a
+// page of your own so a hand-made list reads the same (`osy docs ui-settings-declared#list`).
+namespace Osysharp.Ui;
+
+// ── the table ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A SETTINGS TABLE — a header of `columns`, then its rows (`SettingsTableRow`, the slot), each opening its drawer:
+/// `slot drawer` stands beside the table and gives way under it when the section narrows. `slot foot` sits under the
+/// rows (an Add button). `empty` is said in place of rows while there are none.
+/// In a test it is a grid named by `label`; read a cell by its row's first column and the column's header:
+/// `Assert.Cell("Design review", "Done by", "Person")`, and open a row by its words: `Ui.Click("Design review")`.
+/// need: a list of rows edited in a drawer, settings as a table, a table of values and where each comes from
+/// e.g. `SettingsTable("Steps", ["Name", "Done by"]) { foreach (var s in flow.Steps) { SettingsTableRow([s.Name, s.By.Label], onOpen: () => Open(s), current: s == open); } slot drawer { if (open != null) { Drawer(open.Name, onClose: Close) { … } } } }`
+[Composable]
+component SettingsTable(string label, string[] columns, string empty = "") {
+  render {
+    Row(gap: 4, align: Align.Start, wrap: Wrapping.Wrap, w: "100%") {
+      Stack(gap: 3, grow: 1, minW: "0", basis: "320px") {
+        Stack(gap: 0, role: UiRole.Grid, label: label, w: "100%") {
+          Box(display: Display.Grid, cols: SettingsTableCols(columns.Length), gap: 3, px: 3, py: 2, role: UiRole.GridRow) {
+            foreach (var c in SettingsTableCellsOf(columns)) {
+              Row(role: UiRole.ColumnHeader, minW: "0") {
+                Text(c.Text, fontSize: FontSize.Caption, fontWeight: FontWeight.Semibold, color: Colors.MetaText);
+              }
+            }
+          }
+          Slot;
+        }
+        if (empty != "") { Text(empty, fontSize: FontSize.Caption, color: Colors.MetaText, px: 3); }
+        Row(gap: 2, wrap: Wrapping.Wrap) { Slot("foot"); }
+      }
+      Slot("drawer");
+    }
+  }
+}
+
+/// One row of a `SettingsTable`: its `cells` in the columns' order, the first one what the row is called. With
+/// `onOpen` the whole row presses to open it (its drawer); `current` marks the open one on the accent's tint.
+/// In a test it is the row named by its first cell: `Ui.Click("Design review")`, `Assert.Cell("Design review", "Done by", "Person")`.
+/// e.g. `SettingsTableRow([step.Name, step.By.Label], onOpen: () => Open(step), current: step == open)`
+[Composable]
+component SettingsTableRow(string[] cells, Action? onOpen = null, bool current = false) {
+  variants {
+    base { BorderTW = 1; Border = Colors.RowLine; Bg = Colors.Transparent; Hover { Bg = Colors.Muted; } }
+    current { Bg = Colors.PrimaryTint; Hover { Bg = Colors.PrimaryTint; } }
+  }
+  render {
+    if (onOpen != null) {
+      Pressable(onClick: onOpen, role: UiRole.GridRow, w: "100%", textAlign: TextAlign.Start) { SettingsTableCells(cells); }
+    } else {
+      Box(role: UiRole.GridRow, w: "100%") { SettingsTableCells(cells); }
+    }
+  }
+}
+
+/// A table row's cells on the table's columns — the first in the row's own weight, the rest its values.
+[Composable][Part] component SettingsTableCells(string[] cells) {
+  render {
+    Box(display: Display.Grid, cols: SettingsTableCols(cells.Length), gap: 3, px: 3, py: 2, alignItems: Align.Baseline, w: "100%") {
+      foreach (var c in SettingsTableCellsOf(cells)) {
+        Row(role: UiRole.GridCell, minW: "0", align: Align.Baseline) {
+          if (c.First) { Text(c.Text, fontSize: FontSize.Body, fontWeight: FontWeight.Semibold); }
+          else { Text(c.Text, fontSize: FontSize.Body, color: Colors.OnSurface); }
+        }
+      }
+    }
+  }
+}
+
+/// One cell of a settings table's row, by place.
+public sealed class SettingsTableCell {
+  public string Text = "";
+  public bool First = false;
+}
+
+/// A row's words as its cells. Drawn over these and not over the words themselves: a `foreach` over text stamps each
+/// word as a row of its own (its identity is its value), so the first cell — which reads as its row's name — was taken
+/// for that row by `Assert.Cell` and `Ui.Click`, and the row's cells were never found.
+public List<SettingsTableCell> SettingsTableCellsOf(string[] words) {
+  List<SettingsTableCell> cells = [];
+  foreach (var w in words) { cells.Add(new SettingsTableCell { Text = w, First = cells.Count == 0 }); }
+  return cells;
+}
+
+/// The columns of a settings table of `n`: the first, what each row is called, wider than the values after it.
+public string SettingsTableCols(int n) {
+  var cols = "minmax(0, 1.6fr)";
+  for (var i = 1; i < n; i++) { cols = cols + " minmax(0, 1fr)"; }
+  return cols;
+}
+
+// ── choosing the scope ──────────────────────────────────────────────────────────────────────────────────────────────
+
+/// One choice of a `ScopeChooser` — the base or one scope, by name (`Label`), the page that shows it (`To`), and what is
+/// set there (`Count`, "2 set here").
+public sealed class SettingsScope {
+  public string Label = "";
+  public string To = "";
+  public string Count = "";
+}
+
+/// What a scoped settings page's head reads as it opens, in ONE call: how many scopes set each setting themselves (and,
+/// last, how many set any), the choices for its `ScopeChooser` (empty where it draws none), and the name of the row it
+/// shows. What a `[Settings(Scope = …)]` section's page asks for itself.
+public sealed class SettingsScopeView {
+  public List<int> Overrides = [];
+  public List<SettingsScope> Scopes = [];
+  public string ShownAs = "";
+}
+
+/// WHICH SCOPE A SETTINGS PAGE SHOWS — "Showing  Organization ▾", a pick-one menu over the base and every scope, each
+/// with what it sets itself; choosing one goes to its page. What a `[Settings(Scope = …)]` section draws above its
+/// `ScopeHeader`.
+/// In a test open it by its label and what it shows, then choose: `Ui.Click("Showing: Organization"); Ui.Click("Product: Atlas · 2 set here")`.
+/// need: switch between organization and product settings, choose which level to edit, a scope picker on a settings page
+/// e.g. `ScopeChooser("Showing", current: "Organization", scopes: choices)`
+[Composable]
+component ScopeChooser(string label, string current, List<SettingsScope> scopes) {
+  bool open = false;
+  action Toggle() { open = !open; }
+  action Close() { open = false; }
+  action Choose(SettingsScope s) { open = false; Navigation.Go(s.To); }
+  render {
+    Row(gap: 2, align: Align.Center) {
+      Text(label, fontSize: FontSize.Label, color: Colors.MetaText, decorative: true);
+      Box(position: Position.Relative) {
+        Button(current + " ▾", onPress: Toggle, size: Size.Sm, tone: Tone.Default, announceAs: label + ": " + current);
+        if (open) {
+          Backdrop(Close);
+          Menu(from: MenuFrom.BelowStart, label: label) {
+            foreach (var s in scopes) {
+              MenuItem(s.Count == "" ? s.Label : s.Label + " · " + s.Count, onPress: () => Choose(s), checked: s.Label == current);
+            }
+          }
+        }
+      }
+    }
+  }
+}

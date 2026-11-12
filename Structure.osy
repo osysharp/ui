@@ -131,6 +131,8 @@ namespace Osysharp.Ui;
       Danger  { Hover { Bg = Danger.Subtle;  Color = Danger.Strong; } }
       Success { Hover { Bg = Success.Subtle; Color = Success.Strong; } }
       Warning { Hover { Bg = Warning.Subtle; Color = Warning.Strong; } }
+      Info    { Hover { Bg = Info.Subtle; Color = Info.Strong; } }
+      Waiting { Hover { Bg = Colors.WaitingTint; Color = Colors.WaitingInk; } }
       Ghost   { Hover { Color = Colors.OnSurface; } }
     }
     size {

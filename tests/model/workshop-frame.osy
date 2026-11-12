@@ -1,0 +1,60 @@
+// KIT-SETTINGS-AREA-SLOTS: an app's own settings area — its own frame around the kit's area, its own home in place of
+// the overview, a line above every page, and the sections drawn as a section list. The frame is an app COMPOSABLE that
+// carries the layout's `Outlet` into the area through its slot (CFG-LOOK-FRAME: on 0.17.12 that shape failed "renders
+// no Outlet", which is why an app copied the whole area).
+
+/// The workshop's own frame: its bar, and the settings area under it with the workshop's home and a line over each page.
+[Composable]
+component WorkshopFrame() {
+  render {
+    Stack(gap: 0, h: "100vh", label: "Workshop frame") {
+      Row(px: 4, py: 3, borderBW: 1, border: Colors.Border, bg: Colors.Surface, role: UiRole.Banner, label: "Workshop bar") {
+        Text("Ines's framing workshop", fontWeight: FontWeight.Semibold);
+      }
+      Stack(grow: 1, minH: "0") {
+        SettingsArea([
+          new SettingsLink { Label = "Opening hours", To = "/workshop-settings/hours", Group = "The counter", Icon = Icons.Clock },
+          new SettingsLink { Label = "Glass", To = "/workshop-settings/glass", Group = "The bench", Icon = Icons.Gear },
+        ], title: "Workshop", home: "/workshop-settings", nav: SettingsNavLook.List) {
+          slot head { Text("Changes here reach every order from tomorrow.", fontSize: FontSize.Caption, color: Colors.TextMuted, px: 5, pt: 4); }
+          slot home {
+            Stack(gap: 2, p: 5, label: "Workshop home") {
+              PageTitle("The workshop's settings");
+              Text("Start with the hours the counter is open.");
+            }
+          }
+          Slot;
+        }
+      }
+    }
+  }
+}
+
+/// The layout the workshop's own settings pages name — the frame, with the routed page in its slot.
+[Layout]
+component WorkshopLayout() {
+  render { WorkshopFrame { Outlet; } }
+}
+
+[Route("/workshop-settings")] [Layout(WorkshopLayout)] [Authorize(IsFramer)] [Render(CSR)] [Title("Workshop settings")]
+component WorkshopSettingsHome() {
+  render { }
+}
+
+[Route("/workshop-settings/hours")] [Layout(WorkshopLayout)] [Authorize(IsFramer)] [Render(CSR)] [Title("Opening hours")]
+component WorkshopHoursPage() {
+  render {
+    SettingsPage("Opening hours", description: "When the counter is open.") {
+      SettingsSection("Weekdays", description: "Monday to Friday.") { Text("9:00 to 17:00"); }
+    }
+  }
+}
+
+[Route("/workshop-settings/glass")] [Layout(WorkshopLayout)] [Authorize(IsFramer)] [Render(CSR)] [Title("Glass")]
+component WorkshopGlassPage() {
+  render {
+    SettingsPage("Glass", description: "What every frame gets.") {
+      SettingsSection("Every frame", description: "Unless a customer asks otherwise.") { Text("Museum glass on every frame"); }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+// KIT-SECTIONLIST-V9 — a section list keeps one line a row, at the theme's measures.
+
+/// `oneLine: true` keeps a long label to one line, so the list is shorter than the same list without it. On the floor
+/// the one-line list is the floor's 196px column; once the theme's `seclist` variant states a 232px column, fixed 36px
+/// rows 2px apart and the rail's header spacing, it is exactly the drawing beside it — the open group's header and
+/// sections, then one row for each closed group. Needs `--pixels`: under plain `osy test` the measures report NOT CHECKED.
+[Test(Workshop)]
+void a_section_list_keeps_one_line_a_row_at_the_theme_s_measures() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Tom);
+  Ui.Visit("/section-list-geometry");
+  Assert.Taller("Kit wrapping sections", "Kit sections");
+  Assert.Narrower("Kit sections", "Board sections");
+  Ui.Click("One-line geometry");
+  Assert.SameWidth("Kit sections", "Board sections");
+  Assert.SameHeight("Kit sections", "Board sections");
+  Assert.Current("Workflows, 2 open", within: "Kit list");
+  Ui.Click("People, 1 to approve", within: "Kit list");
+}

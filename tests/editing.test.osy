@@ -1,0 +1,43 @@
+// ENG-KIT-TONES-TABS-7 (KIT-2) — the editing parts do what their words say.
+
+/// A drawer steps to the item before and after and closes; the banner's save opens the impact dialog, and closing it
+/// keeps editing; a proposed change and a history row act on their words, and Undo is offered only where it can be
+/// done; the section for the page in view is the current one.
+[Test(Workshop)]
+void the_editing_parts_do_what_their_words_say() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/editing");
+  Ui.Shot("editing parts");
+  Assert.Visible("Rule 4 of 12", within: "MC-04");
+  Assert.Visible("Changed", within: "MC-04");
+  Ui.Click("Next", within: "MC-04");
+  Assert.Visible("Rule 5 of 12", within: "MC-05");
+  Ui.Click("Previous", within: "MC-05");
+  Ui.Click("Previous", within: "MC-04");
+  Assert.Visible("Rule 3 of 12", within: "MC-03");
+  Ui.Click("Close", within: "MC-03");
+  Assert.Visible("Drawer closed", within: "Said");
+  Assert.Hidden("MC-03");
+
+  Ui.Click("Review and save", within: "Unsaved changes");
+  Assert.Dialog("Makes a 6 cm margin the rule for new orders.");
+  Assert.Visible("New orders get 6 cm.");
+  Ui.Click("Close and keep editing");
+  Assert.Visible("Still editing", within: "Said");
+  Ui.Click("Discard", within: "Unsaved changes");
+  Assert.Visible("Draft discarded", within: "Said");
+
+  Ui.Click("Reject", within: "Head office proposes:");
+  Assert.Visible("Proposal rejected", within: "Said");
+  Ui.Click("Accept", within: "Head office proposes:");
+  Assert.Visible("Proposal accepted", within: "Said");
+
+  Assert.Visible("Locked by head office", within: "Wood");
+  Assert.Visible("Shop: Riverside", within: "Scope");
+  Ui.Click("Undo", within: "Today 09:12 · Tom");
+  Assert.Visible("Change undone", within: "Said");
+  Assert.Hidden("Undo", within: "Fri 30 Oct · Head office");
+
+  Assert.Current("Editing");
+  Assert.Current("Geometry", false);
+}

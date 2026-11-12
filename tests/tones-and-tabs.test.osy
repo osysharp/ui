@@ -1,0 +1,31 @@
+// ENG-KIT-TONES-TABS — tabs that are addresses, and the six status tones.
+
+/// A link tab is a link: the one for the page in view says it is current, the others do not, and pressing another
+/// opens ITS address — which then is the current one.
+[Test(Workshop)]
+void a_link_tab_is_current_on_its_own_page_and_opens_its_address() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/order-pages/overview");
+  Assert.Current("Overview");
+  Assert.Current("Lines", false);
+  Ui.Click("Lines");
+  Assert.Visible("Two mats, one frame.");
+  Assert.Current("Lines");
+  Assert.Current("Overview", false);
+}
+
+/// Every status tone has a pill its words read on — the new `Info` and `Waiting` too — and a design's exact tint and
+/// ink are tokens a theme sets, not a ramp's steps.
+[Test(Workshop)]
+void every_status_tone_has_a_pill_whose_words_read_on_it() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/order-pages/overview");
+  Assert.Visible("Cutting");
+  Assert.Visible("Waiting for glass");
+  Assert.Visible("3");
+  Assert.Contrast("Colors.InfoInk", "Colors.InfoTint");
+  Assert.Contrast("Colors.WaitingInk", "Colors.WaitingTint");
+  Assert.Contrast("Colors.InfoInk", "Colors.InfoTint", mode: "dark");
+  Assert.Contrast("Colors.WaitingInk", "Colors.WaitingTint", mode: "dark");
+  Assert.Contrast("Colors.Surface", "Colors.OnSurface");
+}

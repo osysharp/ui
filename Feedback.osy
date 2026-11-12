@@ -15,6 +15,8 @@ namespace Osysharp.Ui;
       Danger  { Bg = Danger.Subtle;  Color = Danger.Strong;  Border = Colors.Danger; }
       Success { Bg = Success.Subtle; Color = Success.Strong; Border = Colors.Success; }
       Warning { Bg = Warning.Subtle; Color = Warning.Strong; Border = Colors.Warning; }
+      Info    { Bg = Info.Subtle; Color = Info.Strong; Border = Colors.Info; }
+      Waiting { Bg = Colors.WaitingTint; Color = Colors.WaitingInk; Border = Colors.Waiting; }
       Ghost   { Bg = Colors.Transparent;    Color = Colors.TextMuted;      Border = Colors.Border; }
     }
   }
@@ -82,6 +84,7 @@ animation KitSpin {
     tone {
       Default { Bg = Colors.TextMuted; } Primary { Bg = Colors.Primary; } Danger { Bg = Colors.Danger; }
       Success { Bg = Colors.Success; }   Warning { Bg = Colors.Warning; } Ghost   { Bg = Colors.Border; }
+      Info    { Bg = Colors.Info; }      Waiting { Bg = Colors.Waiting; }
     }
   }
   render { Box(w: Math.Clamp(percent, 0, 100) + "%"); }

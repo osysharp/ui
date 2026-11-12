@@ -206,6 +206,8 @@ public enum MenuFrom {
       Danger  { Color = Danger.Text;      Hover { Bg = Danger.Subtle; } }
       Success { Color = Success.Text;     Hover { Bg = Success.Subtle; } }
       Warning { Color = Warning.Text;     Hover { Bg = Warning.Subtle; } }
+      Info    { Color = Info.Text;     Hover { Bg = Info.Subtle; } }
+      Waiting { Color = Colors.WaitingInk;     Hover { Bg = Colors.WaitingTint; } }
       Ghost   { Color = Colors.TextMuted; Hover { Bg = Colors.Muted; } }
     }
   }
@@ -261,9 +263,11 @@ public enum MenuFrom {
     tone {
       Default { Bg = Colors.Surface;        Color = Colors.OnSurface; BorderW = 1; Border = Colors.Border; }
       Primary { Bg = Colors.Primary;        Color = Colors.OnPrimary; }
-      Danger  { Bg = Colors.Danger;         Color = Colors.OnPrimary; }
-      Success { Bg = Colors.Success;        Color = Colors.OnPrimary; }
-      Warning { Bg = Colors.Warning;        Color = Colors.OnPrimary; }
+      Danger  { Bg = Colors.Danger;         Color = Danger.OnColor; }
+      Success { Bg = Colors.Success;        Color = Success.OnColor; }
+      Warning { Bg = Colors.Warning;        Color = Warning.OnColor; }
+      Info    { Bg = Colors.Info;        Color = Info.OnColor; }
+      Waiting { Bg = Colors.Waiting;        Color = Waiting.OnColor; }
       Ghost   { Bg = Colors.Muted;          Color = Colors.OnSurface; }
     }
   }

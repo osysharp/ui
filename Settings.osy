@@ -56,6 +56,38 @@ public List<SettingsLink> AnnouncedSettings() {
   return ordered;
 }
 
+/// What a declared settings page (`[Settings]`) reads of its row beside the values, in ONE call: the fields its
+/// organisation locks, who last changed each group ("Changed by Ada · 3 min ago"), and on a scoped section who last set
+/// each field.
+public sealed class SettingsRowFacts {
+  public List<string> Locked = [];
+  public List<string> Changed = [];
+  public List<string> SetBy = [];
+}
+
+/// A contract a provider implements BESIDE `ISettingsProvider` to say what is set in its sections ("2 overrides") —
+/// asked only by a nav that shows counts (`SettingsArea(nav: SettingsNavLook.List)`), so a count that costs a read is
+/// never paid on a page that does not say it. Each link names its section by `To` and carries its `Count` ("" says
+/// nothing). A declared section kept per scope (`[Settings(Scope = …)]`) implements it for you.
+/// need: a count beside a settings section's link, how many overrides a section has, a badge in the settings nav
+/// e.g. `class MailCounts : ISettingsCounts { public SettingsLink[] Counts() { return [new SettingsLink { Label = "Mail", To = "/settings/mail", Count = "3 rules" }]; } }`
+public interface ISettingsCounts {
+  /// Each of this provider's sections' counts, by route.
+  SettingsLink[] Counts();
+}
+
+/// What every `ISettingsCounts` in the app says is set in its sections — each link's `To` and `Count`, the empty ones
+/// left out. What `SettingsArea(nav: SettingsNavLook.List)` says beside each section.
+public List<SettingsLink> AnnouncedCounts() {
+  List<SettingsLink> all = [];
+  foreach (var provider in App.Implementations<ISettingsCounts>()) {
+    foreach (var link in provider.Counts()) {
+      if (link.Count != "") { all.Add(link); }
+    }
+  }
+  return all;
+}
+
 /// Where an organisation's policy reaches into an app's settings — implemented by the org layer's package, never by an
 /// app or a kit. Discovered like a settings provider: with none in the app, no setting is the
 /// organisation's. `setting` is the key `osy model` lists for an `[OrgPolicy]` field — "Osysharp.Privacy.PrivacySetup.ReviewPlans"
@@ -102,6 +134,16 @@ public string SettingsChangedLine(string settings, Guid id, string[] fields, Dat
   return "";
 }
 
+/// "by Ada Lindqvist · 3 min ago" — who last set ONE field of the settings row `id`, for a provenance line ("Set here
+/// by …"); "" when the app keeps no change trail or nobody has changed it.
+public string SettingSetBy(string settings, Guid id, string field, DateTime now) {
+  foreach (var history in App.Implementations<ISettingsHistory>()) {
+    var change = history.LastChange(settings, id, [field]);
+    if (change != null) { return $"by {(change.By != "" ? change.By : "the system")} · {TimeAgo(change.At, now)}"; }
+  }
+  return "";
+}
+
 /// The route of the section `path` is in — the LONGEST section route that is `path` or a prefix of it, so a page under
 /// `/settings/privacy/holds` lights "Legal holds" and not "Data retention" at `/settings/privacy` as well. "" when none.
 public string CurrentSettingsSection(List<SettingsLink> sections, string path) {
@@ -130,6 +172,10 @@ public sealed class SettingsLink {
   /// Where it sits in a gathered area (`SettingsArea()`): lower first, within its group — and a group sits where its
   /// lowest entry puts it. Kits leave gaps (10, 20, …) so an app's own sections can go between them.
   public int Order = 100;
+  /// What is set there, said beside it in a `SettingsArea(nav: SettingsNavLook.List)` ("2 overrides") — empty says nothing.
+  /// A count that costs a read belongs in an `ISettingsCounts` instead, which only a nav that shows it asks; a
+  /// `[Settings(Scope = …)]` section counts the scopes that set their own values there.
+  public string Count = "";
 }
 
 /// The settings area: the sections on the left (grouped, the current one lit), the section's page on the right. On a
@@ -137,16 +183,27 @@ public sealed class SettingsLink {
 /// with a way back. Fill the default slot with the section's page (`Outlet` in a layout).
 /// With NO list it gathers every `ISettingsProvider` in the app (`AnnouncedSettings()`) — each kit's sections and the
 /// app's own; pass a list to choose them yourself.
+/// The nav is `Length.SettingsNavW` wide on a wide screen, its current row `Colors.SettingsNavCurrent` (`osy docs ui-settings#look`).
+/// ⭐ THE APP'S OWN PARTS GO IN ITS SLOTS: `slot home` is the area's home on a wide screen IN PLACE OF the kit's
+///   overview (`SettingsOverview`, which is what an unfilled one draws); `slot head` sits above every page (and the
+///   home). `nav: SettingsNavLook.List` draws the sections as the editing parts' section list (`SectionGroup`,
+///   `SectionLink`) rather than rows with icons. To put the area in a frame of its own, an app's `[Layout]` hands its
+///   `Outlet` to a component of its own that draws the area: `WorkshopFrame { Outlet; }` (`osy docs ui-settings#frame`).
 /// In a test the nav is a named region, "<title> sections": `Ui.Click("People", within: "Settings sections")`.
-/// need: an admin area, a settings page with sections in a sidebar, configuration pages that share one navigation
+/// need: an admin area, a settings page with sections in a sidebar, configuration pages that share one navigation, my own settings home page, a banner above every settings page
 /// e.g. `SettingsArea() { Outlet; }` · `SettingsArea([new SettingsLink { Label = "People", To = "/settings/people", Group = "Team", Shown = IsAdmin }]) { Outlet; }`
+/// e.g. `SettingsArea(nav: SettingsNavLook.List) { slot home { MySettingsHome(); } Outlet; }`
 [Composable]
-component SettingsArea(SettingsLink[]? sections = null, string title = "Settings", string home = "/settings") {
+component SettingsArea(SettingsLink[]? sections = null, string title = "Settings", string home = "/settings",
+                       SettingsNavLook nav = SettingsNavLook.Rows) {
   // The announced sections, read once the area mounts — a layout's area mounts once and stays while its pages change.
   List<SettingsLink> announced = [];
+  // What the sections' `ISettingsCounts` say — read only by the nav that shows counts, so the rows nav pays nothing.
+  List<SettingsLink> counted = [];
   bool gathered = false;
   on mount {
     if (sections == null) { announced = AnnouncedSettings(); }
+    if (nav == SettingsNavLook.List) { counted = AnnouncedCounts(); }
     gathered = true;
   }
   live var shown = sections != null ? sections.Where(s => s.Shown).ToList() : announced;
@@ -157,10 +214,19 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
   /// Is `link` the section being looked at — see `CurrentSettingsSection`.
   bool Current(SettingsLink link) { return link.To != "" && link.To == currentTo; }
 
+  /// What is said beside `link` in the list nav: its own `Count`, else what an `ISettingsCounts` says of its route.
+  string CountOf(SettingsLink link) {
+    if (link.Count != "") { return link.Count; }
+    foreach (var c in counted) {
+      if (c.To == link.To) { return c.Count; }
+    }
+    return "";
+  }
+
   render {
     Row(align: Align.Stretch, gap: 0, h: "100%", minH: "0", w: "100%") {
       if (atHome || Layout.AtLeast(Tablet)) {
-        Stack(gap: 1, w: Layout.AtLeast(Tablet) ? "232px" : "100%", shrink: 0, p: 3, borderRW: 1, border: Colors.Border,
+        Stack(gap: 1, w: Layout.AtLeast(Tablet) ? Length.SettingsNavW : "100%", shrink: 0, p: 3, borderRW: 1, border: Colors.Border,
               overflowY: Overflow.Auto, bg: Colors.Surface, role: UiRole.Navigation, label: title + " sections") {
           Text(title, fontWeight: FontWeight.Semibold, fontSize: FontSize.Subhead, px: 2, py: 2);
           // Nothing to set up — no provider in the app announces a section this reader is shown: said, never a blank column.
@@ -173,11 +239,18 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
             }
           }
           foreach (var group in shown.Select(s => s.Group).Distinct().ToList()) {
-            if (group != "") {
-              Text(group, fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium, px: 2, pt: 3, pb: 1);
-            }
-            foreach (var s in shown.Where(x => x.Group == group).ToList()) {
-              SettingsNavRow(s, Current(s), atHome && !Layout.AtLeast(Tablet));
+            if (nav == SettingsNavLook.List) {
+              if (group != "") { SectionGroup(group); }
+              foreach (var s in shown.Where(x => x.Group == group).ToList()) {
+                SectionLink(s.Label, s.To, count: CountOf(s), current: Current(s));
+              }
+            } else {
+              if (group != "") {
+                Text(group, fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium, px: 2, pt: 3, pb: 1);
+              }
+              foreach (var s in shown.Where(x => x.Group == group).ToList()) {
+                SettingsNavRow(s, Current(s), atHome && !Layout.AtLeast(Tablet));
+              }
             }
           }
         }
@@ -187,10 +260,11 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
           if (!Layout.AtLeast(Tablet)) {
             Row(px: 4, pt: 3) { TextLink("All settings", to: home, tone: Tone.Default); }
           }
+          Slot("head");
           // THE AREA'S HOME IS AN OVERVIEW, not a title over an empty page: every
-          // section the reader may open, by group, each with what it is for. The app's own page at `home` follows it —
-          // a page with nothing to add renders nothing.
-          if (atHome && gathered) { SettingsOverview(shown, title); }
+          // section the reader may open, by group, each with what it is for — unless the app fills `slot home` with a
+          // home of its own. The app's own page at `home` follows it — a page with nothing to add renders nothing.
+          if (atHome && gathered) { Slot("home") { SettingsOverview(shown, title); } }
           Slot;
         }
       } else {
@@ -201,6 +275,15 @@ component SettingsArea(SettingsLink[]? sections = null, string title = "Settings
       }
     }
   }
+}
+
+/// How a settings area draws its sections down the side (`SettingsArea(nav: …)`).
+public enum SettingsNavLook {
+  /// Each section a row with its icon, the current one lit (`Colors.SettingsNavCurrent`); on a phone's index, its hint under it.
+  Rows,
+  /// The editing parts' section list: each group in small capitals (`SectionGroup`), each section a `SectionLink`, the
+  /// current one on the accent's tint.
+  List
 }
 
 /// The frame every settings page sits in — a kit's settings pages name it (`[Layout(SettingsFrame)]`), and so do the
@@ -229,7 +312,7 @@ component SettingsFrame() {
 [Composable]
 component SettingsOverview(List<SettingsLink> sections, string title = "Settings") {
   render {
-    Stack(gap: 6, p: 5, w: "100%", maxW: "880px", label: "All settings") {
+    Stack(gap: 6, py: 5, px: Space.SettingsPageX, w: "100%", maxW: Length.SettingsPageW, label: "All settings") {
       Stack(gap: 1) {
         PageTitle(title);
         Text(sections.Count == 0 ? "Nothing here is yours to change yet."
@@ -280,7 +363,8 @@ component SettingsNavRow(SettingsLink link, bool current, bool withHint) {
     base { Display = Display.Flex; Rounded = Radius.Md; Px = 2; Py = 2; Color = Colors.OnSurface; Gap = 2;
            TextDecoration = TextDecoration.None;
            Hover { Bg = Colors.Muted; } }
-    current { Bg = Colors.Muted; FontWeight = FontWeight.Semibold; }
+    current { Bg = Colors.SettingsNavCurrent; Color = Colors.OnSettingsNavCurrent; FontWeight = FontWeight.Semibold;
+              Hover { Bg = Colors.SettingsNavCurrent; } }
   }
   render {
     Link(link.To, label: link.Label, current: current) {
@@ -297,6 +381,7 @@ component SettingsNavRow(SettingsLink link, bool current, bool withHint) {
 
 /// A settings page — its title and a line saying what it is for, then its sections, in a readable column. Put a
 /// `SaveBar` at the end of a page whose sections edit rows.
+/// As wide as `Length.SettingsPageW` at most, its sides `Space.SettingsPageX` — the theme's (`osy docs ui-settings#look`).
 /// In a test its title is ordinary text: `Assert.Visible("Business hours")`.
 /// need: a page of the settings area, a configuration page with a heading and sections
 /// e.g. `SettingsPage("Business hours", description: "When the SLA clocks run.") { SettingsSection(…) { … } }`
@@ -304,7 +389,7 @@ component SettingsNavRow(SettingsLink link, bool current, bool withHint) {
 component SettingsPage(string title, string description = "") {
   render {
     // Named "<title> page" — the page's own body, as tall as what is on it (a test measures the area against it).
-    Stack(gap: 6, p: 5, w: "100%", maxW: "880px", pb: 8, label: title + " page") {
+    Stack(gap: 6, pt: 5, px: Space.SettingsPageX, w: "100%", maxW: Length.SettingsPageW, pb: 8, label: title + " page") {
       // The title and its line — no rule under them: each section below draws its own, so a rule here would double it.
       Stack(gap: 1, label: title) {
         PageTitle(title);
@@ -321,15 +406,25 @@ component SettingsPage(string title, string description = "") {
 /// `changed` is the "who changed this and when" line (`ChangedBy`). `setByOrganization` says the reader's organisation
 /// sets it (`SetByOrganization(key)`, for a setting marked `[OrgPolicy(OrgPolicyMode.Lock)]`) — the section reads "Set by
 /// your organization", and its controls take `disabled:` from the same value.
+/// ⚑ RULED ON THE FLOOR, A CARD WHEN THE THEME SAYS SO: its label column is `Length.SettingsLabelW`, and its ground, edge,
+///   corners and padding are `Colors.SettingsSectionBg`/`SettingsSectionLine`, `Length.SettingsSectionEdge`,
+///   `Radius.SettingsSection` and `Space.SettingsSectionX`/`Top`/`Bottom` (`osy docs ui-settings#look`).
 /// In a test it is a named region: `Ui.Click("Add a status", within: "Statuses")`.
 /// need: a group of settings with a title and a description, a settings card, a locked section an admin may change, a setting the organization controls
 /// e.g. `SettingsSection("Statuses", description: "What a ticket can be waiting on.", locked: !IsAdmin, lockedBecause: "Only admins change statuses.") { … }`
+/// `columns: 2` lays its fields on the form grid — equal halves, each field filling its own (`NumberField(fill: true)`),
+/// so a pair (at least / at most) and the fields under it line up; `3` for thirds.
+/// e.g. `SettingsSection("Slots", columns: 2) { NumberField("At least", value: r.Min, fill: true); NumberField("At most", value: r.Max, fill: true); }`
 [Composable]
 component SettingsSection(string title, string description = "", bool locked = false, string lockedBecause = "",
-                          string changed = "", bool setByOrganization = false) {
+                          string changed = "", bool setByOrganization = false, int columns = 0) {
   render {
-    Row(gap: 6, align: Align.Start, wrap: Wrapping.Wrap, label: title, role: UiRole.Region, pt: 5, borderTW: 1, border: Colors.Border) {
-      Stack(gap: 1, w: Layout.AtLeast(Tablet) ? "240px" : "100%", shrink: 0) {
+    // Ruled on the floor — a line above, nothing at the sides or foot; a theme makes it a card (`osy docs ui-settings#look`).
+    Row(gap: 6, align: Align.Start, wrap: Wrapping.Wrap, label: title, role: UiRole.Region,
+        pt: Space.SettingsSectionTop, pb: Space.SettingsSectionBottom, px: Space.SettingsSectionX,
+        borderTW: 1, borderRW: Length.SettingsSectionEdge, borderBW: Length.SettingsSectionEdge, borderLW: Length.SettingsSectionEdge,
+        border: Colors.SettingsSectionLine, rounded: Radius.SettingsSection, bg: Colors.SettingsSectionBg) {
+      Stack(gap: 1, w: Layout.AtLeast(Tablet) ? Length.SettingsLabelW : "100%", shrink: 0) {
         Text(title, fontWeight: FontWeight.Semibold);
         if (description != "") { Text(description, fontSize: FontSize.Caption, color: Colors.TextMuted); }
         // The organisation's word outranks the app's own lock, so it is the one line said.
@@ -349,7 +444,15 @@ component SettingsSection(string title, string description = "", bool locked = f
       }
       // `basis:` — the content STARTS at a sensible width and grows into the rest, so a wide control inside it (a full-
       // width input) never pushes the whole column under the title on a screen that has room for both.
-      Stack(gap: 3, grow: 1, minW: "0", basis: "360px", w: Layout.AtLeast(Tablet) ? "auto" : "100%") { Slot; }
+      // ⭐ `columns:` PUTS ITS FIELDS ON THE FORM GRID (KIT-FORM-GRID): n equal columns a `Space.FormGutter` apart, each
+      //   field filling its own, so the same logical column holds the same width and left edge down the section — pairs
+      //   as halves, three peers as thirds. One column on a phone. 0 (the default) stacks them, as it always did.
+      if (columns > 0) {
+        Box(display: Display.Grid, cols: Layout.AtLeast(Tablet) ? FormGridCols(columns) : FormGridCols(1), gap: Space.FormGutter,
+            grow: 1, minW: "0", basis: "360px", w: Layout.AtLeast(Tablet) ? "auto" : "100%") { Slot; }
+      } else {
+        Stack(gap: 3, grow: 1, minW: "0", basis: "360px", w: Layout.AtLeast(Tablet) ? "auto" : "100%") { Slot; }
+      }
     }
   }
 }
@@ -357,33 +460,98 @@ component SettingsSection(string title, string description = "", bool locked = f
 /// One setting in a `SettingsSection` — its control (the slot), the line saying what it does, and, when the reader's
 /// organisation sets it while the rest of the section is the app's, "Set by your organization" under it. What a
 /// `[Settings]` section draws for each field; reach for it on a page of your own so a hand-made row reads the same.
-/// In a test drive the control inside it by its label (`Ui.Click("Publish new reviews at once")`), and read the line under it as text.
+/// `provenance` says WHERE ITS VALUE COMES FROM, under the rest ("Default: 4", "Set here by Ada · 3 min ago", "From
+/// base: 6", "Locked by your organization"), drawn as `from:` says (a `SettingFrom`, as `ScopedSetting` draws it), with
+/// `action` beside it ("Reset", "Set here") pressing `onAction`. `label` names the row as a group, for a reader and a test.
+/// In a test drive the control inside it by its label (`Ui.Click("Publish new reviews at once")`), and read the line under it as text:
+/// `Assert.Visible("Default: 4", within: "Batch size")` when the row has a `label`.
 /// e.g. `SettingRow(hint: "Staff can still hide one.") { Switch("Publish new reviews at once", value: rules.PublishAtOnce); }`
+/// e.g. `SettingRow(label: "Batch size", provenance: "From base: 6", from: SettingFrom.Inherited, action: "Set here", onAction: SetHere) { NumberField("Batch size", value: site.BatchSize); }`
 [Composable]
-component SettingRow(string hint = "", bool setByOrganization = false) {
+component SettingRow(string hint = "", bool setByOrganization = false, string label = "", string provenance = "",
+                     SettingFrom from = SettingFrom.Default, string action = "", Action? onAction = null) {
   render {
-    Stack(gap: 1, minW: "0") {
-      Slot;
-      if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
-      if (setByOrganization) {
-        Row(gap: 1, align: Align.Center) {
-          Icon(Icons.Building, color: Colors.TextMuted);
-          Text("Set by your organization", fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium);
-        }
+    if (label != "") {
+      Stack(gap: 1, minW: "0", role: UiRole.Group, label: label) {
+        Slot;
+        SettingRowNotes(hint, setByOrganization, provenance, from, action, onAction);
       }
+    } else {
+      Stack(gap: 1, minW: "0") {
+        Slot;
+        SettingRowNotes(hint, setByOrganization, provenance, from, action, onAction);
+      }
+    }
+  }
+}
+
+/// What a `SettingRow` says under its control: what it does, the organisation's mark, and where its value comes from.
+[Composable][Part]
+component SettingRowNotes(string hint, bool setByOrganization, string provenance, SettingFrom from, string action, Action? onAction) {
+  render {
+    if (hint != "") { Text(hint, fontSize: FontSize.Caption, color: Colors.TextMuted); }
+    if (setByOrganization) {
+      Row(gap: 1, align: Align.Center) {
+        Icon(Icons.Building, color: Colors.TextMuted);
+        Text("Set by your organization", fontSize: FontSize.Caption, color: Colors.TextMuted, fontWeight: FontWeight.Medium);
+      }
+    }
+    if (provenance != "") { ProvenanceLine(provenance, from: from, action: action, onAction: onAction); }
+  }
+}
+
+/// A SETTING NOBODY EDITS HERE — a fact read off the row ("Measured load", "38 %"): its label over its value on the
+/// closed ground a locked value has. What a `[Setting(ReadOnly = true)]` field draws.
+/// In a test it is the group named by its label: `Assert.Visible("38 %", within: "Measured load")`.
+/// e.g. `SettingFact("Measured load", "38 %")`
+[Composable]
+component SettingFact(string label, string value) {
+  render {
+    Stack(gap: 1, minW: "0", role: UiRole.Group, label: label) {
+      Text(label, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk);
+      Row { SettingValue(value, locked: true); }
+    }
+  }
+}
+
+/// TECHNICAL DETAILS OF A SETTINGS PAGE — the keys its settings are known by elsewhere (an organisation's rule, an
+/// export, a support ticket), one per line in the key face, and Copy, which puts them all on the clipboard. What
+/// `[Settings(Keys = true)]` draws under the fields.
+/// In a test it is the region "Technical details": `Assert.Visible("Pace.BatchSize", within: "Technical details")`.
+/// e.g. `SettingsKeys(["Shop.Pace.BatchSize", "Shop.Pace.Paused"])`
+[Composable]
+component SettingsKeys(string[] keys, string title = "Technical details", string copy = "Copy") {
+  action CopyKeys() { Clipboard.Copy(string.Join("\n", keys)); }
+  render {
+    SettingsSection(title, description: "The keys these settings are known by.") {
+      Stack(gap: 1) { foreach (var key in keys) { Text(key, fontFamily: Font.Mono, fontSize: FontSize.Caption); } }
+      Row { WordAction(copy, CopyKeys); }
     }
   }
 }
 
 /// Short settings side by side — account numbers, counts, durations — in as many columns as the section has room for,
 /// one on a phone. What a `[Settings]` section puts two or more short fields in.
+/// `columns:` FIXES the count (KIT-FORM-GRID): n equal columns a `Space.FormGutter` apart, whatever the width, so the
+/// same logical column keeps its x and width from one grid to the next — a form's grid. One on a phone. 0 (the default)
+/// fits as many 180px columns as there is room for.
 /// In a test there is nothing to drive — fill the fields inside it by their labels: `Ui.Fill("Bank", "…")`.
 /// e.g. `SettingsGrid { Field("Bank", value: a.Bank); Field("Receivables", value: a.Receivables); }`
+/// e.g. `SettingsGrid(columns: 2) { NumberField("Never below", value: r.Min, fill: true); NumberField("Never above", value: r.Max, fill: true); }`
 [Composable]
-component SettingsGrid() {
+component SettingsGrid(int columns = 0) {
   render {
-    Box(display: Display.Grid, cols: "repeat(auto-fill, minmax(180px, 1fr))", gap: 4, w: "100%") { Slot; }
+    if (columns > 0) {
+      Box(display: Display.Grid, cols: Layout.AtLeast(Tablet) ? FormGridCols(columns) : FormGridCols(1), gap: Space.FormGutter, w: "100%") { Slot; }
+    } else {
+      Box(display: Display.Grid, cols: "repeat(auto-fill, minmax(180px, 1fr))", gap: 4, w: "100%") { Slot; }
+    }
   }
+}
+
+/// The columns of the form grid: n equal ones that never grow past their share for a long word (`minmax(0, 1fr)`).
+public string FormGridCols(int n) {
+  return $"repeat({n}, minmax(0, 1fr))";
 }
 
 /// Save and discard for a settings page — a bar that appears only while the page holds unsaved changes
@@ -396,15 +564,21 @@ component SettingsGrid() {
 /// FIRED, NOT AWAITED (a component's callback never is), so it cannot stop the save: a sentence it throws is lost and
 /// the save goes ahead. A check belongs in `blockedBy`. `onSaved` runs once a save has landed — to re-read what the page
 /// shows about it ("Changed by …").
+/// `saveWith` SAVES THROUGH A FUNCTION instead of committing the page: Save calls it (and waits), and it answers "" when
+/// it saved or the sentence the bar shows when it did not. It does the whole save — hands the page's values to whatever
+/// writes them, and puts the page's own edits back (`UnitOfWork.Discard()`) — so the bar commits nothing itself. It
+/// answers rather than throws: a `[Settings(Writer = …)]` section's page passes the one the kit writes for it.
 /// ⭐ A SAVE THE MODEL'S RULES WOULD REFUSE IS HELD, NOT SENT: the edits stay, every field in the way is shown at its
 ///   control (`Validation.Reveal()`), and the bar says "2 fields need attention." (`Validation.All`).
 /// ⚑ A REFUSED SAVE SAYS WHY AND KEEPS THE EDITS: the bar stays up reading "Not saved — <the reason>", the person's
 ///   values are still in their fields, and each field the server named shows its sentence under it.
 /// In a test: `Ui.Click("Save")`, `Ui.Click("Discard")`, and `Assert.Visible("Unsaved changes")` while there are some.
 /// need: an explicit save and discard bar, save changes to settings, unsaved changes warning, undo an edit before saving, refuse to save until a field is filled, why a save was refused
-/// e.g. `SaveBar(saved: "Statuses saved.")` · `SaveBar(saved: "Saved.", blockedBy: reason == "" ? "Say why." : "")`
+/// e.g. `SaveBar(saved: "Statuses saved.")` · `SaveBar(saved: "Saved.", blockedBy: reason == "" ? "Say why." : "")` ·
+/// `SaveBar(saved: "Pace saved.", saveWith: SavePaceFromPage)`
 [Composable]
-component SaveBar(Action onSave = null, string saved = "Saved.", string blockedBy = "", Action onSaved = null) {
+component SaveBar(Action onSave = null, string saved = "Saved.", string blockedBy = "", Action onSaved = null,
+                  Func<string> saveWith = null) {
   string problem = "";
   bool justSaved = false;
   live var dirty = Navigation.IsDirty;
@@ -422,6 +596,15 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
     if (Validation.All.Count > 0) {
       Validation.Reveal();
       problem = Validation.All.Count == 1 ? "1 field needs attention." : Validation.All.Count.ToString() + " fields need attention.";
+      return;
+    }
+    // Saved by a function of the page's, not by this bar: outside the `try` below, so what it puts back is the page's
+    // own edits (a `try` is a savepoint, and a discard inside one reaches only what the savepoint holds).
+    if (saveWith != null) {
+      var why = saveWith();
+      if (why != "") { problem = "Not saved — " + why; return; }
+      justSaved = true;
+      if (onSaved != null) { onSaved(); }
       return;
     }
     try {
@@ -476,7 +659,64 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
   }
 }
 
-animation SaveBarRise { Duration = "200ms"; from { Opacity = 0; TranslateY = "8px"; } to { Opacity = 1; TranslateY = "0"; } }
+/// THE REVIEW BEFORE A SETTINGS SAVE — the `ImpactDialog` an `EditingBanner`'s "Review and save" opens: each change in
+/// words (`changes`, "Batch size: 4 → 6"), when it applies (`applies`), why it is made (`why`, asked when `askWhy`,
+/// and Save held while it is empty when `whyRequired`), what holds the save back (`verdict`), why the last save was
+/// refused (`problem`), and a Save that names what it saves (`saveLabel`, "Save batch size 6"). "Back to editing" and
+/// closing it keep every change. What a `[Settings(Save = Review)]` section draws; reach for it on a page of your own
+/// so a hand-made review reads the same.
+/// In a test it is the dialog named by `title`: `Assert.Dialog("1 change to release pace")`, `Ui.Fill("Why", "…")`.
+/// need: review settings before saving, ask why a setting changed, say when a change applies, a save that names what it saves
+/// e.g. `SettingsReview("1 change to release pace", ["Batch size: 4 → 6"], "Save batch size 6", onSave: Save, onBack: Back, why: reason, askWhy: true, whyRequired: true, applies: "From the next batch.")`
+[Composable]
+component SettingsReview(string title, List<string> changes, string saveLabel, Action onSave, Action onBack,
+                         Binding<string> why, bool askWhy = false, bool whyRequired = false, string applies = "",
+                         string verdict = "", string problem = "", bool canSave = true, string overline = "Review and save",
+                         string back = "Back to editing") {
+  render {
+    ImpactDialog(title, onDismiss: onBack, overline: overline) {
+      Bullets(label: "What changes") { foreach (var line in changes) { Bullet(line); } }
+      if (applies != "") {
+        Stack(gap: 1, label: "When it applies") {
+          Text("When it applies", fontSize: FontSize.Label, fontWeight: FontWeight.Semibold, color: Colors.MetaText);
+          Text(applies);
+        }
+      }
+      if (askWhy) {
+        TextAreaField("Why", value: why,
+                      hint: whyRequired ? "Required. It is kept with the change." : "Optional. It is kept with the change.");
+      }
+      if (verdict != "") { Text(verdict, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
+      if (problem != "") { Text(problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert); }
+      slot actions {
+        Button(back, onPress: onBack, tone: Tone.Ghost);
+        Button(saveLabel, onPress: onSave, tone: Tone.Primary, disabled: !canSave);
+      }
+    }
+  }
+}
+
+/// What the last settings save came to, under a page that saves through a review: why it was refused (`problem`), or
+/// that it landed (`saved`). Nothing when both are empty.
+/// e.g. `SettingsSaveNote(problem: problem, saved: justSaved ? "Pace saved." : "")`
+[Composable]
+component SettingsSaveNote(string problem = "", string saved = "") {
+  render {
+    if (problem != "") {
+      Row(gap: 2, align: Align.Center, label: "Not saved") {
+        Icon(Icons.Warning, color: Colors.Danger);
+        Text(problem, color: Colors.Danger, fontSize: FontSize.Caption, role: UiRole.Alert);
+      }
+    } else if (saved != "") {
+      Row(gap: 2, align: Align.Center) {
+        Icon(Icons.Check, color: Colors.Success);
+        Text(saved, color: Colors.TextMuted, fontSize: FontSize.Caption, role: UiRole.Status);
+      }
+    }
+  }
+}
+
+animation SaveBarRise {Duration = "200ms"; from { Opacity = 0; TranslateY = "8px"; } to { Opacity = 1; TranslateY = "0"; } }
 
 /// "Changed by Ada Lindqvist · 3 min ago" — who last changed something and when, for a `SettingsSection`'s `changed:`
 /// line or anywhere a page says who last touched a row. Fed from the row's own history — `<Entity>.Changes(id)` (which
