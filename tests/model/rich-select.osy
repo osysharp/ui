@@ -1,0 +1,31 @@
+// PL2 — the listed SelectField: with `detail:` an enum's options each say what they mean; with `words:` the options are
+// rows. A count of changes shows `onChange` runs once per choice, and a button after the field is where Tab goes next.
+
+[Route("/rich-select")] [Authorize(IsFramer)] [Render(CSR)] [Title("Rich select")]
+component RichSelectPage() {
+  Glazing glazing = Glazing.Clear;
+  int changes = 0;
+  live var mats = Mat.OrderBy(m => m.Code).ToList();
+  Mat? mat = null;
+
+  action Changed() { changes = changes + 1; }
+  render {
+    Stack(gap: 4, p: 6, w: "420px") {
+      SelectField("Glazing", value: glazing, detail: g => GlazingMeans(g), onChange: Changed);
+      Text("Glazing is " + glazing.ToString());
+      Text("Changed " + changes.ToString() + " times");
+      SelectField("Mat", value: mat, options: mats, words: m => m.Name, detail: m => "Code " + m.Code);
+      Text(mat == null ? "No mat" : "Mat is " + mat.Name);
+      Button("Done", onPress: Changed);
+    }
+  }
+}
+
+enum Glazing { Clear, [Label("Non-glare")] NonGlare, Museum }
+
+/// What each glazing does for a picture — the second line of its option.
+string GlazingMeans(Glazing g) {
+  if (g == Glazing.Clear) { return "Plain float glass. The least it costs."; }
+  if (g == Glazing.NonGlare) { return "Etched, so lamps do not shine back."; }
+  return "Blocks 99% of UV light and nearly all reflection.";
+}

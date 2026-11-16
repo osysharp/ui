@@ -129,6 +129,13 @@ public sealed class NavItem {
   /// children — `/` is exempt already (see `Matches`), so this is for the "/orders" that must not light up on
   /// "/orders/42" because "/orders/42" has a nav row of its own.
   public bool Exact = false;
+  /// OTHER ADDRESSES THIS ROW IS LIT ON — pages that belong to the row but do not live under its own route: a record
+  /// whose address sits under another row's (`"/infra/organizations"` for an Organizations row at `"/"`), a "New …" form
+  /// with an address of its own (`"/org/new"`). Each matches itself and what lies under it (a prefix at a segment
+  /// boundary); `Exact` is about `To` alone, so an exact row can still be lit by a family of pages. The row that claims
+  /// the LONGEST address wins, so `"/infra/organizations"` beats a Zones row at `"/infra"` on `/infra/organizations/acme`.
+  /// Empty: the row is lit by its own route only.
+  public string[] LitBy = [];
   /// ONE OR TWO LETTERS drawn in place of the glyph where the row has no words — a sidebar collapsed to its icon
   /// strip. For rows that are THINGS OF ONE KIND (projects, workspaces, customers): five of the same glyph in a
   /// strip say nothing, and their initials tell them apart. Empty draws the glyph. The labelled row is unchanged.
@@ -190,6 +197,19 @@ public sealed class NavItem {
     return path.StartsWith(To + "/");
   }
 
+  /// HOW MUCH OF `path` THIS ENTRY CLAIMS — the length of the longest of its own route and its `LitBy` addresses that
+  /// `path` falls under (each by the rule `Matches` applies to `To`), or -1 for none. What `BestMatch` and
+  /// `AppChrome.CurrentRoute` compare: the row that claims more of the address wins, whichever address claimed it.
+  public int MatchLength(string path) {
+    if (To == "") { return -1; }
+    int n = Matches(path) ? To.Length : -1;
+    foreach (var a in LitBy) {
+      if (a == "" || a.Length <= n) { continue; }
+      if (a == path || (a != "/" && path.StartsWith(a + "/"))) { n = a.Length; }
+    }
+    return n;
+  }
+
   /// EVERY ENTRY BELOW THIS ONE, at any depth, in the order a reader meets them (pre-order). The one walk the tree
   /// has; `BestMatch`, `HasRoute` and every shell's deepest render level all read it, so none of them can invent
   /// its own idea of how deep the nav goes.
@@ -224,12 +244,27 @@ public sealed class NavItem {
   /// ⭐ THIS IS WHAT MAKES ACTIVE STATE FEEL REAL. With `/settings` and `/settings/users` both in the nav, a
   /// per-row `Matches` lights BOTH on `/settings/users` — two current rows, which reads as a bug. Longest match
   /// wins, computed once for the whole tree, so exactly one row is ever current.
+  /// The length compared is what MATCHED (`MatchLength`), so a row lit by a longer `LitBy` address beats a row whose own
+  /// route is a shorter prefix of the page's.
   public string BestMatch(string path) {
-    string best = Matches(path) ? To : "";
+    int n = MatchLength(path);
+    string best = n >= 0 ? To : "";
     foreach (var d in Descendants()) {
-      if (d.Matches(path) && d.To.Length > best.Length) { best = d.To; }
+      var m = d.MatchLength(path);
+      if (m > n) { n = m; best = d.To; }
     }
     return best;
+  }
+
+  /// The length of what `BestMatch` matched in this subtree (`MatchLength`), or -1 for none — what `AppChrome.CurrentRoute`
+  /// compares across the top-level entries.
+  public int BestMatchLength(string path) {
+    int n = MatchLength(path);
+    foreach (var d in Descendants()) {
+      var m = d.MatchLength(path);
+      if (m > n) { n = m; }
+    }
+    return n;
   }
 
   /// THIS ENTRY'S RELATION TO THE PAGE YOU ARE ON, given the tree's one current route (`AppChrome.CurrentRoute`).
@@ -487,15 +522,17 @@ public sealed class AppChrome {
   /// computes this once per render and compares each row against it, which is what keeps exactly one row lit.
   /// Returns "" on a page the nav does not cover (a record detail, a wizard step), and a shell must handle that:
   /// no row is current, and nothing is wrong.
+  /// The longest is measured by what matched, a `LitBy` address included (`NavItem.MatchLength`), not by `To`.
   public string CurrentRoute(string path) {
     string best = "";
+    int n = -1;
     foreach (var item in Nav) {
-      var found = item.BestMatch(path);
-      if (found.Length > best.Length) { best = found; }
+      var m = item.BestMatchLength(path);
+      if (m > n) { n = m; best = item.BestMatch(path); }
     }
     foreach (var item in FootNav) {
-      var found = item.BestMatch(path);
-      if (found.Length > best.Length) { best = found; }
+      var m = item.BestMatchLength(path);
+      if (m > n) { n = m; best = item.BestMatch(path); }
     }
     return best;
   }

@@ -46,7 +46,13 @@ component Button(
     // ⚠ NOT ON BY TONE, unlike `IconButton`. A danger-toned `Button` is as often the confirmation's OWN action — the
     //   "Delete" in a `Dialog`'s footer — and asking there would ask twice. So a Button asks when it is told to.
     bool? confirm = null,
-    string confirmText = "")
+    string confirmText = "",
+    // ⭐ WHAT IT SAYS WHILE ITS ACTION WORKS — `busyLabel: "Saving…"`. A button whose action waits on the server already
+    //   shows a small spinner and is off until it is done, with nothing written (see `osy docs ui-pending`); a
+    //   `busyLabel` also puts these words in place of its own while it runs, so the person is told WHAT is under way.
+    //   Without one the button keeps its own words beside the spinner. Its name stays its words (`announceAs`, else
+    //   `label`), so a test and voice control still find it by them.
+    string busyLabel = "")
 {
   action Press() {
     if (confirm ?? confirmText != "") {
@@ -60,7 +66,9 @@ component Button(
       Px = 4; Py = 2; Rounded = Radius.Md; FontWeight = FontWeight.Semibold; FontSize = FontSize.Body; H = Length.ControlMd;
       Display = Display.InlineFlex; WhiteSpace = WhiteSpace.Nowrap; Transition = Motion.Fast;
       Position = Position.Relative;   // the key tip hangs from it
-      Disabled { Opacity = "0.5"; }
+      // No `Disabled { Opacity }` of its own: osy-base.css's floors dim it — 0.5 when it cannot be pressed, 0.85 while
+      // its action is out (busy is not disabled, PLAT-RUNTIME-112). A variant here would win over both and dim a working
+      // button like a dead one.
       Focus { Shadow = Shadow.Ring; }
     }
     tone {
@@ -85,7 +93,7 @@ component Button(
     //   runs (a slow save shows it and cannot be pressed twice) and its failure is the press's. Through `Press` the
     //   action is a fire-and-forget callback, which `Press` has already returned from.
     Pressable(onClick: (confirm ?? confirmText != "") ? Press : onPress, disabled: disabled || !canPress, whenDenied: whenDenied,
-              label: announceAs != "" ? announceAs : label, shortcut: shortcut) {
+              label: announceAs != "" ? announceAs : label, shortcut: shortcut, busyLabel: busyLabel) {
       Row(align: Align.Center, justify: Justify.Center, gap: 2) {
         Slot;
         Text(label);

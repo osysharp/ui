@@ -1,0 +1,97 @@
+// PL2 — a listed SelectField is a listbox the keyboard drives: ↓ opens it on the chosen option, ↓/↑/Home/End move the
+// keyboard between options (each heard by its words), Enter chooses, Escape closes without choosing, and the keyboard
+// is back on the box either way. Options that are rows are chosen by the row, and read by their words.
+
+[TestFixture]
+void Glass() {
+  var tom = new Framer { Email = "tom@frames.test" };
+  new RoleGrant { Member = tom, Role = WorkshopRole.Framer };
+  new Mat { Code = "IVO-2", Name = "Ivory, 2 mm" };
+  new Mat { Code = "BLK-14", Name = "Black core, 1.4 mm" };
+}
+
+[Test(Glass)]
+void typing_letters_in_a_listed_select_moves_to_the_option_whose_words_start_with_them() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/rich-select");
+  Ui.Focus("Glazing");
+  Ui.Press("ArrowDown");
+  Assert.Focused("Clear");
+  Ui.Press("m");
+  Assert.Focused("Museum");
+  Ui.Press("Enter");
+  Assert.Visible("Glazing is Museum");
+}
+
+[Test(Glass)]
+void the_keyboard_opens_moves_and_chooses_in_a_listed_select() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/rich-select");
+  Assert.Visible("Glazing is Clear");
+  Assert.Expanded("Glazing", false);
+  Ui.Focus("Glazing");
+  Ui.Press("ArrowDown");
+  // open, on the chosen option, each option with the line that says what it means
+  Assert.Expanded("Glazing", true);
+  Assert.Focused("Clear");
+  Assert.Visible("Blocks 99% of UV light and nearly all reflection.");
+  Ui.Press("ArrowDown");
+  Assert.Focused("Non-glare");
+  Ui.Press("End");
+  Assert.Focused("Museum");
+  Ui.Press("ArrowDown");
+  Assert.Focused("Museum");
+  Ui.Press("Home");
+  Assert.Focused("Clear");
+  Ui.Press("ArrowDown");
+  Ui.Press("ArrowDown");
+  Ui.Press("Enter");
+  // chosen, written, closed, and the keyboard is back on the box
+  Assert.Visible("Glazing is Museum");
+  Assert.Visible("Changed 1 times");
+  Assert.Expanded("Glazing", false);
+  Assert.Focused("Glazing");
+  Assert.Hidden("Blocks 99% of UV light and nearly all reflection.");
+}
+
+[Test(Glass)]
+void escape_and_tab_close_a_listed_select_without_choosing() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/rich-select");
+  Ui.Focus("Glazing");
+  Ui.Press("Enter");
+  Assert.Expanded("Glazing", true);
+  Ui.Press("ArrowDown");
+  Assert.Focused("Non-glare");
+  Ui.Press("Escape");
+  Assert.Expanded("Glazing", false);
+  Assert.Focused("Glazing");
+  Assert.Visible("Glazing is Clear");
+  Ui.Press("ArrowUp");
+  Assert.Focused("Clear");
+  Ui.Press("Tab");
+  Assert.Expanded("Glazing", false);
+  Assert.Focused("Glazing");
+  Assert.Visible("Changed 0 times");
+}
+
+[Test(Glass)]
+void a_listed_select_over_rows_is_chosen_by_the_row_and_shows_its_words() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/rich-select");
+  Assert.Visible("No mat");
+  Ui.Shot("rich-select-closed");
+  Ui.Click("Mat");
+  Assert.Visible("Code BLK-14");
+  Ui.Shot("rich-select-rows-open");
+  Ui.Click("Ivory, 2 mm");
+  Assert.Visible("Mat is Ivory, 2 mm");
+  Assert.Expanded("Mat", false);
+  Assert.Visible("Ivory, 2 mm", within: "Mat");
+  // the enum's list, open on its chosen option, in both themes (`--pixels` keeps the photographs)
+  Ui.Focus("Glazing");
+  Ui.Press("ArrowDown");
+  Ui.Shot("rich-select-open-light");
+  Ui.Theme("dark");
+  Ui.Shot("rich-select-open-dark");
+}

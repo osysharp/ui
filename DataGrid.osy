@@ -1137,11 +1137,11 @@ public sealed class GridBand<T> {
 }
 
 /// The pick check at the head of a row (and of the header, for every row in view) — a real checkbox to a screen
-/// reader, a 36px column to the eye.
+/// reader, a 36px column to the eye. The check sits in a cell of its own: a row owns cells, never a control.
 [Composable][Part] component PickCell(string label, bool picked, Action onToggle) {
   variants { base { Display = Display.Flex; Shrink = 0; W = "36px"; } }
   render {
-    Row(align: Align.Center) {
+    Row(align: Align.Center, role: UiRole.GridCell) {
       Pressable(onClick: onToggle, label: label, role: UiRole.Checkbox, checked: picked, w: 22, h: 22,
                 align: Align.Center, justify: Justify.Center) {
         PickBox(on: picked) { if (picked) { Icon(Icons.Check, size: 12, color: Colors.OnPrimary); } }

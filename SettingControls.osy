@@ -1,0 +1,531 @@
+// Ui — SETTINGS EDITED IN PLACE (`using Osysharp.Ui;`): a card of setting rows, each with its name, what it does and
+// where its value comes from on the left and its control on the right — a switch, a choice, a number with its unit, or
+// a fact nobody changes — that saves where it stands.
+//
+// ⭐ ONE ROW, FOUR CONTROLS, ONE PROVENANCE LINE. Every row says where its value comes from under its help line, in one
+//   of four ways: the Default chip; "Set for <scope>" with who and when and a Reset link; Locked by an organisation's
+//   policy, with its version and why (the control disabled); or a fixed fact with no control. The words are the app's
+//   (`setFor`, `setBy`, `setWhen`, `lockedBy`, `lockedWhy`) — the row only draws them.
+//
+// ⭐ IT SAVES WHERE IT STANDS (`saves: SettingSaves.Immediate`, the default): a switch or a choice saves as it changes
+//   and says "Saved · Undo"; a typed number shows Cancel and Save once it is typed in, and checks its range on Save,
+//   with the sentence under the box. `SettingSaves.Explicit` leaves the edit in the page's unit of work for the
+//   page's `SaveBar` instead — the row then draws its control and saves nothing itself.
+//
+// ⚑ EVERY COLOUR, LINE, HEIGHT AND PADDING IS A THEME TOKEN (`osy docs ui-setting-controls#tokens`), each defaulting to a
+//   token the kit already had, so a look sets the values its design states in its theme and forks no part.
+
+namespace Osysharp.Ui;
+
+/// How a setting row saves: `Immediate` — the row saves as the person changes it (a switch or a choice at once, a
+/// typed value on the row's own Save); `Explicit` — the edit joins the page's unit of work and the page's `SaveBar`
+/// saves it with everything else.
+public enum SettingSaves { Immediate, Explicit }
+
+/// A CARD OF SETTINGS — its title and what the group is for at the top, then its rows edge to edge, a line between
+/// each. Holds `SettingSwitch`, `SettingChoice`, `SettingNumber`, `SettingAlways` and `SettingRow(name: …)` rows.
+/// Its ground, edge, corners and head padding are the theme's (`Colors.SettingsCardBg`/`SettingsCardLine`,
+/// `Radius.SettingsCard`, `Space.SettingsCardHeadTop`/`SettingsCardHeadBottom`, `Space.SettingRowX`).
+/// In a test it is the region named by its title: `Ui.Click("Other products", within: "Designer tools")`.
+/// need: a card of settings, a group of settings edited in place, a settings panel with a title, a section of toggles
+/// e.g. `SettingsCard("Designer tools", description: "What the design agent may look up.") { SettingSwitch("Other products", value: p.SearchOthers); }`
+[Composable]
+component SettingsCard(string title, string description = "") {
+  variants {
+    base { Bg = Colors.SettingsCardBg; BorderW = 1; Border = Colors.SettingsCardLine; Rounded = Radius.SettingsCard;
+           Overflow = Overflow.Hidden; MinW = "0"; }
+  }
+  render {
+    Stack(gap: 0, role: UiRole.Region, label: title) {
+      Stack(gap: "2px", px: Layout.AtLeast(Tablet) ? Space.SettingRowX : Space.SettingRowXTouch,
+            pt: Space.SettingsCardHeadTop, pb: Space.SettingsCardHeadBottom) {
+        Text(title, role: UiRole.Heading, level: 3, fontSize: FontSize.SettingsCardTitle, fontWeight: FontWeight.Semibold,
+             color: Colors.SettingNameInk, lineHeight: "normal");
+        if (description != "") { Text(description, fontSize: FontSize.Caption, color: Colors.SettingHelpInk, lineHeight: "normal"); }
+      }
+      Slot;
+    }
+  }
+}
+
+/// A SETTING ON OR OFF, SAVED AS IT IS PRESSED — its name, what it does and where its value comes from on the left, and
+/// the switch with its word ("On"/"Off") on the right; on a phone the switch stays beside the name, 44 × 26.
+/// `value` is two-way. With `saves: Immediate` (the default) a press saves at once — through `saveWith` when given
+/// (it answers "" or why not), else by committing the page — and says "Saved · Undo"; Undo saves the value before.
+/// Where its value comes from: `setFor` (the scope it is set for — the chip reads "Turned on for Alpha"; empty: the
+/// Default chip), `setBy` and `setWhen` ("by you · just now"), `onReset` (the "Reset to default" link; `resetTo` names
+/// the value it goes back to), `lockedBy` (the Locked chip, "by Northwind Health's policy · version 5", and the switch
+/// disabled) with `lockedWhy` under it. `readOnly` draws the word alone, for someone who may not change it.
+/// In a test press it by its name: `Ui.Click("Other products")`, read it with `Assert.Checked("Other products")`, and
+/// read the row as the group of that name: `Assert.Visible("Saved", within: "Other products")`.
+/// `reason: <the page's string>` ASKS WHY: a Why box goes under the control (a number's while it is typed), what is typed lands in
+/// that string, and the app's `saveWith` reads it — so a server function that refuses a change without a reason is
+/// answered. `reasonRequired: true` holds the save with "Say why first." while it is empty. `chipless: true` leaves
+/// out the Default chip, for an app that cannot say where a value comes from (Set for / Locked still show).
+/// `note: "<words>"` puts a line under the row, in the app's own words — "Latest reason: cheaper sessions".
+/// need: a toggle setting that saves at once, an on off setting with undo, a setting locked by a policy, turn a feature on for one scope
+/// e.g. `SettingSwitch("Other products", value: p.SearchOthers, help: "Search the plans of other products you can see.", setFor: p.SearchOthers ? "" : p.Name, onReset: ResetOthers)`
+/// e.g. `SettingSwitch("Earlier sessions", value: p.SearchSessions, lockedBy: "Northwind Health's policy · version 5", lockedWhy: "Session history is kept for audit.")`
+[Composable]
+component SettingSwitch(string label, Binding<bool> value, string help = "", string setFor = "", string setBy = "",
+                        string setWhen = "", string resetTo = "", Action? onReset = null, string lockedBy = "",
+                        string lockedWhy = "", bool readOnly = false, SettingSaves saves = SettingSaves.Immediate,
+                        Func<string>? saveWith = null, Action? onSaved = null, string onWord = "On", string offWord = "Off",
+                        Binding<string>? reason = null, bool reasonRequired = false, bool chipless = false,
+                        string note = "") {
+  bool justSaved = false;
+  bool undone = false;
+  string problem = "";
+
+  action Flip() {
+    if (lockedBy != "" || readOnly) { return; }
+    problem = "";
+    if (reason != null && reasonRequired && reason.Trim() == "") { problem = "Say why first."; return; }
+    value = !value;
+    undone = false;
+    Keep();
+  }
+  action Undo() {
+    value = !value;
+    undone = true;
+    Keep();
+  }
+  // Saves the row where it stands — through the page's function, or by committing the page. A refused save is put back,
+  // so the switch shows what is stored, and says why under it.
+  action Keep() {
+    problem = "";
+    justSaved = false;
+    if (saves == SettingSaves.Explicit) { return; }
+    if (saveWith != null) {
+      var why = saveWith();
+      if (why != "") { problem = "Not saved — " + why; return; }
+    } else {
+      var refused = false;
+      try { UnitOfWork.Commit(); }
+      catch (ConflictException) { throw; }
+      catch (Exception ex) { problem = "Not saved — " + ex.Message; refused = true; }
+      if (refused) { UnitOfWork.Discard(); return; }
+    }
+    justSaved = !undone;
+    if (onSaved != null) { onSaved(); }
+  }
+
+  render {
+    SettingRowFace(label, help: help, chip: setFor == "" ? "" : (value ? $"Turned on for {setFor}" : $"Turned off for {setFor}"),
+                   setBy: setBy, setWhen: setWhen, resetTo: resetTo, onReset: readOnly ? null : onReset, lockedBy: lockedBy,
+                   lockedWhy: lockedWhy, note: note, narrow: true, chipless: chipless) {
+      if (readOnly) {
+        SettingReadOnly(value ? onWord : offWord, Layout.AtLeast(Tablet));
+      } else {
+        Stack(gap: "4px", align: Align.End) {
+          Row(gap: "10px", align: Align.Center, justify: Justify.End) {
+            if (justSaved && Layout.AtLeast(Tablet)) { SettingSavedNote(Undo); }
+            if (Layout.AtLeast(Tablet)) {
+              Text(value ? onWord : offWord, fontSize: FontSize.SettingControlFont,
+                   color: lockedBy != "" ? Colors.ProvenanceInk : Colors.SettingHelpInk, decorative: true);
+            }
+            SettingSwitchFace(label, value, lockedBy != "", Layout.AtLeast(Tablet), Flip);
+          }
+          if (reason != null) { SettingReasonBox(label, reason); }
+          if (problem != "") { SettingProblem(problem); }
+        }
+      }
+      slot under { if (justSaved && !Layout.AtLeast(Tablet)) { SettingSavedNote(Undo); } }
+    }
+  }
+}
+
+/// The switch's press — the track and its knob, the accent's track when on, the control line's when off, a paler one
+/// of each when a policy holds it; 34 × 20 on a wide screen and 44 × 26 on a phone (`Length.SettingSwitch*`, `Length.SettingKnobSize*`).
+[Composable, Part]
+component SettingSwitchFace(string name, bool on, bool locked, bool wide, Action onPress) {
+  variants {
+    base { Display = Display.InlineFlex; Shrink = 0; Rounded = Radius.Pill; Cursor = Cursor.Pointer;
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+    locked { Cursor = Cursor.NotAllowed; }
+  }
+  render {
+    Pressable(onClick: onPress, disabled: locked, role: UiRole.Switch, checked: on, label: name) {
+      Box(w: wide ? Length.SettingSwitchW : Length.SettingSwitchWTouch,
+          h: wide ? Length.SettingSwitchH : Length.SettingSwitchHTouch,
+          rounded: Radius.Pill, px: Space.SettingSwitchInset, display: Display.Flex, align: Align.Center,
+          justify: on ? Justify.End : Justify.Start, transition: Motion.Fast, decorative: true,
+          bg: locked ? (on ? Colors.SettingSwitchLockedOn : Colors.SettingSwitchLockedOff)
+                     : (on ? Colors.SettingSwitchOn : Colors.SettingSwitchOff)) {
+        Box(w: wide ? Length.SettingKnobSize : Length.SettingKnobSizeTouch,
+            h: wide ? Length.SettingKnobSize : Length.SettingKnobSizeTouch,
+            rounded: Radius.Circle, bg: Colors.SettingSwitchKnob, shadow: Shadow.SettingKnobLift);
+      }
+    }
+  }
+}
+
+/// ONE OF A FEW, SAVED AS IT IS CHOSEN — a setting's dropdown, the kit's own `SelectField` (`setting: true`), `Length.SettingFieldW` wide on the right (on a
+/// phone the full width under the help line, 44 high). `options` defaults to the enum's members, worded by their
+/// labels, exactly as on `SelectField`. Saves, says "Saved · Undo" and says where its value comes from as
+/// `SettingSwitch` does (`setFor` reads "Set for <scope>"); `readOnly` draws the chosen option's words alone.
+/// `detail:` (and `words:` for options that are rows) pass to `SelectField`: the dropdown opens a list in which every
+/// option says what it means ("Ask each time" over "The release waits until someone decides.").
+/// In a test choose by its name: `Ui.Select("Unfinished items at release", Unfinished.NextRelease)`, then
+/// `Assert.Visible("Saved", within: "Unfinished items at release")`.
+/// `reason: <the page's string>` ASKS WHY: a Why box goes under the control (a number's while it is typed), what is typed lands in
+/// that string, and the app's `saveWith` reads it — so a server function that refuses a change without a reason is
+/// answered. `reasonRequired: true` holds the save with "Say why first." while it is empty. `chipless: true` leaves
+/// out the Default chip, for an app that cannot say where a value comes from (Set for / Locked still show).
+/// `note: "<words>"` puts a line under the row, in the app's own words — "Latest reason: cheaper sessions".
+/// need: a dropdown setting that saves at once, choose one option for a setting, a select with undo
+/// e.g. `SettingChoice("Unfinished items at release", value: p.Unfinished, help: "What happens to items not done at release.", setFor: p.Unfinished == Unfinished.Ask ? "" : p.Name, onReset: ResetUnfinished)`
+[Composable]
+component SettingChoice<T>(string label, Binding<T> value, T[] options = T.Members, string help = "", string setFor = "",
+                           string setBy = "", string setWhen = "", string resetTo = "", Action? onReset = null,
+                           string lockedBy = "", string lockedWhy = "", bool readOnly = false,
+                           SettingSaves saves = SettingSaves.Immediate, Func<string>? saveWith = null, Action? onSaved = null,
+                           Func<T, string>? detail = null, Func<T, string>? words = null,
+                           Binding<string>? reason = null, bool reasonRequired = false, bool chipless = false,
+                           string note = "") {
+  // The choice in the box: the stored value until the person picks, so a pick can still be put back. Starts AT the
+  // stored value, so the first painted frame (SSR) already shows it rather than the list's first option.
+  T picked = value;
+  T before = value;
+  bool justSaved = false;
+  bool undone = false;
+  string problem = "";
+
+  on change { picked = value; }
+
+  action Chosen() {
+    if (lockedBy != "" || readOnly) { return; }
+    problem = "";
+    if (reason != null && reasonRequired && reason.Trim() == "") { problem = "Say why first."; picked = value; return; }
+    before = value;
+    value = picked;
+    undone = false;
+    Keep();
+  }
+  action Undo() {
+    value = before;
+    undone = true;
+    Keep();
+  }
+  // Saves the row where it stands, exactly as `SettingSwitch` does.
+  action Keep() {
+    problem = "";
+    justSaved = false;
+    if (saves == SettingSaves.Explicit) { return; }
+    if (saveWith != null) {
+      var why = saveWith();
+      if (why != "") { problem = "Not saved — " + why; return; }
+    } else {
+      var refused = false;
+      try { UnitOfWork.Commit(); }
+      catch (ConflictException) { throw; }
+      catch (Exception ex) { problem = "Not saved — " + ex.Message; refused = true; }
+      if (refused) { UnitOfWork.Discard(); return; }
+    }
+    justSaved = !undone;
+    if (onSaved != null) { onSaved(); }
+  }
+
+  render {
+    SettingRowFace(label, help: help, chip: setFor == "" ? "" : "Set for " + setFor, setBy: setBy, setWhen: setWhen,
+                   resetTo: resetTo, onReset: readOnly ? null : onReset, lockedBy: lockedBy, lockedWhy: lockedWhy,
+                   note: note, chipless: chipless) {
+      if (readOnly) {
+        SettingReadOnly(words != null ? words(value) : value.Label, Layout.AtLeast(Tablet));
+      } else {
+        Stack(gap: "4px", align: Layout.AtLeast(Tablet) ? Align.End : Align.Stretch, w: "100%") {
+          Row(gap: "10px", align: Align.Center, justify: Justify.End, w: "100%") {
+            if (justSaved && Layout.AtLeast(Tablet)) { SettingSavedNote(Undo); }
+            // THE KIT'S ONE DROPDOWN, in a setting's face: enum-aware (members, [Label] words) and wearing the kit's
+            // chevron, as every `SelectField` does. The row says the name, so the select carries it unseen.
+            SelectField(label, value: picked, options: options, onChange: Chosen, disabled: lockedBy != "",
+                        showLabel: false, setting: true, size: Layout.AtLeast(Tablet) ? Size.Sm : Size.Lg,
+                        detail: detail, words: words,
+                        w: Layout.AtLeast(Tablet) ? Length.SettingFieldW : "100%");
+          }
+          if (reason != null) { SettingReasonBox(label, reason); }
+          if (problem != "") { SettingProblem(problem); }
+          if (justSaved && !Layout.AtLeast(Tablet)) { SettingSavedNote(Undo); }
+        }
+      }
+    }
+  }
+}
+
+/// A NUMBER TYPED IN PLACE — a setting's whole-number box with its unit inside it ("200,000 tokens"),
+/// `Length.SettingFieldW` wide on the right (on a phone the full width, 44 high). What is typed stays in the box until
+/// Save: Cancel and Save appear under it once the person types, Save checks `min`/`max` and says `outOfRange` (or
+/// "Enter a number from <min> to <max>.") under the box when it is outside, else saves as `SettingSwitch` does.
+/// With `saves: Explicit` the box writes straight into the page's unit of work for the page's `SaveBar`, with no Cancel
+/// or Save of its own. Where its value comes from as on `SettingSwitch` (`setFor` reads "Set for <scope>", `resetTo`
+/// names the default: "Reset to 200,000"); `readOnly` draws the number and its unit alone.
+/// In a test: `Ui.Fill("Session size", "150000")`, `Ui.Click("Save", within: "Session size")`, and
+/// `Assert.Visible("Enter a number from 10,000 to 1,000,000.", within: "Session size")` when it is refused.
+/// `reason: <the page's string>` ASKS WHY: a Why box goes under the control (a number's while it is typed), what is typed lands in
+/// that string, and the app's `saveWith` reads it — so a server function that refuses a change without a reason is
+/// answered. `reasonRequired: true` holds the save with "Say why first." while it is empty. `chipless: true` leaves
+/// out the Default chip, for an app that cannot say where a value comes from (Set for / Locked still show).
+/// `note: "<words>"` puts a line under the row, in the app's own words — "Latest reason: cheaper sessions".
+/// `words: n => n + " dollars"` says a read-only number in the app's own words ("8 dollars", not "8") instead of the grouped
+/// number and its `unit` — a display formatter, so no currency or unit is the kit's.
+/// need: a number setting with a unit, type a limit and save it, validate a range before saving, a number with cancel and save
+/// e.g. `SettingNumber("Session size", value: p.SessionSize, unit: "tokens", min: 10000, max: 1000000, setFor: p.SessionSize == 200000 ? "" : p.Name, resetTo: "200,000", onReset: ResetSize)`
+[Composable]
+component SettingNumber(string label, Binding<int> value, string unit = "", int min = -2147483648, int max = 2147483647,
+                        string outOfRange = "", string help = "", string setFor = "", string setBy = "", string setWhen = "",
+                        string resetTo = "", Action? onReset = null, string lockedBy = "", string lockedWhy = "",
+                        bool readOnly = false, SettingSaves saves = SettingSaves.Immediate, Func<string>? saveWith = null,
+                        Action? onSaved = null, Binding<string>? reason = null, bool reasonRequired = false,
+                        bool chipless = false, string note = "", Func<int, string>? words = null) {
+  // What is in the box: the stored value until the person types, so Cancel can put it back and nothing reaches the page
+  // before Save.
+  int draft = 0;
+  bool typing = false;
+  bool justSaved = false;
+  string problem = "";
+
+  on change { if (!typing) { draft = value; } }
+
+  action Typed() { typing = true; problem = ""; justSaved = false; }
+  action Cancel() { typing = false; problem = ""; }
+  action Save() {
+    problem = "";
+    if (draft < min || draft > max) {
+      problem = outOfRange != "" ? outOfRange : "Enter a number from " + min.ToString("N0") + " to " + max.ToString("N0") + ".";
+      return;
+    }
+    if (reason != null && reasonRequired && reason.Trim() == "") { problem = "Say why first."; return; }
+    value = draft;
+    if (saveWith != null) {
+      var why = saveWith();
+      if (why != "") { problem = "Not saved — " + why; return; }
+    } else {
+      var refused = false;
+      try { UnitOfWork.Commit(); }
+      catch (ConflictException) { throw; }
+      catch (Exception ex) { problem = "Not saved — " + ex.Message; refused = true; }
+      if (refused) { UnitOfWork.Discard(); return; }
+    }
+    typing = false;
+    justSaved = true;
+    if (onSaved != null) { onSaved(); }
+  }
+
+  render {
+    SettingRowFace(label, help: help, chip: setFor == "" ? "" : "Set for " + setFor, setBy: setBy, setWhen: setWhen,
+                   resetTo: resetTo, onReset: readOnly ? null : onReset, lockedBy: lockedBy, lockedWhy: lockedWhy,
+                   note: note, chipless: chipless) {
+      if (readOnly) {
+        SettingReadOnly(words != null ? words(value) : (unit == "" ? value.ToString("N0") : value.ToString("N0") + " " + unit),
+                        Layout.AtLeast(Tablet));
+      } else {
+        Stack(gap: "8px", align: Layout.AtLeast(Tablet) ? Align.End : Align.Stretch, w: "100%") {
+          Box(position: Position.Relative, w: Layout.AtLeast(Tablet) ? Length.SettingFieldW : "100%") {
+            if (saves == SettingSaves.Explicit) {
+              SettingNumberBox(label, value, unit, problem != "", lockedBy != "", Layout.AtLeast(Tablet), Typed);
+            } else {
+              SettingNumberBox(label, draft, unit, problem != "", lockedBy != "", Layout.AtLeast(Tablet), Typed);
+            }
+          }
+          if (reason != null && (typing || saves == SettingSaves.Explicit)) { SettingReasonBox(label, reason); }
+          if (problem != "") { SettingProblem(problem); }
+          if (typing && saves == SettingSaves.Immediate) {
+            Row(gap: "8px", justify: Justify.End) {
+              Button("Cancel", onPress: Cancel, tone: Tone.Ghost, size: Size.Sm);
+              Button("Save", onPress: Save, tone: Tone.Primary, size: Size.Sm);
+            }
+          }
+          if (justSaved) { Row(justify: Justify.End) { SettingSavedNote(null); } }
+        }
+      }
+    }
+  }
+}
+
+/// The number's box: the input in the control line, its digits at the right before the unit that sits inside it.
+[Composable, Part]
+component SettingNumberBox(string label, Binding<int> value, string unit, bool invalid, bool locked, bool wide, Action onTyped) {
+  render {
+    Input(value: value, onInput: onTyped, disabled: locked, label: label, invalid: invalid, w: "100%",
+          h: wide ? Length.SettingControlH : Length.SettingControlHTouch,
+          pl: "10px", pr: unit == "" ? "10px" : NumberUnitRoom(unit), borderW: 1,
+          border: invalid ? Colors.BorderDanger : Colors.ControlBorder, rounded: Radius.SettingControl,
+          bg: locked ? Colors.SettingLockedBg : Colors.Surface, color: Colors.OnSurface, fontWeight: FontWeight.Medium,
+          fontSize: wide ? FontSize.SettingControlFont : FontSize.SettingControlFontTouch,
+          fontFamily: Font.Sans, textAlign: wide ? TextAlign.Right : TextAlign.Left, fontVariant: "tabular-nums");
+    if (unit != "") {
+      Row(position: Position.Absolute, top: "0", right: "0", bottom: "0", align: Align.Center, pr: "10px",
+          pointerEvents: PointerEvents.None) {
+        Text(unit, fontSize: wide ? FontSize.SettingControlFont : FontSize.SettingControlFontTouch,
+             color: Colors.ProvenanceInk, whiteSpace: WhiteSpace.Nowrap);
+      }
+    }
+  }
+}
+
+/// A SETTING NOBODY CHANGES HERE, ALWAYS IN FORCE — its name and what it does, `note` where a row says where its value
+/// comes from ("Always available: this is the designer's core job."), and `word` with a tick where a control would be.
+/// In a test it is the group named by `name`: `Assert.Visible("Always on", within: "Work on the outline")`.
+/// need: a setting that is always on, a fixed fact in a settings list, a capability that cannot be turned off
+/// e.g. `SettingAlways("Work on the outline", help: "Read and edit the outline.", note: "Always available: this is the designer's core job.")`
+[Composable]
+component SettingAlways(string name, string help = "", string word = "Always on", string note = "") {
+  render {
+    SettingRowFace(name, help: help, note: note, narrow: true, chipless: true) {
+      Row(gap: "6px", align: Align.Center, whiteSpace: WhiteSpace.Nowrap) {
+        Icon(Icons.Check, size: 14, color: Colors.SettingAlwaysTick);
+        Text(word, fontSize: FontSize.SettingControlFont, color: Colors.SettingHelpInk);
+      }
+    }
+  }
+}
+
+/// THE ROW EVERY IN-PLACE SETTING IS DRAWN IN — the name, the help line, where the value comes from and why it is
+/// locked on the left; the control (the slot) on the right, in the columns `Length.SettingRowCols` states. On a phone the words come
+/// first and the control under them at full width — or beside the name when `narrow` (a switch, a word) — then where
+/// the value comes from. `slot under` is drawn under the control on a phone ("Saved · Undo").
+[Composable, Part]
+component SettingRowFace(string name, string help = "", string chip = "", string setBy = "", string setWhen = "",
+                         string resetTo = "", Action? onReset = null, string lockedBy = "", string lockedWhy = "",
+                         string note = "", bool narrow = false, bool chipless = false) {
+  render {
+    if (Layout.AtLeast(Tablet)) {
+      Box(display: Display.Grid, cols: Length.SettingRowCols, gap: Space.SettingRowGap, px: Space.SettingRowX,
+          py: Space.SettingRowY, alignItems: Align.Start, borderTW: 1, border: Colors.RowLine, minW: "0",
+          bg: lockedBy != "" ? Colors.SettingLockedRowBg : Colors.Transparent, role: UiRole.Group, label: name) {
+        Stack(gap: 0, minW: "0") {
+          SettingWords(name, help, true);
+          SettingProvenance(chip, setBy, setWhen, resetTo, onReset, lockedBy, lockedWhy, note, chipless, mt: "8px");
+        }
+        Row(justify: Justify.End, align: Align.Center, minH: Length.SettingControlH, minW: "0") { Slot; }
+      }
+    } else {
+      Stack(gap: "10px", px: Space.SettingRowXTouch, py: Space.SettingRowYTouch, borderTW: 1, border: Colors.RowLine, minW: "0",
+            bg: lockedBy != "" ? Colors.SettingLockedRowBg : Colors.Transparent, role: UiRole.Group, label: name) {
+        if (narrow) {
+          Row(justify: Justify.Between, align: Align.Start, gap: "16px") {
+            SettingWords(name, help, false);
+            Slot;
+          }
+        } else {
+          SettingWords(name, help, false);
+          Slot;
+        }
+        Slot("under");
+        SettingProvenance(chip, setBy, setWhen, resetTo, onReset, lockedBy, lockedWhy, note, chipless);
+      }
+    }
+  }
+}
+
+/// A setting's name over what it does — the name in `Colors.SettingNameInk` (`FontSize.SettingName`, a size up on a
+/// phone), the help line under it in `Colors.SettingHelpInk`.
+[Composable, Part]
+component SettingWords(string name, string help, bool wide) {
+  render {
+    Stack(gap: "2px", minW: "0") {
+      Text(name, fontSize: wide ? FontSize.SettingName : FontSize.SettingNameTouch,
+           fontWeight: FontWeight.Medium, color: Colors.SettingNameInk);
+      if (help != "") { Text(help, fontSize: FontSize.Caption, color: Colors.SettingHelpInk, maxW: "520px"); }
+    }
+  }
+}
+
+/// WHERE A SETTING'S VALUE COMES FROM — the chip (Default, "Set for Alpha", Locked), who set it and when, the Reset
+/// link; or "by <lockedBy>" after the Locked chip with `lockedWhy` under; or the row's `note` alone.
+[Composable, Part]
+component SettingProvenance(string chip, string setBy, string setWhen, string resetTo, Action? onReset, string lockedBy,
+                            string lockedWhy, string note, bool chipless) {
+  render {
+    Stack(gap: "4px", minW: "0") {
+      Row(gap: "4px 8px", align: Align.Center, wrap: Wrapping.Wrap, fontSize: FontSize.Caption, color: Colors.ProvenanceInk) {
+        if (lockedBy != "") {
+          SettingChip("Locked", locked: true);
+          Text("by " + lockedBy);
+        } else if (chip != "") {
+          SettingChip(chip, scoped: true);
+          if (setBy != "" || setWhen != "") {
+            Text(setBy != "" && setWhen != "" ? "by " + setBy + " · " + setWhen : (setBy != "" ? "by " + setBy : setWhen));
+          }
+          if (onReset != null) { SettingLink(resetTo != "" ? "Reset to " + resetTo : "Reset to default", onReset); }
+        } else if (!chipless) {
+          SettingChip("Default");
+        }
+        if (note != "") { Text(note); }
+      }
+      if (lockedBy != "" && lockedWhy != "") { Text(lockedWhy, fontSize: FontSize.Caption, color: Colors.SettingHelpInk); }
+    }
+  }
+}
+
+/// The provenance chip — its tone by where the value comes from (`Colors.SettingDefault…`, `SettingSet…`,
+/// `SettingLocked…` Tint and Ink), `Length.SettingChipH` high on `Radius.SettingChip`; Locked carries a lock.
+[Composable, Part]
+component SettingChip(string words, bool scoped = false, bool locked = false) {
+  variants {
+    base { Display = Display.InlineFlex; AlignItems = Align.Center; Gap = "3px"; H = Length.SettingChipH; Px = Space.SettingChipX;
+           Rounded = Radius.SettingChip; FontSize = FontSize.SettingChipFont; FontWeight = FontWeight.Medium; WhiteSpace = WhiteSpace.Nowrap;
+           Bg = Colors.SettingDefaultTint; Color = Colors.SettingDefaultInk; }
+    scoped { Bg = Colors.SettingSetTint; Color = Colors.SettingSetInk; }
+    locked { Bg = Colors.SettingLockedTint; Color = Colors.SettingLockedInk; }
+  }
+  render {
+    Row(gap: "3px", align: Align.Center) {
+      if (locked) { Icon(Icons.Lock, size: 10); }
+      Text(words);
+    }
+  }
+}
+
+/// A word that acts, in the provenance line — "Reset to default" — in the accent, underlined under the pointer.
+[Composable, Part]
+component SettingLink(string words, Action onPress) {
+  variants {
+    base { FontSize = FontSize.Caption; Color = Colors.Primary; Bg = Colors.Transparent; BorderW = 0; P = 0; Cursor = Cursor.Pointer;
+           Hover { TextDecoration = TextDecoration.Underline; }
+           Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "2px"; OutlineStyle = OutlineStyle.Solid; } }
+  }
+  render { Pressable(onClick: onPress, label: words) { Text(words); } }
+}
+
+/// "✓ Saved · Undo" beside a control that has just saved itself, in `Colors.SettingSavedInk`; without `onUndo`, "✓ Saved".
+[Composable, Part]
+component SettingSavedNote(Action? onUndo) {
+  render {
+    Row(gap: "4px", align: Align.Center, fontSize: FontSize.Caption, color: Colors.SettingSavedInk, whiteSpace: WhiteSpace.Nowrap,
+        role: UiRole.Status) {
+      Icon(Icons.Check, size: 12);
+      Text("Saved");
+      if (onUndo != null) {
+        Text("·", decorative: true);
+        Pressable(onClick: onUndo, label: "Undo", color: Colors.SettingSavedInk, textDecoration: TextDecoration.Underline,
+                  cursor: Cursor.Pointer) { Text("Undo"); }
+      }
+    }
+  }
+}
+
+/// WHY A SETTING IS CHANGED — the box a setting's `reason:` draws under its control: what is typed goes into the page's
+/// `reason` binding, and the app's save (`saveWith`) reads it from there. Named by the setting it belongs to
+/// ("Why" within the row's group in a test: `Ui.Fill("Why", "Cheaper sessions", within: "Session size")`).
+[Composable, Part]
+component SettingReasonBox(string setting, Binding<string> reason) {
+  render {
+    Box(w: "100%", label: "Why " + setting) { Field("Why", value: reason, placeholder: "Why is it changed?"); }
+  }
+}
+
+/// Why the last save of a row did not land, or why what is typed cannot be saved — under the control, in the danger ink.
+[Composable, Part]
+component SettingProblem(string words) {
+  render { Text(words, fontSize: FontSize.Caption, color: Colors.Danger, role: UiRole.Alert, textAlign: TextAlign.Right); }
+}
+
+/// A setting's value as plain words, for someone who may not change it — no control that looks editable.
+[Composable, Part]
+component SettingReadOnly(string words, bool wide) {
+  render {
+    Text(words, fontSize: FontSize.Label, fontWeight: FontWeight.Medium, color: Colors.SettingNameInk,
+         textAlign: wide ? TextAlign.Right : TextAlign.Left, fontVariant: "tabular-nums");
+  }
+}

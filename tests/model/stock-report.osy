@@ -110,3 +110,21 @@ component LiveStockReportPage() {
     }
   }
 }
+
+/// A button whose action asks the server: while the answer is out it says what it is doing (`busyLabel`) and is off, and
+/// when the answer lands it is itself again.
+[Route("/stock/recount")] [Authorize(IsFramer)] [Render(CSR)] [Title("Recount")]
+component StockRecountPage() {
+  string said = "";
+  action Recount() {
+    var r = StockReport();
+    said = $"{r.Mouldings} mouldings recounted";
+  }
+  render {
+    Stack(gap: 3, p: 6) {
+      PageTitle("Recount");
+      Button("Recount the stock", onPress: Recount, busyLabel: "Recounting…");
+      Text(said);
+    }
+  }
+}

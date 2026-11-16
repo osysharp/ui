@@ -139,7 +139,9 @@ public enum MenuFrom {
 
 /// A menu panel — the floating surface `MenuItem`s live on. It GROWS OUT OF ITS TRIGGER (a short scale-and-slide from
 /// the trigger's corner, with a notch pointing back at it), so a reader sees which control opened it. Pair it with a
-/// `Backdrop` for click-away and Escape. The keyboard is the platform's, because it is `role: Menu`: ↑/↓ move between
+/// `Backdrop` for click-away and Escape. ⭐ NOTHING AROUND ITS TRIGGER CAN CUT IT OFF: the platform draws it in the browser's
+/// top layer, above every panel and scrolling box, hung from the trigger where `from:` says (and on the other side of it
+/// when only that side has room). The keyboard is the platform's, because it is `role: Menu`: ↑/↓ move between
 /// items, Home/End jump, typing a letter moves to the next item starting with it, Enter presses.
 /// `from:` says where it hangs (`MenuFrom.BelowEnd` for a trigger at the right edge); `label:` names it for a reader.
 /// In a test open it by its trigger, then press the item: `Ui.Click("Actions"); Ui.Click("Archive")`.

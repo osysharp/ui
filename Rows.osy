@@ -10,9 +10,10 @@ namespace Osysharp.Ui;
 /// to read. The template says what one row looks like; its argument is the row.
 /// ⚑ ORDER IT. A query with no `OrderBy` pages in an order the database chooses; one ordered by a plain column (a
 /// name, a date, a number) pages by that column and the row's id, which is what keeps every page stable.
-/// In a test count its rows with `Assert.Items(...)`, and `Ui.Click("Load more")` brings the next page.
+/// `label` names the list, as a `<ul>` may be named; each row is reached by its own words.
+/// In a test count its rows by that name, `Assert.Items("Bells", 50)`, and `Ui.Click("Load more")` brings the next page.
 /// need: show a list of rows, list every row of a table, a long list, a feed, a list that pages, infinite scroll, load more as I scroll
-/// e.g. `live var bells = Bell.OrderBy(b => b.Inscription);` then `Rows(bells) { b => Text(b.Inscription); }`
+/// e.g. `live var bells = Bell.OrderBy(b => b.Inscription);` then `Rows(bells, label: "Bells") { b => Text(b.Inscription); }`
 ///   with its own page size: `Rows(tickets, pageSize: 20) { t => TicketRow(t); }`
 [Composable] component Rows<T>(T[] rows, int pageSize = 50, string label = "") {
   action More() { rows.LoadMore(); }

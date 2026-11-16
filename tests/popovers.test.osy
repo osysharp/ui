@@ -1,0 +1,65 @@
+// PO1 — a calendar or a list the kit opens is drawn above every box, so a panel that clips or scrolls cannot cut it
+// off: its last week and its last option are pressable where they are drawn. Measured 2026-11-14 in Foundry: Add a
+// key's Expires calendar was cut off at the foot of a panel with `overflow: hidden`, and no day in its last week could
+// be picked. Needs `--pixels`: under plain `osy test` the geometry reports NOT CHECKED.
+
+[TestFixture]
+void Panels() {
+  var tom = new Framer { Email = "tom@frames.test" };
+  new RoleGrant { Member = tom, Role = WorkshopRole.Framer };
+}
+
+[Test(Panels)]
+void a_calendar_opened_in_a_clipping_panel_is_whole_and_its_last_week_can_be_picked() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/popovers");
+  Ui.Click("Expires");
+  Assert.Clickable("30 November 2026");
+  Assert.Clickable("6 December 2026");
+  Assert.NoOverflow();
+  Ui.Shot("popover-clipped-calendar");
+  Ui.Click("30 November 2026");
+  Assert.Visible("Expires on 2026-11-30");
+  // and a fill — which opens it and presses the day as a person does — reaches the last week too
+  Ui.Fill("Expires", "2026-11-29");
+  Assert.Visible("Expires on 2026-11-29");
+}
+
+[Test(Panels)]
+void a_list_opened_in_a_clipping_panel_is_whole_and_its_last_option_can_be_chosen() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/popovers");
+  Ui.Click("Glazing");
+  Assert.Clickable("Museum");
+  Assert.Clickable("Blocks 99% of UV light and nearly all reflection.");
+  Ui.Shot("popover-clipped-list");
+  Ui.Click("Museum");
+  Assert.Visible("Glazing is Museum");
+}
+
+[Test(Panels)]
+void a_calendar_opened_in_a_scrolling_panel_is_whole_and_its_last_week_can_be_picked() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/popovers");
+  Ui.Click("Starts");
+  Assert.Clickable("30 November 2026");
+  Assert.Clickable("6 December 2026");
+  Ui.Shot("popover-scrolling-calendar");
+  Ui.Click("30 November 2026");
+  Assert.Visible("Starts on 2026-11-30");
+}
+
+[Test(Panels)]
+void a_list_opened_in_a_scrolling_panel_is_whole_and_its_last_option_can_be_chosen() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/popovers");
+  Ui.Click("Backing");
+  Assert.Clickable("Museum");
+  Assert.Clickable("Blocks 99% of UV light and nearly all reflection.");
+  Ui.Shot("popover-scrolling-list");
+  Ui.Click("Museum");
+  Assert.Visible("Backing is Museum");
+  // and a select — which opens it and presses the option — reaches it too
+  Ui.Select("Backing", Glazing.NonGlare);
+  Assert.Visible("Backing is NonGlare");
+}

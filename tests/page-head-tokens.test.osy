@@ -1,0 +1,39 @@
+// KIT-PAGEHEAD-TOKENS — a page head's measures are its own tokens, so another shell's look can set them.
+
+/// `PageTitle` (and so `PageHead` and `SettingsPage`) is sized by `FontSize.PageTitle`, which is `FontSize.Title` until a
+/// theme says otherwise — so on the floor a kit page title is the 28px it always was, and once a theme's `slimhead` variant
+/// sets `FontSize.PageTitle` to 18 the page title is shorter and a card title (its own token) did not move. Needs
+/// `--pixels`: under plain `osy test` the measures report NOT CHECKED.
+[Test(Workshop)]
+void a_theme_setting_the_page_title_size_changes_the_page_head_and_nothing_else() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/page-head-tokens");
+  Assert.SameHeight("Kit page title", "Floor page title");
+  Assert.SameHeight("Kit card title", "Floor card title");
+  Ui.Click("Slim page head");
+  Assert.Shorter("Kit page title", "Floor page title");
+  Assert.SameHeight("Kit card title", "Floor card title");
+}
+
+/// `PageSectionHeading` is sized by `FontSize.PageSectionTitle`, which is `Subhead` until a theme says otherwise — so a theme's `slimhead`
+/// variant shrinks a page section's heading and not the card title (its own token). Needs `--pixels`.
+[Test(Workshop)]
+void a_theme_setting_the_section_title_size_changes_the_section_heading() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/section-heading-token");
+  Assert.SameHeight("Kit section heading", "Floor section heading");
+  Ui.Click("Slim page head");
+  Assert.Shorter("Kit section heading", "Floor section heading");
+}
+
+/// A settings page's head spans the full width of the area its page sits in (its band and rule are the head tokens'), while
+/// its title and sections keep the page's column. Needs `--pixels`.
+[Test(Workshop)]
+void a_settings_pages_head_spans_the_whole_area_and_its_body_keeps_the_column() {
+  Ui.Viewport(1440, 900);
+  Ui.SignInAs(Tom);
+  Ui.Visit("/page-head-full");
+  Assert.SameWidth("Ledger head", "Head area");
+  Assert.Narrower("Ledger", "Head area");
+  Assert.Narrower("Ledger page", "Head area");
+}

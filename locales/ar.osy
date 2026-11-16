@@ -4,6 +4,25 @@
 // Source language: en.
 
 translations ar {
+  // ── ActionArgumentField ──
+  /// ActionArgumentField · a hint under a field
+  /// shown through Hint()
+  hint "May be left empty." => "يمكن تركه فارغًا.";
+  /// ActionArgumentField · a hint under a field
+  /// placeholders: {takes} = takes (string)
+  /// shown through Hint()
+  hint "{takes} May be left empty." => "{takes} يمكن تركه فارغًا.";
+  /// ActionArgumentField · placeholder text inside an empty field · at most ~27 characters
+  /// shown through TextAreaField.placeholder
+  placeholder "[\"first\", \"second\"]" => "[\"الأول\", \"الثاني\"]";
+  /// ActionArgumentField · placeholder text inside an empty field · at most ~27 characters
+  /// shown through TextAreaField.placeholder
+  placeholder "{ \"name\": \"value\" }" => "{ \"name\": \"value\" }";
+  /// ActionArgumentField · text on the page
+  text "No" => "لا";
+  /// ActionArgumentField · text on the page
+  text "Yes" => "نعم";
+
   // ── AmbientVideo ──
   /// AmbientVideo · a control's name for screen readers
   /// shown through AmbientVideo.pauseLabel
@@ -44,9 +63,13 @@ translations ar {
   /// shown through AutoSave.saved
   text "All changes saved" => "تم حفظ كل التغييرات";
   /// AutoSave · text on the page
-  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// placeholders: {problem} = problem (string)
+  /// beside: "Retry"
+  text "Not saved — {problem}" => "لم يُحفظ — {problem}";
+  /// AutoSave · text on the page
+  /// placeholders: {value} = ….ToString(…) (int) — {value} is a count: give one text per plural form
   /// beside: "Undo"
-  text "Saving in {ToString} s" => { zero: "الحفظ خلال {ToString} ث", one: "الحفظ خلال {ToString} ث", two: "الحفظ خلال {ToString} ث", few: "الحفظ خلال {ToString} ث", many: "الحفظ خلال {ToString} ث", other: "الحفظ خلال {ToString} ث" };
+  text "Saving in {value} s" => { zero: "الحفظ خلال {value} ث", one: "الحفظ خلال {value} ث", two: "الحفظ خلال {value} ث", few: "الحفظ خلال {value} ث", many: "الحفظ خلال {value} ث", other: "الحفظ خلال {value} ث" };
 
   // ── CalendarPanel ──
   /// CalendarPanel · a control's name for screen readers
@@ -81,6 +104,12 @@ translations ar {
   /// placeholders: {query} = query (string)
   text "Nothing matches “{query}”" => "لا توجد نتائج مطابقة لـ «{query}»";
 
+  // ── ConfirmStep ──
+  /// ConfirmStep · a button's label · at most ~12 characters
+  /// shown through Button.label
+  /// also in SettingNumber
+  button "Cancel" => "إلغاء";
+
   // ── DataGrid ──
   /// DataGrid · a control's name for screen readers
   accessibleName "Active filters" => "عوامل التصفية النشطة";
@@ -107,11 +136,11 @@ translations ar {
   /// shown through GridToolButton.label
   /// beside: "12rem"
   button "Filter" => "تصفية";
-  /// DataGrid · a button's label · at most ~27 characters
-  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// DataGrid · a button's label · at most ~40 characters
+  /// placeholders: {ColumnFilterCount} = ….ToString(…) (int) — {ColumnFilterCount} is a count: give one text per plural form
   /// shown through GridToolButton.label
   /// beside: "12rem"
-  button "Filter · {ToString}" => { zero: "تصفية · {ToString}", one: "تصفية · {ToString}", two: "تصفية · {ToString}", few: "تصفية · {ToString}", many: "تصفية · {ToString}", other: "تصفية · {ToString}" };
+  button "Filter · {ColumnFilterCount}" => { zero: "تصفية · {ColumnFilterCount}", one: "تصفية · {ColumnFilterCount}", two: "تصفية · {ColumnFilterCount}", few: "تصفية · {ColumnFilterCount}", many: "تصفية · {ColumnFilterCount}", other: "تصفية · {ColumnFilterCount}" };
   /// DataGrid · a label (a field, a list item, a menu entry) · at most ~26 characters
   /// shown through SearchField.label
   label "Search all columns" => "البحث في كل الأعمدة";
@@ -190,6 +219,19 @@ translations ar {
   /// shown through Done.label
   label "Saved" => "تم الحفظ";
 
+  // ── Drawer ──
+  /// Drawer · a button's label · at most ~11 characters
+  /// shown through Drawer.closeLabel
+  /// also in StorefrontBagPanel
+  /// also in StorefrontMenuDrawer
+  button "Close" => "إغلاق";
+  /// Drawer · a button's label · at most ~10 characters
+  /// shown through Drawer.nextLabel
+  button "Next" => "التالي";
+  /// Drawer · a button's label · at most ~14 characters
+  /// shown through Drawer.previousLabel
+  button "Previous" => "السابق";
+
   // ── DurationField ──
   /// DurationField · a control's name for screen readers
   /// beside: "How many"
@@ -231,9 +273,23 @@ translations ar {
   /// shown through DurationWords()
   text "{n} minutes" => { zero: "{n} دقيقة", one: "دقيقة واحدة", two: "دقيقتان", few: "{n} دقائق", many: "{n} دقيقة", other: "{n} دقيقة" };
 
+  // ── EditingBanner ──
+  /// EditingBanner · a control's name for screen readers
+  /// also in SaveBar
+  accessibleName "Unsaved changes" => "تغييرات غير محفوظة";
+  /// EditingBanner · a button's label · at most ~13 characters
+  /// shown through EditingBanner.discard
+  /// also in SaveActions
+  /// also in SaveBar
+  button "Discard" => "تجاهل";
+  /// EditingBanner · a button's label · at most ~21 characters
+  /// shown through EditingBanner.save
+  button "Review and save" => "مراجعة وحفظ";
+
   // ── EditorialFooter ──
   /// EditorialFooter · a control's name for screen readers
   /// beside: "420px"
+  /// also in SidebarRailGuarded
   accessibleName "Footer navigation" => "روابط التذييل";
   /// EditorialFooter · a control's name for screen readers
   /// also in StoreFooter
@@ -258,8 +314,8 @@ translations ar {
   /// also in TabbedTopRow
   accessibleName "Page header" => "رأس الصفحة";
   /// FocusedBar · text on the page
-  /// placeholders: {ToString} = active.Number.ToString(…) (int), {ToString2} = total.ToString(…) (int) — {ToString} is a count: give one text per plural form
-  text "Step {ToString} of {ToString2}" => { zero: "الخطوة {ToString} من {ToString2}", one: "الخطوة {ToString} من {ToString2}", two: "الخطوة {ToString} من {ToString2}", few: "الخطوة {ToString} من {ToString2}", many: "الخطوة {ToString} من {ToString2}", other: "الخطوة {ToString} من {ToString2}" };
+  /// placeholders: {active.Number} = active.Number.ToString(…) (int), {total} = total.ToString(…) (int) — {active.Number} is a count: give one text per plural form
+  text "Step {active.Number} of {total}" => { zero: "الخطوة {active.Number} من {total}", one: "الخطوة {active.Number} من {total}", two: "الخطوة {active.Number} من {total}", few: "الخطوة {active.Number} من {total}", many: "الخطوة {active.Number} من {total}", other: "الخطوة {active.Number} من {total}" };
 
   // ── FocusedExit ──
   /// FocusedExit · a control's name for screen readers
@@ -324,6 +380,20 @@ translations ar {
   /// placeholders: {col.Label} = col.Label (string)
   /// shown through HeaderTool.label
   label "Move {col.Label} right" => "نقل {col.Label} إلى اليمين";
+
+  // ── HistoryRow ──
+  /// HistoryRow · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through HistoryRow.undo
+  label "Undo" => "تراجع";
+  /// HistoryRow · text on the page
+  /// placeholders: {why} = why (string)
+  text "Why: {why}" => "السبب: {why}";
+
+  // ── ImpactDialog ──
+  /// ImpactDialog · a button's label · at most ~31 characters
+  /// shown through ImpactDialog.closeLabel
+  /// also in ImpactPanel
+  button "Close and keep editing" => "إغلاق ومتابعة التعديل";
 
   // ── KeyboardSheet ──
   /// KeyboardSheet · a subtitle
@@ -415,6 +485,24 @@ translations ar {
   /// beside: "Hours", "Days"
   label "Minutes" => "دقائق";
 
+  // ── Osysharp.Ui.SettingFrom ──
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through Osysharp.Ui.SettingFrom.Default
+  /// beside: "Inherited", "Set here", "Locked"
+  label "Default" => "افتراضي";
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~15 characters
+  /// shown through Osysharp.Ui.SettingFrom.Inherited
+  /// beside: "Set here", "Locked", "Default"
+  label "Inherited" => "موروث";
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through Osysharp.Ui.SettingFrom.Locked
+  /// beside: "Inherited", "Set here", "Default"
+  label "Locked" => "مقفل";
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~14 characters
+  /// shown through Osysharp.Ui.SettingFrom.SetHere
+  /// beside: "Inherited", "Locked", "Default"
+  label "Set here" => "مُعيَّن هنا";
+
   // ── Osysharp.Ui.ShellPresence ──
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through Osysharp.Ui.ShellPresence.Away
@@ -432,6 +520,17 @@ translations ar {
   /// shown through Osysharp.Ui.ShellPresence.Online
   /// beside: "None", "Away", "Do not disturb"
   label "Online" => "متصل";
+
+  // ── PendingChange ──
+  /// PendingChange · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through PendingChange.accept
+  label "Accept" => "قبول";
+  /// PendingChange · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through PendingChange.edit
+  label "Edit" => "تعديل";
+  /// PendingChange · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through PendingChange.reject
+  label "Reject" => "رفض";
 
   // ── QrCode ──
   /// QrCode · a label (a field, a list item, a menu entry) · at most ~13 characters
@@ -484,14 +583,10 @@ translations ar {
   // ── SaveActions ──
   /// SaveActions · a control's name for screen readers
   accessibleName "Changes" => "التغييرات";
-  /// SaveActions · a button's label · at most ~13 characters
-  /// shown through Button.label
-  /// beside: "Edited", "Save"
-  /// also in SaveBar
-  button "Discard" => "تجاهل";
   /// SaveActions · a button's label · at most ~10 characters
   /// shown through Button.label
   /// beside: "Edited", "Discard"
+  /// also in SettingNumber
   /// also in SaveBar
   button "Save" => "حفظ";
   /// SaveActions · a button's label · at most ~10 characters
@@ -505,27 +600,44 @@ translations ar {
   /// also in SaveBar
   button "Undo {ToLower}" => "تراجع عن {ToLower}";
   /// SaveActions · text on the page
-  text "Edited" => "معدَّل";
-  /// SaveActions · text on the page
-  /// placeholders: {problem} = problem (string)
+  /// shown through problem
   /// also in AutoSave
   /// also in SaveBar
-  text "Not saved — {problem}" => "لم يُحفظ — {problem}";
+  text "1 field needs attention." => "حقل واحد يحتاج إلى مراجعة.";
+  /// SaveActions · text on the page
+  text "Edited" => "معدَّل";
+  /// SaveActions · text on the page
+  /// placeholders: {ex.Message} = ex.Message (string)
+  /// shown through problem
+  /// also in SettingSwitch
+  /// also in SettingChoice
+  /// also in SettingNumber
+  text "Not saved — {ex.Message}" => "لم يُحفظ: {ex.Message}";
   /// SaveActions · text on the page
   /// shown through SaveActions.saved
+  /// also in SettingSavedNote
   text "Saved" => "تم الحفظ";
+  /// SaveActions · text on the page
+  /// placeholders: {Validation.All.Count} = Validation.All.Count.ToString(…) (int) — {Validation.All.Count} is a count: give one text per plural form
+  /// shown through problem
+  /// also in AutoSave
+  /// also in SaveBar
+  text "{Validation.All.Count} fields need attention." => { zero: "لا يوجد حقل يحتاج إلى مراجعة.", one: "حقل واحد يحتاج إلى مراجعة.", two: "حقلان يحتاجان إلى مراجعة.", few: "{Validation.All.Count} حقول تحتاج إلى مراجعة.", many: "{Validation.All.Count} حقلًا تحتاج إلى مراجعة.", other: "{Validation.All.Count} حقل يحتاج إلى مراجعة." };
 
   // ── SaveBar ──
   /// SaveBar · a control's name for screen readers
+  /// also in SettingsSaveNote
   accessibleName "Not saved" => "لم يُحفظ";
-  /// SaveBar · a control's name for screen readers
-  accessibleName "Unsaved changes" => "تغييرات غير محفوظة";
   /// SaveBar · text on the page
   /// shown through SaveBar.saved
   text "Saved." => "تم الحفظ.";
   /// SaveBar · text on the page
   /// beside: "Discard", "Save"
   text "Unsaved changes" => "تغييرات غير محفوظة";
+
+  // ── ScopeHeader ──
+  /// ScopeHeader · a control's name for screen readers
+  accessibleName "Scope" => "النطاق";
 
   // ── SearchPicker ──
   /// SearchPicker · placeholder text inside an empty field · at most ~20 characters
@@ -546,9 +658,87 @@ translations ar {
   /// shown through Button.label
   button "Clear selection" => "مسح التحديد";
   /// SelectionBar · text on the page
-  /// placeholders: {ToString} = count.ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// placeholders: {count} = count.ToString(…) (int) — {count} is a count: give one text per plural form
   /// beside: "Clear selection"
-  text "{ToString} selected" => { zero: "{ToString} محدد", one: "عنصر واحد محدد", two: "عنصران محددان", few: "{ToString} عناصر محددة", many: "{ToString} عنصرًا محددًا", other: "{ToString} عنصر محدد" };
+  text "{count} selected" => { zero: "{count} محدد", one: "عنصر واحد محدد", two: "عنصران محددان", few: "{count} عناصر محددة", many: "{count} عنصرًا محددًا", other: "{count} عنصر محدد" };
+
+  // ── SettingAlways ──
+  /// SettingAlways · text on the page
+  /// shown through SettingAlways.word
+  text "Always on" => "مفعّل دائمًا";
+
+  // ── SettingChoice ──
+  /// SettingChoice · text on the page
+  /// placeholders: {setFor} = setFor (string)
+  /// shown through SettingRowFace.chip
+  /// also in SettingNumber
+  /// also in SettingRow
+  text "Set for {setFor}" => "مُعيَّن لـ {setFor}";
+
+  // ── SettingNumber ──
+  /// SettingNumber · text on the page
+  /// placeholders: {min} = min.ToString(…) (int), {max} = max.ToString(…) (int) — {min} is a count: give one text per plural form
+  /// shown through problem
+  text "Enter a number from {min} to {max}." => { zero: "أدخل رقمًا من {min} إلى {max}.", one: "أدخل رقمًا من {min} إلى {max}.", two: "أدخل رقمًا من {min} إلى {max}.", few: "أدخل رقمًا من {min} إلى {max}.", many: "أدخل رقمًا من {min} إلى {max}.", other: "أدخل رقمًا من {min} إلى {max}." };
+
+  // ── SettingProvenance ──
+  /// SettingProvenance · a link · at most ~23 characters
+  /// shown through SettingLink.words
+  link "Reset to default" => "إعادة التعيين إلى الافتراضي";
+  /// SettingProvenance · a link · at most ~26 characters
+  /// placeholders: {resetTo} = resetTo (string)
+  /// shown through SettingLink.words
+  link "Reset to {resetTo}" => "إعادة التعيين إلى {resetTo}";
+  /// SettingProvenance · text on the page
+  /// shown through SettingChip.words
+  text "Default" => "افتراضي";
+  /// SettingProvenance · text on the page
+  /// shown through SettingChip.words
+  text "Locked" => "مقفل";
+  /// SettingProvenance · text on the page
+  /// placeholders: {lockedBy} = lockedBy (string)
+  /// beside: "Locked"
+  text "by {lockedBy}" => "بواسطة {lockedBy}";
+  /// SettingProvenance · text on the page
+  /// placeholders: {setBy} = setBy (string)
+  text "by {setBy}" => "بواسطة {setBy}";
+  /// SettingProvenance · text on the page
+  /// placeholders: {setBy} = setBy (string), {setWhen} = setWhen (string)
+  text "by {setBy} · {setWhen}" => "بواسطة {setBy} · {setWhen}";
+
+  // ── SettingRow ──
+  /// SettingRow · text on the page
+  /// shown through SettingRowFace.lockedBy
+  text "your organization" => "مؤسستك";
+
+  // ── SettingSavedNote ──
+  /// SettingSavedNote · a control's name for screen readers
+  accessibleName "Undo" => "تراجع";
+  /// SettingSavedNote · text on the page
+  text "Undo" => "تراجع";
+
+  // ── SettingSwitch ──
+  /// SettingSwitch · text on the page
+  /// placeholders: {why} = why (string)
+  /// shown through problem
+  /// also in SettingChoice
+  /// also in SettingNumber
+  /// also in SaveBar
+  text "Not saved — {why}" => "لم يُحفظ: {why}";
+  /// SettingSwitch · text on the page
+  /// shown through SettingSwitch.offWord
+  text "Off" => "إيقاف";
+  /// SettingSwitch · text on the page
+  /// shown through SettingSwitch.onWord
+  text "On" => "تشغيل";
+  /// SettingSwitch · text on the page
+  /// placeholders: {setFor} = setFor (string)
+  /// shown through SettingRowFace.chip
+  text "Turned off for {setFor}" => "معطّل لـ {setFor}";
+  /// SettingSwitch · text on the page
+  /// placeholders: {setFor} = setFor (string)
+  /// shown through SettingRowFace.chip
+  text "Turned on for {setFor}" => "مفعّل لـ {setFor}";
 
   // ── SettingsArea ──
   /// SettingsArea · a control's name for screen readers
@@ -570,6 +760,17 @@ translations ar {
   /// also in SettingsOverview
   title "Settings" => "الإعدادات";
 
+  // ── SettingsKeys ──
+  /// SettingsKeys · a description
+  /// shown through SettingsSection.description
+  description "The keys these settings are known by." => "المفاتيح التي تُعرف بها هذه الإعدادات.";
+  /// SettingsKeys · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through SettingsKeys.copy
+  label "Copy" => "نسخ";
+  /// SettingsKeys · a title
+  /// shown through SettingsKeys.title
+  title "Technical details" => "تفاصيل تقنية";
+
   // ── SettingsOverview ──
   /// SettingsOverview · a control's name for screen readers
   accessibleName "All settings" => "كل الإعدادات";
@@ -585,11 +786,35 @@ translations ar {
   /// placeholders: {title} = title (string)
   accessibleName "{title} page" => "صفحة {title}";
 
+  // ── SettingsReview ──
+  /// SettingsReview · a control's name for screen readers
+  accessibleName "When it applies" => "متى يسري";
+  /// SettingsReview · a button's label · at most ~21 characters
+  /// shown through SettingsReview.back
+  button "Back to editing" => "العودة إلى التعديل";
+  /// SettingsReview · a hint under a field
+  /// shown through TextAreaField.hint
+  hint "Optional. It is kept with the change." => "اختياري. يُحفظ مع التغيير.";
+  /// SettingsReview · a hint under a field
+  /// shown through TextAreaField.hint
+  hint "Required. It is kept with the change." => "مطلوب. يُحفظ مع التغيير.";
+  /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~18 characters
+  /// shown through Bullets.label
+  label "What changes" => "ما الذي يتغير";
+  /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~9 characters
+  /// shown through TextAreaField.label
+  label "Why" => "السبب";
+  /// SettingsReview · text on the page
+  /// shown through SettingsReview.overline
+  text "Review and save" => "مراجعة وحفظ";
+  /// SettingsReview · text on the page
+  text "When it applies" => "متى يسري";
+
   // ── SettingsSection ──
   /// SettingsSection · a control's name for screen readers
   accessibleName "Set by your organization" => "تحدده مؤسستك";
   /// SettingsSection · text on the page
-  /// also in SettingRow
+  /// also in SettingRowNotes
   text "Set by your organization" => "تحدده مؤسستك";
   /// SettingsSection · text on the page
   text "You can see this, but not change it." => "يمكنك رؤية هذا، لكن لا يمكنك تغييره.";
@@ -666,12 +891,6 @@ translations ar {
   /// StorefrontBagButton · a control's name for screen readers
   /// placeholders: {label} = label (string), {count} = count (int) — {count} is a count: give one text per plural form
   accessibleName "{label}, {count} item(s)" => { zero: "{label}، عدد العناصر: {count}", one: "{label}، عدد العناصر: {count}", two: "{label}، عدد العناصر: {count}", few: "{label}، {count} عناصر", many: "{label}، {count} عنصرًا", other: "{label}، {count} عنصر" };
-
-  // ── StorefrontBagPanel ──
-  /// StorefrontBagPanel · a button's label · at most ~11 characters
-  /// shown through IconButton.label
-  /// also in StorefrontMenuDrawer
-  button "Close" => "إغلاق";
 
   // ── StorefrontCategoryPanel ──
   /// StorefrontCategoryPanel · a control's name for screen readers
@@ -816,4 +1035,8 @@ translations ar {
   // ── WorkbenchStatus ──
   /// WorkbenchStatus · a control's name for screen readers
   accessibleName "Status" => "الحالة";
+  /// WorkbenchStatus · text on the page
+  /// placeholders: {App.PlatformVersion} = App.PlatformVersion (string)
+  /// also in ShellBrandFace
+  text "platform {App.PlatformVersion}" => "المنصة {App.PlatformVersion}";
 }

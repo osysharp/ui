@@ -1,0 +1,36 @@
+// PO1 — what the kit opens is never cut off by the box its field sits in. Each field below sits in a panel that is
+// shorter than what the field opens: two panels CLIP (`overflow: Hidden`, the way a card rounds its corners) and two
+// SCROLL (`overflowY: Auto`, a side panel's body). The calendar and the list must still be whole, on top of everything,
+// and every day and option in them pressable — the last week, the last option.
+
+[Route("/popovers")] [Authorize(IsFramer)] [Render(CSR)] [Title("Popovers")]
+component PopoversPage() {
+  DateOnly? expires = new DateOnly(2026, 11, 2);
+  DateOnly? starts = new DateOnly(2026, 11, 2);
+  Glazing glazing = Glazing.Clear;
+  Glazing backing = Glazing.Clear;
+
+  render {
+    Stack(gap: 4, p: 6, w: "420px") {
+      Stack(label: "Clipping date panel", overflow: Overflow.Hidden, h: "96px", borderW: 1, rounded: Radius.Md, p: 3) {
+        DatePicker("Expires", value: expires);
+      }
+      Stack(label: "Clipping list panel", overflow: Overflow.Hidden, h: "96px", borderW: 1, rounded: Radius.Md, p: 3) {
+        SelectField("Glazing", value: glazing, detail: g => GlazingMeans(g));
+      }
+      Stack(label: "Scrolling date panel", overflowY: Overflow.Auto, h: "96px", borderW: 1, rounded: Radius.Md, p: 3) {
+        DatePicker("Starts", value: starts);
+        Text("More of the panel, under the field, to scroll to.");
+        Box(h: "200px");
+      }
+      Stack(label: "Scrolling list panel", overflowY: Overflow.Auto, h: "96px", borderW: 1, rounded: Radius.Md, p: 3) {
+        SelectField("Backing", value: backing, detail: g => GlazingMeans(g));
+        Box(h: "200px");
+      }
+      Text("Expires on " + (expires == null ? "no day" : expires.Value.ToString("yyyy-MM-dd")));
+      Text("Starts on " + (starts == null ? "no day" : starts.Value.ToString("yyyy-MM-dd")));
+      Text("Glazing is " + glazing.ToString());
+      Text("Backing is " + backing.ToString());
+    }
+  }
+}

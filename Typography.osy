@@ -10,7 +10,7 @@ namespace Osysharp.Ui;
 //   condensed-display hero (salon S0 run 2). The kit's `Display` is `Font.Sans` until an app overrides it, so an
 //   undesigned app looks exactly as before.
 [Composable] component PageTitle(string text) {
-  variants { base { FontFamily = Font.Display; FontSize = FontSize.Title; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.15"; } }
+  variants { base { FontFamily = Font.Display; FontSize = FontSize.PageTitle; FontWeight = FontWeight.PageTitleWeight; Color = Colors.PageTitleInk; LineHeight = "1.15"; } }
   // ⚑ A HEADING, NOT JUST BIG TYPE. Until 2.26.0 this rendered a bare `Text`, so every page built on the kit had a
   //   title to the eye and no heading at all to a screen reader — an outside tester counted 0 `h1`–`h6` on every
   //   page of four generated apps (OSY-022), and a reader who navigates by headings had nothing to jump to.
@@ -23,6 +23,16 @@ namespace Osysharp.Ui;
 /// e.g. `CardTitle("Billing")`
 [Composable] component CardTitle(string text) {
   variants { base { FontFamily = Font.Display; FontSize = FontSize.Subhead; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.25"; } }
+  render { Text(text, role: UiRole.Heading, level: 2); }
+}
+
+/// A PAGE SECTION'S HEADING — "Keys in use" over a table, "Integrations" over a list; a heading, level 2, in
+/// `FontSize.PageSectionTitle` (the floor's `Subhead`, 16px), so a shell whose page title is small can set its sections' headings
+/// smaller without touching `Subhead`, which also sizes card titles. In a test it is read as text: `Assert.Visible("Keys in use")`.
+/// need: a heading over a section of a page, a table's title, a smaller heading than the page title
+/// e.g. `PageSectionHeading("Keys in use")`
+[Composable] component PageSectionHeading(string text) {
+  variants { base { FontFamily = Font.Display; FontSize = FontSize.PageSectionTitle; FontWeight = FontWeight.Headings; Color = Colors.OnSurface; LineHeight = "1.25"; } }
   render { Text(text, role: UiRole.Heading, level: 2); }
 }
 

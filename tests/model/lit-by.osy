@@ -1,0 +1,35 @@
+// THE FRAMING ROOM — a rail row lit by addresses other than its own (`NavItem.LitBy`). A frame's own page lives under the
+// desk's address (`/framing-desk/frame/{name}`) and "New frame" has an address of its own (`/frame-new`), yet both are the
+// Frames row's pages: the rail lights Frames on them, and not Desk, whose address is a shorter prefix of the frame's.
+
+[Layout]
+[Authorize(IsFramer)]
+component FramingShell() {
+  render {
+    SidebarShell(new AppChrome { Product = "Workshop", Home = "/framing", Nav = [
+      // Exact on its own address, and still lit by the frames' pages: `Exact` is about `To` alone.
+      new NavItem { Label = "Frames", To = "/framing", Icon = Icons.Home, Exact = true, LitBy = ["/framing-desk/frame", "/frame-new"] },
+      new NavItem { Label = "Desk", To = "/framing-desk", Icon = Icons.Tag },
+    ] }) { Outlet(); }
+  }
+}
+
+[Route("/framing")] [Layout(FramingShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Frames")]
+component FramingPage() {
+  render { Stack(gap: 4, p: 6) { PageHead("Frames"); Text("Every frame on order."); } }
+}
+
+[Route("/framing-desk")] [Layout(FramingShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Desk")]
+component FramingDeskPage() {
+  render { Stack(gap: 4, p: 6) { PageHead("Desk"); Text("What is on the bench today."); } }
+}
+
+[Route("/framing-desk/frame/{name}")] [Layout(FramingShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("Frame")]
+component FramingFramePage(string name) {
+  render { Stack(gap: 4, p: 6) { PageHead("Frame " + name); Text("Its moulding, its mat and its glass."); } }
+}
+
+[Route("/frame-new")] [Layout(FramingShell)] [Authorize(IsFramer)] [Render(CSR)] [Title("New frame")]
+component FramingNewPage() {
+  render { Stack(gap: 4, p: 6) { PageHead("New frame"); Text("Choose a moulding to start."); } }
+}

@@ -75,3 +75,22 @@ void a_live_server_call_is_held_like_any_server_call() {
   Assert.Visible("3 mouldings counted");
   Assert.Hidden("Counting the stock…");
 }
+
+/// A button whose action waits on the server says so: its own words give way to its `busyLabel`, it is off, and it is
+/// itself again once the answer lands. (The spinner and `aria-busy` beside it are the client suite's: walker-pending.)
+[Test(ThreeMouldings)]
+void a_button_says_it_is_working_while_its_server_call_is_out() {
+  Ui.SignInAs(StockKeeper);
+  Ui.Visit("/stock/recount");
+  Assert.Hidden("Recounting…");
+  Ui.HoldServer();
+  Ui.Click("Recount the stock");
+  Assert.Visible("Recounting…");
+  Assert.Disabled("Recount the stock");
+  Assert.Hidden("3 mouldings recounted");
+
+  Ui.ReleaseServer();
+  Assert.Visible("3 mouldings recounted");
+  Assert.Hidden("Recounting…");
+  Assert.Enabled("Recount the stock");
+}

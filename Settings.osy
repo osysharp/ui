@@ -54,6 +54,12 @@ public List<SettingsLink> AnnouncedSettings() {
       }
     }
   }
+  // A section the app hides (`SettingsPlacement.Hidden`) is left out: the page stays the kit's, only its link goes.
+  foreach (var placing in App.Implementations<ISettingsPlacement>()) {
+    foreach (var place in placing.Placements()) {
+      if (place.Hidden) { all = all.Where(l => l.To != place.To).ToList(); }
+    }
+  }
   List<SettingsLink> ordered = [];
   // A section with NO group comes first, before every heading. Placed by its `Order` like a group, it landed after
   // whichever headed group sorted before it and read as one of that group's — in Harbour, "Time and date", "Feedback"
@@ -72,7 +78,7 @@ public List<SettingsLink> AnnouncedSettings() {
 /// its place there — whoever announced it: a kit's `ISettingsProvider`, a kit's declared `[Settings]` row, or the app's
 /// own. Discovered like a provider, never wired, and applied by `AnnouncedSettings()`, so the nav, the overview and a
 /// list an app builds from the announced sections all agree. A section it does not name stays where its provider put it.
-/// It moves a link and nothing else: who is shown it (`Shown`) and who may open its page stay the provider's.
+/// It moves a link, or hides it (`Hidden = true`), and nothing else: who is shown it (`Shown`) and who may open its page stay the provider's.
 /// need: move a kit's settings link to another group, put a package's settings section under my own heading, reorder the settings nav, rename the group a kit's settings page is listed under
 /// e.g. `class DeskPlacement : ISettingsPlacement { public SettingsPlacement[] Placements() { return [new SettingsPlacement { To = "/settings/access", Group = "Security", Order = 40 }]; } }`
 public interface ISettingsPlacement {
@@ -89,6 +95,9 @@ public sealed class SettingsPlacement {
   public string? Group = null;
   /// Its place in a gathered area, as `SettingsLink.Order`. Left out, the provider's order stays.
   public int? Order = null;
+  /// True leaves the section out of the settings area — the nav, the overview and `AnnouncedSettings()`. Its provider
+  /// still announces it and its page stays the kit's (an app may take the page over by name); only the link goes.
+  public bool Hidden = false;
 }
 
 /// What a declared settings page (`[Settings]`) reads of its row beside the values, in ONE call: the fields its
@@ -416,21 +425,26 @@ component SettingsNavRow(SettingsLink link, bool current, bool withHint) {
 
 /// A settings page — its title and a line saying what it is for, then its sections, in a readable column. Put a
 /// `SaveBar` at the end of a page whose sections edit rows.
-/// As wide as `Length.SettingsPageW` at most, its sides `Space.SettingsPageX` — the theme's (`osy docs ui-settings#look`).
+/// ⭐ THE HEAD IS A BAND ACROSS THE WHOLE AREA the page sits in — its ground, rule, title and padding are the page-head tokens
+///   (`osy docs ui-settings#page-head`), the same head `PageHead` draws — while its words and its sections keep the
+///   column: as wide as `Length.SettingsPageW` at most, its sides `Space.SettingsPageX` — the theme's (`osy docs ui-settings#look`).
 /// In a test its title is ordinary text: `Assert.Visible("Business hours")`.
 /// need: a page of the settings area, a configuration page with a heading and sections
 /// e.g. `SettingsPage("Business hours", description: "When the SLA clocks run.") { SettingsSection(…) { … } }`
 [Composable]
 component SettingsPage(string title, string description = "") {
   render {
-    // Named "<title> page" — the page's own body, as tall as what is on it (a test measures the area against it).
-    Stack(gap: 6, pt: 5, px: Space.SettingsPageX, w: "100%", maxW: Length.SettingsPageW, pb: 8, label: title + " page") {
-      // The title and its line — no rule under them: each section below draws its own, so a rule here would double it.
-      Stack(gap: 1, label: title) {
-        PageTitle(title);
-        if (description != "") { Text(description, color: Colors.TextMuted, maxW: "680px"); }
+    Stack(gap: 0, w: "100%") {
+      // The band across the area, the title and its line in the page's column.
+      Stack(gap: 0, w: "100%", pt: Space.PageHeadTop, pb: Space.PageHeadBottom, bg: Colors.PageHeadBg,
+            borderBW: Length.PageHeadEdge, border: Colors.PageHeadLine, label: title + " head") {
+        Stack(gap: 1, pt: 5, px: Space.SettingsPageX, w: "100%", maxW: Length.SettingsPageW, label: title) {
+          PageTitle(title);
+          if (description != "") { Text(description, color: Colors.TextMuted, maxW: "680px"); }
+        }
       }
-      Stack(gap: 6) { Slot; }
+      // Named "<title> page" — the page's own body, as tall as what is on it (a test measures the area against it).
+      Stack(gap: 6, pt: 2, px: Space.SettingsPageX, w: "100%", maxW: Length.SettingsPageW, pb: 8, label: title + " page") { Slot; }
     }
   }
 }
@@ -498,15 +512,31 @@ component SettingsSection(string title, string description = "", bool locked = f
 /// `provenance` says WHERE ITS VALUE COMES FROM, under the rest ("Default: 4", "Set here by Ada · 3 min ago", "From
 /// base: 6", "Locked by your organization"), drawn as `from:` says (a `SettingFrom`, as `ScopedSetting` draws it), with
 /// `action` beside it ("Reset", "Set here") pressing `onAction`. `label` names the row as a group, for a reader and a test.
+/// ⭐ `name:` LAYS IT OUT AS A ROW EDITED IN PLACE, the way `SettingSwitch` and its siblings are drawn
+///   (`osy docs ui-setting-controls`): the name, `hint` under it and where its value comes from on the left — the Default
+///   chip, or `setFor` ("Set for Alpha") with `setBy`, `setWhen` and a Reset link (`onReset`, `resetTo`), or Locked
+///   `lockedBy` with `lockedWhy` — and the slot, a control of your own, on the right; `provenance` is said after the
+///   chip and `setByOrganization` reads Locked "by your organization". For a control the kit does not draw in place.
+/// `chipless: true` (with `name:`) leaves out the Default chip — for an app that cannot say where a value comes from, so it must not say "Default"; a `setFor` or a lock still shows.
 /// In a test drive the control inside it by its label (`Ui.Click("Publish new reviews at once")`), and read the line under it as text:
 /// `Assert.Visible("Default: 4", within: "Batch size")` when the row has a `label`.
 /// e.g. `SettingRow(hint: "Staff can still hide one.") { Switch("Publish new reviews at once", value: rules.PublishAtOnce); }`
 /// e.g. `SettingRow(label: "Batch size", provenance: "From base: 6", from: SettingFrom.Inherited, action: "Set here", onAction: SetHere) { NumberField("Batch size", value: site.BatchSize); }`
+/// e.g. `SettingRow(name: "Colour", hint: "The accent the product's pages use.", setFor: "Alpha", onReset: ResetColour) { ColourPicker("Colour", value: p.Colour); }`
 [Composable]
 component SettingRow(string hint = "", bool setByOrganization = false, string label = "", string provenance = "",
-                     SettingFrom from = SettingFrom.Default, string action = "", Action? onAction = null) {
+                     SettingFrom from = SettingFrom.Default, string action = "", Action? onAction = null,
+                     string name = "", string setFor = "", string setBy = "", string setWhen = "", string resetTo = "",
+                     Action? onReset = null, string lockedBy = "", string lockedWhy = "", bool chipless = false) {
   render {
-    if (label != "") {
+    if (name != "") {
+      SettingRowFace(name, help: hint, chip: setFor == "" ? "" : "Set for " + setFor, setBy: setBy, setWhen: setWhen,
+                     resetTo: resetTo, onReset: onReset,
+                     lockedBy: lockedBy != "" ? lockedBy : (setByOrganization ? "your organization" : ""),
+                     lockedWhy: lockedWhy, note: provenance, chipless: chipless) {
+        Slot;
+      }
+    } else if (label != "") {
       Stack(gap: 1, minW: "0", role: UiRole.Group, label: label) {
         Slot;
         SettingRowNotes(hint, setByOrganization, provenance, from, action, onAction);
@@ -606,7 +636,9 @@ public string FormGridCols(int n) {
 /// ⭐ A SAVE THE MODEL'S RULES WOULD REFUSE IS HELD, NOT SENT: the edits stay, every field in the way is shown at its
 ///   control (`Validation.Reveal()`), and the bar says "2 fields need attention." (`Validation.All`).
 /// ⚑ A REFUSED SAVE SAYS WHY AND KEEPS THE EDITS: the bar stays up reading "Not saved — <the reason>", the person's
-///   values are still in their fields, and each field the server named shows its sentence under it.
+///   values are still in their fields, and each field the server named shows its sentence under it. A save the person
+///   MAY NOT make (the organisation's policy, a security rule) is put back instead: the fields show what is stored
+///   and the reason stays at the foot.
 /// In a test: `Ui.Click("Save")`, `Ui.Click("Discard")`, and `Assert.Visible("Unsaved changes")` while there are some.
 /// need: an explicit save and discard bar, save changes to settings, unsaved changes warning, undo an edit before saving, refuse to save until a field is filled, why a save was refused
 /// e.g. `SaveBar(saved: "Statuses saved.")` · `SaveBar(saved: "Saved.", blockedBy: reason == "" ? "Say why." : "")` ·
@@ -642,6 +674,7 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
       if (onSaved != null) { onSaved(); }
       return;
     }
+    var mayNot = false;
     try {
       if (onSave != null) { onSave(); }
       UnitOfWork.Commit();
@@ -653,7 +686,12 @@ component SaveBar(Action onSave = null, string saved = "Saved.", string blockedB
     catch (ConflictException) { throw; }
     // A refused save KEEPS the page's edits: the bar stays up with the reason in it, and each field
     // the server named shows its own sentence under it (`Validation.MessageFor`).
-    catch (Exception ex) { problem = "Not saved — " + ex.Message; }
+    catch (Exception ex) { problem = "Not saved — " + ex.Message; mayNot = ex.Type == "SecurityException"; }
+    // EXCEPT a save the person MAY NOT make (the organisation's policy, a security rule: the page door answers both
+    // as `security`): nothing on the page can mend it, so its edits are put back and the fields show what is stored,
+    // with the reason at the foot. After the `try`, not in the `catch`: a `try` is a savepoint, and a discard inside
+    // one reaches only what the savepoint holds.
+    if (mayNot) { UnitOfWork.Discard(); }
   }
   action Discard() { problem = ""; justSaved = false; UnitOfWork.Discard(); }
   action Undo() { problem = ""; UnitOfWork.Undo(); }
@@ -733,6 +771,7 @@ component SettingsReview(string title, List<string> changes, string saveLabel, A
 
 /// What the last settings save came to, under a page that saves through a review: why it was refused (`problem`), or
 /// that it landed (`saved`). Nothing when both are empty.
+/// In a test there is nothing to drive — read either line as text: `Assert.Visible("Pace saved.")`.
 /// e.g. `SettingsSaveNote(problem: problem, saved: justSaved ? "Pace saved." : "")`
 [Composable]
 component SettingsSaveNote(string problem = "", string saved = "") {

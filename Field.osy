@@ -170,17 +170,35 @@ component ActionArgumentField(ActionParameter p, List<ActionChoice> choices, Bin
   }
 }
 
-/// A labelled NATIVE select — the browser's own `<select>`, its chevron, its keyboard and its screen reader — over a
-/// short closed list. `SelectField("Severity", value: rule.Severity)` binds an ENUM and offers its members, worded by
-/// their labels; pass `options:` for a subset or for any other values (`options: ["Main", "Preview"]` over a `string`).
-/// `value` is a two-way binding: choosing an option writes it straight into the bound field.
+/// A labelled NATIVE select — the browser's own `<select>`, its keyboard and its screen reader, with the KIT'S chevron
+/// — over a short closed list. `SelectField("Severity", value: rule.Severity)` binds an ENUM and offers its members,
+/// worded by their labels; pass `options:` for a subset or for any other values (`options: ["Main", "Preview"]` over a
+/// `string`). `value` is a two-way binding: choosing an option writes it straight into the bound field, then runs
+/// `onChange` if you pass one (a filter that reloads, a setting that saves).
 /// `size: Size.Sm` is the compact one a toolbar filter wants. Its geometry is theme tokens — `Length.SelectH`/`SelectHSm`,
-/// `Space.SelectX`/`SelectY` (+ `Sm`), `Radius.Md` — so a design that states its select sets them once.
+/// `Space.SelectX`/`SelectY` (+ `Sm`), `Radius.Md` — so a design that states its select sets them once. The chevron is
+/// the kit's, not the browser's, so every dropdown in an app wears the same one: `Colors.SelectChevronInk`, with
+/// `Length.SelectChevronRoom` kept clear for it at the box's right.
+/// `showLabel: false` keeps the label as the select's NAME (a screen reader, `Ui.Select(label, …)`) but draws no
+/// caption — for a select in a row that already says its name. `setting: true` is the face a setting's choice wears
+/// (`SettingChoice`): its height, type, corners and locked look are the `Setting*` tokens, `size: Size.Lg` the phone's.
 /// `Dropdown` is the styled list (rows with content, a tick on the current one); this is the plain control.
+/// ⭐ A CHOICE THAT SAYS WHAT EACH OPTION MEANS: pass `detail:` and it opens the kit's own list (an ARIA listbox) whose
+/// options each show their words over a line saying what they mean — "Business" over "$199 a month, 25 applications".
+/// Closed, the box shows the chosen one's words, at the same size and with the same chevron. `words:` says what an
+/// option is called when it is not an enum member — a row (`options: plans, words: p => p.Name`); without it an
+/// option is worded by its `[Label]`. The keyboard is the listbox's: ↓/↑ (or Enter, Space) open it on the chosen option, ↓/↑ move,
+/// Home/End go to the ends, a letter (or a quick run of them, within half a second) goes to the next option whose words
+/// start with it, Enter or Space chooses, Escape or Tab closes it without choosing, and the keyboard is back
+/// on the box after either. A screen reader hears each option by its words, then what it means.
 /// In a test it is chosen by its label: `Ui.Select("Severity", Severity.Should)` (or by an option's words), read back
 /// with `Assert.Value("Severity", …)`, and moved with the keyboard like any select (`Ui.Press("ArrowDown")`).
-/// need: a native select box, a plain select element, pick one of a short fixed list in a form or a toolbar filter
+/// The listed one (`detail:`/`words:`) is chosen by the option itself — `Ui.Select("Plan", plan)` — and read back by
+/// what it shows (`Assert.Visible("Business", within: "Plan")`).
+/// need: a native select box, a plain select element, pick one of a short fixed list in a form or a toolbar filter,
+/// a dropdown that says what each option means, choose a plan and see what each includes, a rich select with two lines
 /// e.g. `SelectField("Severity", value: rule.Severity)` · `SelectField("Show", value: show, options: ["All", "Changed"], size: Size.Sm)`
+///   · `SelectField("Plan", value: org.Plan, options: plans, words: p => p.Name, detail: p => p.Includes)`
 [Composable]
 component SelectField<T>(
     string label,
@@ -189,7 +207,15 @@ component SelectField<T>(
     string hint = "",
     string error = "",
     bool disabled = false,
-    Size size = Size.Md)
+    Size size = Size.Md,
+    Action? onChange = null,
+    bool showLabel = true,
+    bool setting = false,
+    Func<T, string>? detail = null,
+    // ⭐ WITHOUT `words:` AN OPTION IS SHOWN AS ITSELF — `Text(m)`, which words an enum member by its `[Label]` and any
+    //   other value as it is. Never `m.Label`: a word read off `T` would make every call bind an enum
+    //   (OsySharpGenericComponentCheck), refusing the strings and rows the plain face has always taken.
+    Func<T, string>? words = null)
 {
   variants {
     // The same inline-axis statement `Field` makes: a `<select>` otherwise takes its width from its longest option.
@@ -198,20 +224,173 @@ component SelectField<T>(
 
   live var shownError = error != "" ? error : Validation.MessageFor(value);
 
+  // THE LISTED FACE's state (`detail:`/`words:`): whether the list is open, which option the keyboard is on, and
+  // whether the box takes the keyboard back — set when the list closes by a key or a choice, never when the person
+  // moved elsewhere (a click outside, Tab past the box), so the box cannot pull focus back from where they went.
+  bool open = false;
+  int at = 0;
+  bool back = false;
+
+  int IndexOf(T m) {
+    int i = 0;
+    int found = 0;
+    foreach (var o in options) {
+      if (o == m) { found = i; }
+      i = i + 1;
+    }
+    return found;
+  }
+
+  action Open() {
+    if (disabled || options.Count == 0) { return; }
+    at = IndexOf(value);
+    back = false;
+    open = true;
+  }
+  action Toggle() { if (open) { Close(); } else { Open(); } }
+  // Closed by a key: the keyboard goes back to the box it opened from.
+  action Close() { open = false; back = true; }
+  // Closed because the person went elsewhere: the keyboard stays where they took it.
+  action Dismiss() { open = false; }
+  action Choose(T m) {
+    value = m;
+    open = false;
+    back = true;
+    if (onChange != null) { onChange(); }
+  }
+  action ChooseAt() {
+    int i = 0;
+    T picked = value;
+    foreach (var m in options) {
+      if (i == at) { picked = m; }
+      i = i + 1;
+    }
+    Choose(picked);
+  }
+  action Arrive(int i) { at = i; }
+  action BoxKey(string key) { Open(); }
+  action ListKey(string key) {
+    if (key == "Down") { at = Math.Min(at + 1, options.Count - 1); }
+    else if (key == "Up") { at = Math.Max(at - 1, 0); }
+    else if (key == "Home") { at = 0; }
+    else if (key == "End") { at = options.Count - 1; }
+    else if (key == "Enter" || key == "Space") { ChooseAt(); }
+    else if (key == "Tab") { Close(); }
+  }
+
   render {
     Stack(gap: 1) {
-      if (label != "") { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
-      Select(value: value, id: box, describedBy: note, disabled: disabled, label: label, invalid: shownError != "",
-             minH: size == Size.Sm ? Length.SelectHSm : Length.SelectH,
-             px: size == Size.Sm ? Space.SelectXSm : Space.SelectX,
-             py: size == Size.Sm ? Space.SelectYSm : Space.SelectY,
-             fontSize: FontSize.Body) {
-        foreach (var m in options) { Option(m, value: m); }
+      if (detail != null) {
+        if (label != "" && showLabel) { Text(label, labelFor: trigger, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
+        // ⭐ THE SAME BOX, A LIST UNDER IT. The trigger wears exactly the native face's geometry and chevron, so a form
+        //   that mixes the two faces lines up; it is a `combobox` naming its list's state (`aria-expanded`), and owns
+        //   the keys that open it (a `<button>`'s own Enter/Space would toggle it, so they are claimed and open it).
+        Box(position: Position.Relative, w: "100%", minW: "0", onBlurWithin: open ? Dismiss : null) {
+          Pressable(onClick: Toggle, role: UiRole.ComboBox, expanded: open, label: label, id: trigger, describedBy: note,
+                    disabled: disabled, invalid: shownError != "", autoFocus: back,
+                    keys: [Down, Up, Enter, Space], onKeyDown: BoxKey,
+                    display: Display.Flex, align: Align.Center, w: "100%", textAlign: TextAlign.Left,
+                    h: setting ? (size == Size.Lg ? Length.SettingControlHTouch : Length.SettingControlH) : "auto",
+                    minH: setting ? "0" : (size == Size.Sm ? Length.SelectHSm : Length.SelectH),
+                    pl: setting ? "10px" : (size == Size.Sm ? Space.SelectXSm : Space.SelectX), pr: Length.SelectChevronRoom,
+                    py: setting ? "0" : (size == Size.Sm ? Space.SelectYSm : Space.SelectY),
+                    fontFamily: setting ? Font.Sans : "inherit",
+                    fontSize: setting ? (size == Size.Lg ? FontSize.SettingControlFontTouch : FontSize.SettingControlFont) : FontSize.Body,
+                    fontWeight: setting ? FontWeight.Medium : "inherit",
+                    rounded: setting ? Radius.SettingControl : Radius.Md, borderW: 1,
+                    border: shownError != "" ? Colors.BorderDanger : (setting ? Colors.ControlBorder : Colors.Border),
+                    bg: setting && disabled ? Colors.SettingLockedBg : Colors.Surface,
+                    color: setting ? (disabled ? Colors.ProvenanceInk : Colors.OnSurface) : Colors.OnSurface,
+                    cursor: disabled ? Cursor.NotAllowed : Cursor.Pointer) {
+            Box(minW: "0", whiteSpace: WhiteSpace.Nowrap, overflow: Overflow.Hidden, textOverflow: TextOverflow.Ellipsis) {
+              if (value != null && $"{value}" != "") {
+                if (words != null) { Text(words(value)); } else { Text(value); }
+              }
+            }
+          }
+          Row(position: Position.Absolute, top: "0", right: "0", bottom: "0", align: Align.Center,
+              pr: setting ? "10px" : (size == Size.Sm ? Space.SelectXSm : Space.SelectX), pointerEvents: PointerEvents.None) {
+            Icon(Icons.ChevronDown, size: 12, color: Colors.SelectChevronInk);
+          }
+          if (open) {
+            Backdrop(Dismiss);
+            // The list is named BY the box (`labelledBy`), never with the box's own `label:` — two elements answering to
+            // one name made the kit's `Dropdown` refuse its own control as ambiguous (see its panel). It owns the keys
+            // that move in it, Escape while it is open, and Tab — which closes it rather than walking its options.
+            Stack(role: UiRole.ListBox, labelledBy: trigger, keys: [Up, Down, Home, End, Enter, Space, Tab], onKeyDown: ListKey,
+                  onEscape: Close, position: Position.Absolute, z: ZIndex.Popover, mt: 1, w: "100%", minW: Length.MenuW,
+                  maxH: Length.OptionListMaxH, overflowY: Overflow.Auto, bg: Colors.Elevated, borderW: 1, border: Colors.Border,
+                  rounded: Radius.Md, shadow: Shadow.Floating, p: 1, gap: "2px") {
+              foreach (var m in options) {
+                SelectOption(detail: detail(m), chosen: m == value, active: IndexOf(m) == at,
+                             onPick: () => Choose(m), onArrive: () => Arrive(IndexOf(m))) {
+                  if (words != null) { Text(words(m)); } else { Text(m); }
+                }
+              }
+            }
+          }
+        }
+      } else {
+      if (label != "" && showLabel) { Text(label, labelFor: box, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
+      // ⭐ ONE CHEVRON FOR EVERY DROPDOWN. `appearance: None` takes the browser's arrow away and the kit's is laid over
+      //   the right padding the box keeps clear (`Length.SelectChevronRoom`), passing clicks through — so the select
+      //   stays the one element the label names, and the whole box stays the click target.
+      Box(position: Position.Relative, w: "100%", minW: "0") {
+        // One element, two faces: the field's (the theme's select tokens; the base stylesheet's font, line and ground,
+        // restated because a style prop is inline)
+        // and a setting row's (`setting: true` — the `Setting*` tokens; `size: Size.Lg` is its phone height and type).
+        Select(value: value, onChange: onChange, id: box, describedBy: note, disabled: disabled, label: label,
+               invalid: shownError != "", appearance: Appearance.None, w: "100%",
+               h: setting ? (size == Size.Lg ? Length.SettingControlHTouch : Length.SettingControlH) : "auto",
+               minH: setting ? "0" : (size == Size.Sm ? Length.SelectHSm : Length.SelectH),
+               pl: setting ? "10px" : (size == Size.Sm ? Space.SelectXSm : Space.SelectX), pr: Length.SelectChevronRoom,
+               py: setting ? "0" : (size == Size.Sm ? Space.SelectYSm : Space.SelectY),
+               fontFamily: setting ? Font.Sans : "inherit",
+               fontSize: setting ? (size == Size.Lg ? FontSize.SettingControlFontTouch : FontSize.SettingControlFont) : FontSize.Body,
+               fontWeight: setting ? FontWeight.Medium : "inherit",
+               rounded: setting ? Radius.SettingControl : Radius.Md, borderW: 1,
+               // Inline wins over the stylesheet, so the refused look (`aria-invalid`'s danger line) is said here too.
+               border: shownError != "" ? Colors.BorderDanger : (setting ? Colors.ControlBorder : Colors.Border),
+               bg: setting && disabled ? Colors.SettingLockedBg : Colors.Surface,
+               color: setting ? (disabled ? Colors.ProvenanceInk : Colors.OnSurface) : "inherit",
+               cursor: disabled ? Cursor.NotAllowed : Cursor.Pointer) {
+          foreach (var m in options) { Option(m, value: m); }
+        }
+        Row(position: Position.Absolute, top: "0", right: "0", bottom: "0", align: Align.Center,
+            pr: setting ? "10px" : (size == Size.Sm ? Space.SelectXSm : Space.SelectX), pointerEvents: PointerEvents.None) {
+          Icon(Icons.ChevronDown, size: 12, color: Colors.SelectChevronInk);
+        }
+      }
       }
       if (shownError != "" || hint != "") {
         Text(shownError != "" ? shownError : hint, id: note, fontSize: FontSize.Caption,
              color: shownError != "" ? Colors.Danger : Colors.TextMuted);
       }
+    }
+  }
+}
+
+/// One option of a listed `SelectField`: its words (what it holds), and under them what it means; a tick on the chosen
+/// one. It is the keyboard's stop while the list is open (the list moves the keyboard between its options, so a screen
+/// reader hears each by its words — its name — then what it means — its description — and whether it is chosen); the
+/// list's own keys decide where it goes next.
+[Composable][Part]
+component SelectOption(string detail = "", bool chosen = false, bool active = false, Action? onPick = null,
+                       Action? onArrive = null) {
+  variants {
+    base { Rounded = Radius.Sm; Px = Space.OptionX; Py = Space.OptionY; Cursor = Cursor.Pointer;
+           Hover { Bg = Colors.OptionHoverBg; }
+           Focus { Bg = Colors.OptionHoverBg; OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
+    chosen { Bg = Colors.OptionChosenBg; Hover { Bg = Colors.OptionChosenBg; } Focus { Bg = Colors.OptionChosenBg; } }
+  }
+  render {
+    Row(role: UiRole.Option, selected: chosen, labelledBy: name, describedBy: meaning, onClick: onPick,
+        onFocus: onArrive, autoFocus: active, align: Align.Start, gap: 2) {
+      Stack(gap: Space.OptionLineGap, grow: 1, minW: "0") {
+        Box(id: name, fontSize: FontSize.Body, fontWeight: FontWeight.Medium, color: Colors.OnSurface) { Slot; }
+        if (detail != "") { Text(detail, id: meaning, fontSize: FontSize.Caption, color: Colors.OptionDetailInk); }
+      }
+      if (chosen) { Icon(Icons.Check, size: 14, color: Colors.Primary.Text); }
     }
   }
 }

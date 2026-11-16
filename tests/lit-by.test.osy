@@ -1,0 +1,19 @@
+// A RAIL ROW LIT BY OTHER ADDRESSES (`NavItem.LitBy`). A page that belongs to a row but does not live under its address —
+// a record whose address sits under another row's, a "New …" form at an address of its own — lights that row and no
+// other. The longest MATCHED address wins, so the desk's shorter prefix does not take the frame's page.
+
+/// A frame's page and New frame light Frames; the desk's own page still lights Desk.
+[Test(Workshop)]
+void a_row_is_lit_on_the_addresses_it_names() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/framing-desk/frame/oak");
+  Assert.Visible("Frame oak");
+  Assert.Current("Frames", within: "Main navigation");
+  Assert.Current("Desk", false, within: "Main navigation");
+  Ui.Visit("/frame-new");
+  Assert.Visible("Choose a moulding to start.");
+  Assert.Current("Frames", within: "Main navigation");
+  Ui.Visit("/framing-desk");
+  Assert.Current("Desk", within: "Main navigation");
+  Assert.Current("Frames", false, within: "Main navigation");
+}

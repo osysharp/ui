@@ -1,0 +1,160 @@
+// SETTINGS EDITED IN PLACE — a switch and a choice save as they change and Undo puts them back; a typed number is checked on Save;
+// a setting the organisation's policy holds cannot be changed and says why; someone who may not change the settings
+// reads them as words, with no control.
+
+/// The workshop, and its one product's settings at their defaults — also the demo page's world (`osy shot --seed`).
+[TestFixture, DevSeed]
+void ProductAtDefaults() {
+  Workshop();
+  new ProductSettings { Product = "Alpha" };
+}
+
+bool StoredOtherProducts() {
+  var on = false;
+  runas (Ines) { on = ProductSettings.Single().SearchOtherProducts; }
+  return on;
+}
+
+int StoredSessionSize() {
+  var size = 0;
+  runas (Ines) { size = ProductSettings.Single().SessionSize; }
+  return size;
+}
+
+/// Pressing a switch saves it there and then — the row says "Saved", the chip says it is set for the product — and
+/// Undo saves the value before, back to the Default chip.
+[Test(ProductAtDefaults)]
+void a_switch_saves_at_once_and_undo_puts_it_back() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-controls");
+  Assert.Checked("Other products");
+  Assert.Visible("Default", within: "Other products");
+  Ui.Click("Other products");
+  Assert.Visible("Saved", within: "Other products");
+  Assert.Visible("Turned off for Alpha", within: "Other products");
+  Assert.False(StoredOtherProducts());
+  Ui.Click("Undo", within: "Other products");
+  Assert.True(StoredOtherProducts());
+  Assert.Hidden("Turned off for Alpha");
+  Assert.Visible("Default", within: "Other products");
+}
+
+Unfinished StoredUnfinished() {
+  var u = Unfinished.Ask;
+  runas (Ines) { u = ProductSettings.Single().Unfinished; }
+  return u;
+}
+
+/// A choice is the kit's dropdown: it offers the enum's members in their words, and choosing one saves it there and
+/// then — "Saved", set for the product — and Undo saves the value before, back to the Default chip.
+[Test(ProductAtDefaults)]
+void a_choice_saves_at_once_and_undo_puts_it_back() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-controls");
+  Assert.Value("Unfinished items at release", Unfinished.Ask);
+  Assert.Visible("Default", within: "Unfinished items at release");
+  Ui.Select("Unfinished items at release", "Move to the next release");
+  Assert.Visible("Saved", within: "Unfinished items at release");
+  Assert.Visible("Set for Alpha", within: "Unfinished items at release");
+  Assert.Equal(Unfinished.NextRelease, StoredUnfinished());
+  Ui.Click("Undo", within: "Unfinished items at release");
+  Assert.Equal(Unfinished.Ask, StoredUnfinished());
+  Assert.Value("Unfinished items at release", Unfinished.Ask);
+  Assert.Visible("Default", within: "Unfinished items at release");
+}
+
+/// A typed number stays in its box until Save: Save refuses one outside the range and says so under the box, storing
+/// nothing; a number inside it is stored, and the row says it is set for the product with a way back to 200,000.
+[Test(ProductAtDefaults)]
+void a_typed_number_is_checked_on_save() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-controls");
+  Ui.Fill("Session size", "2000");
+  Ui.Click("Save", within: "Session size");
+  Assert.Visible("Enter a number from 10,000 to 1,000,000.", within: "Session size");
+  Assert.Equal(200000, StoredSessionSize());
+  Ui.Fill("Session size", "150000");
+  Ui.Click("Save", within: "Session size");
+  Assert.Hidden("Enter a number from");
+  Assert.Equal(150000, StoredSessionSize());
+  Assert.Visible("Set for Alpha", within: "Session size");
+  Assert.Visible("Reset to 200,000", within: "Session size");
+}
+
+/// A setting the organisation's policy holds is drawn with its switch disabled, the Locked chip, whose policy and
+/// which version, and why — and nothing on it saves.
+[Test(ProductAtDefaults)]
+void a_locked_setting_cannot_change_and_says_why() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-controls");
+  Assert.Disabled("Earlier sessions");
+  Assert.Visible("Locked", within: "Earlier sessions");
+  Assert.Visible("by Northwind Health's policy · version 5", within: "Earlier sessions");
+  Assert.Visible("Session history is kept for audit. Ask an organization admin to change it.", within: "Earlier sessions");
+  Assert.Enabled("Other products");
+}
+
+/// A framer may read the product's settings and not change them: each reads as its value in words — the choice, the
+/// number with its unit, the switch's word — with no select, no box and no switch to press.
+[Test(ProductAtDefaults)]
+void someone_who_may_not_change_them_reads_words_with_no_control() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/setting-controls");
+  Assert.TextIs("Ask each time", within: "Unfinished items at release");
+  Assert.Hidden("Move to the next release");
+  Assert.TextIs("200,000 tokens", within: "Session size");
+  Assert.TextIs("On", within: "Other products");
+  Assert.Hidden("Reset to default");
+}
+
+/// A setting that asks for a reason (`reason:`) shows a Why box beside its control, and the app's function reads it: a
+/// number saved with no reason is refused in the app's words and stores nothing; with one it is stored and the page has
+/// the reason. A switch asks the same before it flips.
+[Test(ProductAtDefaults)]
+void a_setting_with_a_reason_option_hands_the_reason_to_the_apps_save() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-reason");
+  Ui.Fill("Session size", "150000");
+  Ui.Click("Save", within: "Session size");
+  Assert.Visible("Not saved — say why this is changed.", within: "Session size");
+  Assert.Equal(200000, StoredSessionSize());
+  Ui.Fill("Why", "Cheaper sessions", within: "Session size");
+  Ui.Click("Save", within: "Session size");
+  Assert.Equal(150000, StoredSessionSize());
+  Assert.Visible("Kept: Cheaper sessions");
+  Ui.Click("Other products");
+  Assert.Visible("Not saved — say why this is changed.", within: "Other products");
+  Assert.True(StoredOtherProducts());
+  Ui.Fill("Why", "Out of scope", within: "Other products");
+  Ui.Click("Other products");
+  Assert.False(StoredOtherProducts());
+  Assert.Visible("Kept: Out of scope");
+}
+
+/// `chipless: true` on a row leaves out the Default chip — for an app that cannot say where a value comes from — and a
+/// row without it shows the chip as before.
+[Test(ProductAtDefaults)]
+void a_chipless_row_does_not_say_default() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-reason");
+  Assert.Hidden("Default", within: "Colour");
+  Assert.Visible("Default", within: "Shape");
+}
+
+/// `note:` on a switch, a choice and a number puts a line under the row — the app's own words, such as the latest reason.
+[Test(ProductAtDefaults)]
+void a_setting_with_a_note_says_it_under_its_row() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-notes");
+  Assert.Visible("Latest reason: out of scope", within: "Other products");
+  Assert.Visible("Latest reason: simpler releases", within: "Unfinished items at release");
+  Assert.Visible("Latest reason: cheaper sessions", within: "Session size");
+}
+
+/// A read-only number says its value in the app's own words when it passes `words:` — "8 dollars" — and as "8" otherwise.
+[Test(ProductAtDefaults)]
+void a_read_only_number_reads_in_the_apps_own_words() {
+  Ui.SignInAs(Ines);
+  Ui.Visit("/setting-notes");
+  Assert.TextIs("8 dollars", within: "Budget");
+}

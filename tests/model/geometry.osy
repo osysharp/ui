@@ -45,7 +45,10 @@ theme Workshop {
     SectionListW = Modes.Of(light: "196px", dark: "196px", seclist: "232px");
     SectionRow   = Modes.Of(light: "auto", dark: "auto", seclist: "36px");
   }
-  FontSize { SectionGroup = Modes.Of(light: "11px", dark: "11px", seclist: "12px"); }
+  // KIT-PAGEHEAD-TOKENS: `slimhead` — a shell whose page head is 18px (the page-head-tokens page measures it); `FontSize.Title` stays 28.
+  FontSize { SectionGroup = Modes.Of(light: "11px", dark: "11px", seclist: "12px");
+             PageTitle = Modes.Of(light: "28px", dark: "28px", slimhead: "18px");
+             PageSectionTitle = Modes.Of(light: "16px", dark: "16px", slimhead: "13px"); }
   Colors {
     SettingsSectionBg = Modes.Of(light: Colors.Transparent, dark: Colors.Transparent, roomy: Colors.Surface);
   }
@@ -96,6 +99,54 @@ component GeometryPage() {
                display: Display.InlineFlex, alignItems: Align.Center, borderBW: 2, border: Colors.Transparent, whiteSpace: WhiteSpace.Nowrap);
         }
       }
+    }
+  }
+}
+
+// KIT-PAGEHEAD-TOKENS: the page title's size is `FontSize.PageTitle`, not `FontSize.Title`. The page draws a kit `PageTitle`
+// and a kit `CardTitle` beside the same words in plain elements at the floor's sizes (28px, and `FontSize.Subhead` 16px), so
+// a test can show a theme's `slimhead` variant shrinks the page title and nothing else.
+[Route("/page-head-tokens")] [Authorize(IsFramer)] [Render(CSR)] [Title("Page head tokens")]
+component PageHeadTokensPage() {
+  action Slim() { Theme.Variant("slimhead"); }
+  render {
+    Stack(gap: 4, p: 6) {
+      Button("Slim page head", onPress: Slim);
+      Box(label: "Kit page title", display: Display.Flex) { PageTitle("Ledger"); }
+      Box(label: "Floor page title", display: Display.Flex) {
+        Text("Ledger", fontFamily: Font.Display, fontSize: "28px", fontWeight: FontWeight.Headings, lineHeight: "1.15");
+      }
+      Box(label: "Kit card title", display: Display.Flex) { CardTitle("Ledger"); }
+      Box(label: "Floor card title", display: Display.Flex) {
+        Text("Ledger", fontFamily: Font.Display, fontSize: FontSize.Subhead, fontWeight: FontWeight.Headings, lineHeight: "1.25");
+      }
+    }
+  }
+}
+
+// KIT-SECTIONHEAD-TOKEN: a page section's heading is `FontSize.PageSectionTitle` (the floor's `Subhead`, 16px), so a shell with an
+// 18px page title can set a smaller section heading without touching `Subhead`, which sizes card titles and more. The page
+// draws the kit's `PageSectionHeading` beside the same words in a plain element at 16px; the `slimhead` variant shrinks only the first.
+[Route("/section-heading-token")] [Authorize(IsFramer)] [Render(CSR)] [Title("Section heading token")]
+component PageSectionHeadingTokenPage() {
+  action Slim() { Theme.Variant("slimhead"); }
+  render {
+    Stack(gap: 4, p: 6) {
+      Button("Slim page head", onPress: Slim);
+      Box(label: "Kit section heading", display: Display.Flex) { PageSectionHeading("Keys in use"); }
+      Box(label: "Floor section heading", display: Display.Flex) {
+        Text("Keys in use", fontFamily: Font.Display, fontSize: "16px", fontWeight: FontWeight.Headings, lineHeight: "1.25");
+      }
+    }
+  }
+}
+
+// KIT-PAGEHEAD-FULLWIDTH: a settings page's head is a band across the whole area, its words in the page's column.
+[Route("/page-head-full")] [Authorize(IsFramer)] [Render(CSR)] [Title("Full-width page head")]
+component PageHeadFullPage() {
+  render {
+    Stack(gap: 0, w: "100%", label: "Head area") {
+      SettingsPage("Ledger", description: "Every entry, in order.") { Text("The body of the page."); }
     }
   }
 }

@@ -22,12 +22,20 @@ namespace Osysharp.Ui;
   }
 }
 
+/// The column a page's head keeps its words in when it is drawn as a band across the whole area (`PageHead(column:)`).
+public enum PageColumn { None, Settings, People }
+
 /// A page's heading row — the title (and optional subtitle) on the left, actions pushed to the right via the
 /// default slot. `PageHead("Belfries") { Button("New", onPress: Add, tone: Tone.Primary); }`
 /// In a test its title is ordinary text: `Assert.Visible("Orders")`.
+/// ⭐ `column:` DRAWS THE HEAD AS A BAND ACROSS ITS PARENT with its words in a page's column (five steps down from its top): the
+///   band (`Colors.PageHeadBg`, the rule under it `Colors.PageHeadLine` × `Length.PageHeadEdge`) is as wide as what it sits
+///   in, and the words keep the column's measure (`PageColumn.Settings`: `Length.SettingsPageW`; `PageColumn.People`:
+///   `Length.PeoplePageW`) and sides (`Space.SettingsPageX`). `SettingsPage` and the user-management People page are drawn
+///   so; `PageColumn.None` (the default) is the plain head.
 /// need: the heading at the top of a page, a title with actions beside it
-[Composable] component PageHead(string title, string subtitle = "") {
-  variants { base { Pb = 4; BorderBW = 1; Border = Colors.Border; } }
+[Composable] component PageHead(string title, string subtitle = "", PageColumn column = PageColumn.None) {
+  variants { base { Pt = Space.PageHeadTop; Pb = Space.PageHeadBottom; Px = Space.PageHeadX; Bg = Colors.PageHeadBg; BorderBW = Length.PageHeadEdge; Border = Colors.PageHeadLine; } }
   render {
     // A page head is a NAMED REGION, exactly as a titled `Card` is: `label:` makes it addressable, so a test can
     // say `Ui.Click("Add", within: "Houseplants")` and mean the button in the HEADER rather than the one of the
@@ -41,11 +49,15 @@ namespace Osysharp.Ui;
     //   page sideways — measured, a 32px title and two buttons ran 40px past a 390px screen with nothing to scroll to.
     //   The title takes the room that is left (`grow`), so on a wide screen the actions still sit at the far end.
     Row(align: Align.Center, gap: 3, wrap: Wrapping.Wrap, label: title) {
-      Stack(gap: 1, grow: 1, minW: "min(100%, 14rem)") {
-        PageTitle(title);
-        if (subtitle != "") { Hint(subtitle); }
+      Row(align: Align.Center, gap: 3, wrap: Wrapping.Wrap, grow: 1, minW: "0", maxW: column == PageColumn.Settings ? Length.SettingsPageW : (column == PageColumn.People ? Length.PeoplePageW : "none"),
+          px: column == PageColumn.None ? "0" : Space.SettingsPageX,
+          pt: column == PageColumn.None ? "0" : "calc(var(--space-step, 0.25rem) * 5)") {
+        Stack(gap: 1, grow: 1, minW: "min(100%, 14rem)") {
+          PageTitle(title);
+          if (subtitle != "") { Hint(subtitle); }
+        }
+        Row(align: Align.Center, gap: 2, wrap: Wrapping.Wrap) { Slot; }
       }
-      Row(align: Align.Center, gap: 2, wrap: Wrapping.Wrap) { Slot; }
     }
   }
 }

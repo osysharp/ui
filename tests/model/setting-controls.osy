@@ -1,0 +1,149 @@
+using Osysharp.Ui;
+using Osysharp.Observability;
+
+// SETTINGS EDITED IN PLACE — the kit's demo page for `SettingsCard`, `SettingSwitch`, `SettingChoice`, `SettingNumber`
+// and `SettingAlways`, drawn with the words of the design it was built to: a product's planning settings and the tools
+// its design agent may use. The owner changes them where they stand; a framer, who may not, reads them as words. One
+// of them is held by the organisation's policy. `/setting-controls?look=osyrin` draws it in the Osyrin look's values.
+
+/// What happens to the items not done when a release is marked as released.
+public enum Unfinished { [Label("Ask each time")] Ask, [Label("Move to the next release")] NextRelease,
+                         [Label("Return to the backlog")] Backlog }
+
+/// One product's settings — every field has a default, and a value other than it is "set for" the product.
+entity ProductSettings {
+  [Required, MaxLength(80)] string Product = "Alpha";
+  Unfinished Unfinished = Unfinished.Ask;
+  int SessionSize = 200000;
+  bool SearchOtherProducts = true;
+  bool SearchPlan = true;
+  bool SearchSessions = true;
+  security {
+    allow read when IsFramer;
+    allow create, update when IsOwner;
+  }
+}
+
+[Route("/setting-controls")] [Authorize(IsFramer)] [Render(CSR)] [Title("Settings")]
+component SettingControlsPage() {
+  live var s = ProductSettings.FirstOrDefault();
+  // Who last changed the settings, and when — read from the change trail on the server, again after every save.
+  EntityChange? last = null;
+  DateTime now = DateTime.UtcNow;
+
+  // `?look=osyrin` draws the page in the Osyrin look's values (the `osyrin` variant of the theme, geometry.osy).
+  on mount {
+    var look = Navigation.Query("look") ?? "";
+    if (look != "") { Theme.Variant(look); }
+    Reread();
+  }
+
+  action Reread() { if (s != null) { last = LastChange(s.Id); now = DateTime.UtcNow; } }
+  action ResetUnfinished() { s.Unfinished = Unfinished.Ask; UnitOfWork.Commit(); Reread(); }
+  action ResetSessionSize() { s.SessionSize = 200000; UnitOfWork.Commit(); Reread(); }
+  action ResetOtherProducts() { s.SearchOtherProducts = true; UnitOfWork.Commit(); Reread(); }
+  action ResetPlan() { s.SearchPlan = true; UnitOfWork.Commit(); Reread(); }
+
+  render {
+    if (s != null) {
+      Stack(gap: "16px", px: Layout.AtLeast(Tablet) ? "32px" : "16px", py: "28px", maxW: "1200px", bg: Colors.Bg, minH: Length.Screen) {
+        Stack(gap: "4px") {
+          Text("Products / " + s.Product + " / Settings", fontSize: FontSize.Caption, color: Colors.SettingHelpInk);
+          Text("Settings", role: UiRole.Heading, level: 1, fontSize: "18px", fontWeight: FontWeight.Semibold);
+        }
+        SettingsCard("Planning and releases", description: "How " + s.Product + " plans its work and ships its releases.") {
+          SettingChoice("Unfinished items at release", value: s.Unfinished,
+                        help: "What happens to items that aren't done when a release is marked as released.",
+                        setFor: s.Unfinished == Unfinished.Ask ? "" : s.Product, setBy: Who(last), setWhen: When(last, now),
+                        onReset: ResetUnfinished, readOnly: !IsOwner, onSaved: Reread);
+          SettingNumber("Session size", value: s.SessionSize, unit: "tokens", min: 10000, max: 1000000,
+                        help: "The largest estimate a slice can have and still fit in one agent session.",
+                        setFor: s.SessionSize == 200000 ? "" : s.Product, setBy: Who(last), setWhen: When(last, now),
+                        resetTo: "200,000", onReset: ResetSessionSize, readOnly: !IsOwner, onSaved: Reread);
+        }
+        SettingsCard("Designer tools", description: "What the design agent may look up while it works on " + s.Product + "'s designs.") {
+          SettingAlways("Work on the outline",
+                        help: "Read and edit the outline, files and open questions, and ask you to decide. Every change can be undone.",
+                        note: "Always available: this is the designer's core job.");
+          SettingSwitch("Other products", value: s.SearchOtherProducts,
+                        help: "Search the plans of other products you can see. Only keys and titles are shared.",
+                        setFor: s.SearchOtherProducts ? "" : s.Product, setBy: Who(last), setWhen: When(last, now),
+                        onReset: ResetOtherProducts, readOnly: !IsOwner, onSaved: Reread);
+          SettingSwitch("This product's plan and releases", value: s.SearchPlan,
+                        help: "Search " + s.Product + "'s plan, its items, its releases and its other designs.",
+                        setFor: s.SearchPlan ? "" : s.Product, setBy: Who(last), setWhen: When(last, now),
+                        onReset: ResetPlan, readOnly: !IsOwner, onSaved: Reread);
+          SettingSwitch("Earlier sessions", value: s.SearchSessions, help: "Search and read this design's previous sessions.",
+                        lockedBy: "Northwind Health's policy · version 5",
+                        lockedWhy: "Session history is kept for audit. Ask an organization admin to change it.",
+                        readOnly: !IsOwner);
+        }
+      }
+    }
+  }
+}
+
+/// Who last changed the product's settings — the change trail's newest entry, "" when nobody has.
+public string Who(EntityChange? c) { return c == null ? "" : (c.By != "" ? c.By : "the system"); }
+
+/// When, in words — "just now", "4 min ago" — or "" when nobody has.
+public string When(EntityChange? c, DateTime now) { return c == null ? "" : TimeAgo(c.At, now); }
+
+/// The newest change to a product's settings, or null when nobody has changed them.
+public EntityChange? LastChange(Guid id) { return ProductSettings.Changes(id).FirstOrDefault(); }
+
+/// A page whose server function refuses a change without a reason: `reason:` on the setting asks for it beside the
+/// control and the function reads it; `chipless: true` leaves out the Default chip where the page cannot say it.
+[Route("/setting-reason")] [Authorize(IsOwner)] [Render(CSR)] [Title("Settings with a reason")]
+component SettingReasonPage() {
+  live var s = ProductSettings.FirstOrDefault();
+  string why = "";
+  string kept = "";
+
+  /// The app's own rule: no reason, no change.
+  string SaveWithReason() {
+    if (why.Trim() == "") { UnitOfWork.Discard(); return "say why this is changed."; }
+    UnitOfWork.Commit();
+    kept = why;
+    why = "";
+    return "";
+  }
+
+  render {
+    if (s != null) {
+      Stack(gap: "16px", p: 6) {
+        SettingsCard("With a reason") {
+          SettingNumber("Session size", value: s.SessionSize, unit: "tokens", min: 10000, max: 1000000,
+                        reason: why, saveWith: SaveWithReason);
+          SettingSwitch("Other products", value: s.SearchOtherProducts, reason: why, saveWith: SaveWithReason);
+        }
+        SettingsCard("Without a trail") {
+          SettingRow(name: "Colour", hint: "Nobody here can see who changed it.", chipless: true) { Text("Teal"); }
+          SettingRow(name: "Shape", hint: "The chip is shown, as it always was.") { Text("Round"); }
+        }
+        Text("Kept: " + kept, label: "Kept reason");
+      }
+    }
+  }
+}
+
+/// A line under a setting's row (`note:`, "the latest reason") on a switch, a choice and a number, and a read-only
+/// number said in the app's own words (`words:`, "8 dollars" rather than "8").
+[Route("/setting-notes")] [Authorize(IsOwner)] [Render(CSR)] [Title("Settings with notes")]
+component SettingNotesPage() {
+  live var s = ProductSettings.FirstOrDefault();
+  int budget = 8;
+  render {
+    if (s != null) {
+      Stack(gap: "16px", p: 6) {
+        SettingsCard("With a note") {
+          SettingSwitch("Other products", value: s.SearchOtherProducts, note: "Latest reason: out of scope");
+          SettingChoice("Unfinished items at release", value: s.Unfinished, note: "Latest reason: simpler releases");
+          SettingNumber("Session size", value: s.SessionSize, unit: "tokens", min: 10000, max: 1000000,
+                        note: "Latest reason: cheaper sessions");
+          SettingNumber("Budget", value: budget, readOnly: true, words: n => n + " dollars");
+        }
+      }
+    }
+  }
+}

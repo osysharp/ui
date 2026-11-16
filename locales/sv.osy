@@ -4,6 +4,25 @@
 // Source language: en.
 
 translations sv {
+  // ── ActionArgumentField ──
+  /// ActionArgumentField · a hint under a field
+  /// shown through Hint()
+  hint "May be left empty." => "Får lämnas tomt.";
+  /// ActionArgumentField · a hint under a field
+  /// placeholders: {takes} = takes (string)
+  /// shown through Hint()
+  hint "{takes} May be left empty." => "{takes} Får lämnas tomt.";
+  /// ActionArgumentField · placeholder text inside an empty field · at most ~27 characters
+  /// shown through TextAreaField.placeholder
+  placeholder "[\"first\", \"second\"]" => "[\"första\", \"andra\"]";
+  /// ActionArgumentField · placeholder text inside an empty field · at most ~27 characters
+  /// shown through TextAreaField.placeholder
+  placeholder "{ \"name\": \"value\" }" => "{ \"name\": \"value\" }";
+  /// ActionArgumentField · text on the page
+  text "No" => "Nej";
+  /// ActionArgumentField · text on the page
+  text "Yes" => "Ja";
+
   // ── AmbientVideo ──
   /// AmbientVideo · a control's name for screen readers
   /// shown through AmbientVideo.pauseLabel
@@ -44,9 +63,13 @@ translations sv {
   /// shown through AutoSave.saved
   text "All changes saved" => "Alla ändringar sparade";
   /// AutoSave · text on the page
-  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// placeholders: {problem} = problem (string)
+  /// beside: "Retry"
+  text "Not saved — {problem}" => "Inte sparat — {problem}";
+  /// AutoSave · text on the page
+  /// placeholders: {value} = ….ToString(…) (int) — {value} is a count: give one text per plural form
   /// beside: "Undo"
-  text "Saving in {ToString} s" => { one: "Sparar om {ToString} s", other: "Sparar om {ToString} s" };
+  text "Saving in {value} s" => { one: "Sparar om {value} s", other: "Sparar om {value} s" };
 
   // ── CalendarPanel ──
   /// CalendarPanel · a control's name for screen readers
@@ -81,6 +104,12 @@ translations sv {
   /// placeholders: {query} = query (string)
   text "Nothing matches “{query}”" => "Inget matchar ”{query}”";
 
+  // ── ConfirmStep ──
+  /// ConfirmStep · a button's label · at most ~12 characters
+  /// shown through Button.label
+  /// also in SettingNumber
+  button "Cancel" => "Avbryt";
+
   // ── DataGrid ──
   /// DataGrid · a control's name for screen readers
   accessibleName "Active filters" => "Aktiva filter";
@@ -107,11 +136,11 @@ translations sv {
   /// shown through GridToolButton.label
   /// beside: "12rem"
   button "Filter" => "Filter";
-  /// DataGrid · a button's label · at most ~27 characters
-  /// placeholders: {ToString} = ….ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// DataGrid · a button's label · at most ~40 characters
+  /// placeholders: {ColumnFilterCount} = ….ToString(…) (int) — {ColumnFilterCount} is a count: give one text per plural form
   /// shown through GridToolButton.label
   /// beside: "12rem"
-  button "Filter · {ToString}" => { one: "Filter · {ToString}", other: "Filter · {ToString}" };
+  button "Filter · {ColumnFilterCount}" => { one: "Filter · {ColumnFilterCount}", other: "Filter · {ColumnFilterCount}" };
   /// DataGrid · a label (a field, a list item, a menu entry) · at most ~26 characters
   /// shown through SearchField.label
   label "Search all columns" => "Sök i alla kolumner";
@@ -190,6 +219,19 @@ translations sv {
   /// shown through Done.label
   label "Saved" => "Sparat";
 
+  // ── Drawer ──
+  /// Drawer · a button's label · at most ~11 characters
+  /// shown through Drawer.closeLabel
+  /// also in StorefrontBagPanel
+  /// also in StorefrontMenuDrawer
+  button "Close" => "Stäng";
+  /// Drawer · a button's label · at most ~10 characters
+  /// shown through Drawer.nextLabel
+  button "Next" => "Nästa";
+  /// Drawer · a button's label · at most ~14 characters
+  /// shown through Drawer.previousLabel
+  button "Previous" => "Föregående";
+
   // ── DurationField ──
   /// DurationField · a control's name for screen readers
   /// beside: "How many"
@@ -231,9 +273,23 @@ translations sv {
   /// shown through DurationWords()
   text "{n} minutes" => { one: "{n} minut", other: "{n} minuter" };
 
+  // ── EditingBanner ──
+  /// EditingBanner · a control's name for screen readers
+  /// also in SaveBar
+  accessibleName "Unsaved changes" => "Osparade ändringar";
+  /// EditingBanner · a button's label · at most ~13 characters
+  /// shown through EditingBanner.discard
+  /// also in SaveActions
+  /// also in SaveBar
+  button "Discard" => "Släng";
+  /// EditingBanner · a button's label · at most ~21 characters
+  /// shown through EditingBanner.save
+  button "Review and save" => "Granska och spara";
+
   // ── EditorialFooter ──
   /// EditorialFooter · a control's name for screen readers
   /// beside: "420px"
+  /// also in SidebarRailGuarded
   accessibleName "Footer navigation" => "Navigering i sidfoten";
   /// EditorialFooter · a control's name for screen readers
   /// also in StoreFooter
@@ -258,8 +314,8 @@ translations sv {
   /// also in TabbedTopRow
   accessibleName "Page header" => "Sidhuvud";
   /// FocusedBar · text on the page
-  /// placeholders: {ToString} = active.Number.ToString(…) (int), {ToString2} = total.ToString(…) (int) — {ToString} is a count: give one text per plural form
-  text "Step {ToString} of {ToString2}" => "Steg {ToString} av {ToString2}";
+  /// placeholders: {active.Number} = active.Number.ToString(…) (int), {total} = total.ToString(…) (int) — {active.Number} is a count: give one text per plural form
+  text "Step {active.Number} of {total}" => "Steg {active.Number} av {total}";
 
   // ── FocusedExit ──
   /// FocusedExit · a control's name for screen readers
@@ -324,6 +380,20 @@ translations sv {
   /// placeholders: {col.Label} = col.Label (string)
   /// shown through HeaderTool.label
   label "Move {col.Label} right" => "Flytta {col.Label} åt höger";
+
+  // ── HistoryRow ──
+  /// HistoryRow · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through HistoryRow.undo
+  label "Undo" => "Ångra";
+  /// HistoryRow · text on the page
+  /// placeholders: {why} = why (string)
+  text "Why: {why}" => "Varför: {why}";
+
+  // ── ImpactDialog ──
+  /// ImpactDialog · a button's label · at most ~31 characters
+  /// shown through ImpactDialog.closeLabel
+  /// also in ImpactPanel
+  button "Close and keep editing" => "Stäng och fortsätt redigera";
 
   // ── KeyboardSheet ──
   /// KeyboardSheet · a subtitle
@@ -415,6 +485,24 @@ translations sv {
   /// beside: "Hours", "Days"
   label "Minutes" => "Minuter";
 
+  // ── Osysharp.Ui.SettingFrom ──
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~13 characters
+  /// shown through Osysharp.Ui.SettingFrom.Default
+  /// beside: "Inherited", "Set here", "Locked"
+  label "Default" => "Standard";
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~15 characters
+  /// shown through Osysharp.Ui.SettingFrom.Inherited
+  /// beside: "Set here", "Locked", "Default"
+  label "Inherited" => "Ärvd";
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through Osysharp.Ui.SettingFrom.Locked
+  /// beside: "Inherited", "Set here", "Default"
+  label "Locked" => "Låst";
+  /// Osysharp.Ui.SettingFrom · a label (a field, a list item, a menu entry) · at most ~14 characters
+  /// shown through Osysharp.Ui.SettingFrom.SetHere
+  /// beside: "Inherited", "Locked", "Default"
+  label "Set here" => "Satt här";
+
   // ── Osysharp.Ui.ShellPresence ──
   /// Osysharp.Ui.ShellPresence · a label (a field, a list item, a menu entry) · at most ~10 characters
   /// shown through Osysharp.Ui.ShellPresence.Away
@@ -432,6 +520,17 @@ translations sv {
   /// shown through Osysharp.Ui.ShellPresence.Online
   /// beside: "None", "Away", "Do not disturb"
   label "Online" => "Online";
+
+  // ── PendingChange ──
+  /// PendingChange · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through PendingChange.accept
+  label "Accept" => "Godkänn";
+  /// PendingChange · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through PendingChange.edit
+  label "Edit" => "Redigera";
+  /// PendingChange · a label (a field, a list item, a menu entry) · at most ~12 characters
+  /// shown through PendingChange.reject
+  label "Reject" => "Avvisa";
 
   // ── QrCode ──
   /// QrCode · a label (a field, a list item, a menu entry) · at most ~13 characters
@@ -484,14 +583,10 @@ translations sv {
   // ── SaveActions ──
   /// SaveActions · a control's name for screen readers
   accessibleName "Changes" => "Ändringar";
-  /// SaveActions · a button's label · at most ~13 characters
-  /// shown through Button.label
-  /// beside: "Edited", "Save"
-  /// also in SaveBar
-  button "Discard" => "Släng";
   /// SaveActions · a button's label · at most ~10 characters
   /// shown through Button.label
   /// beside: "Edited", "Discard"
+  /// also in SettingNumber
   /// also in SaveBar
   button "Save" => "Spara";
   /// SaveActions · a button's label · at most ~10 characters
@@ -505,27 +600,44 @@ translations sv {
   /// also in SaveBar
   button "Undo {ToLower}" => "Ångra {ToLower}";
   /// SaveActions · text on the page
-  text "Edited" => "Ändrad";
-  /// SaveActions · text on the page
-  /// placeholders: {problem} = problem (string)
+  /// shown through problem
   /// also in AutoSave
   /// also in SaveBar
-  text "Not saved — {problem}" => "Inte sparat — {problem}";
+  text "1 field needs attention." => "1 fält behöver åtgärdas.";
+  /// SaveActions · text on the page
+  text "Edited" => "Ändrad";
+  /// SaveActions · text on the page
+  /// placeholders: {ex.Message} = ex.Message (string)
+  /// shown through problem
+  /// also in SettingSwitch
+  /// also in SettingChoice
+  /// also in SettingNumber
+  text "Not saved — {ex.Message}" => "Inte sparat: {ex.Message}";
   /// SaveActions · text on the page
   /// shown through SaveActions.saved
+  /// also in SettingSavedNote
   text "Saved" => "Sparat";
+  /// SaveActions · text on the page
+  /// placeholders: {Validation.All.Count} = Validation.All.Count.ToString(…) (int) — {Validation.All.Count} is a count: give one text per plural form
+  /// shown through problem
+  /// also in AutoSave
+  /// also in SaveBar
+  text "{Validation.All.Count} fields need attention." => { one: "{Validation.All.Count} fält behöver åtgärdas.", other: "{Validation.All.Count} fält behöver åtgärdas." };
 
   // ── SaveBar ──
   /// SaveBar · a control's name for screen readers
+  /// also in SettingsSaveNote
   accessibleName "Not saved" => "Inte sparat";
-  /// SaveBar · a control's name for screen readers
-  accessibleName "Unsaved changes" => "Osparade ändringar";
   /// SaveBar · text on the page
   /// shown through SaveBar.saved
   text "Saved." => "Sparat.";
   /// SaveBar · text on the page
   /// beside: "Discard", "Save"
   text "Unsaved changes" => "Osparade ändringar";
+
+  // ── ScopeHeader ──
+  /// ScopeHeader · a control's name for screen readers
+  accessibleName "Scope" => "Omfattning";
 
   // ── SearchPicker ──
   /// SearchPicker · placeholder text inside an empty field · at most ~20 characters
@@ -546,9 +658,87 @@ translations sv {
   /// shown through Button.label
   button "Clear selection" => "Rensa markering";
   /// SelectionBar · text on the page
-  /// placeholders: {ToString} = count.ToString(…) (int) — {ToString} is a count: give one text per plural form
+  /// placeholders: {count} = count.ToString(…) (int) — {count} is a count: give one text per plural form
   /// beside: "Clear selection"
-  text "{ToString} selected" => { one: "{ToString} markerad", other: "{ToString} markerade" };
+  text "{count} selected" => { one: "{count} markerad", other: "{count} markerade" };
+
+  // ── SettingAlways ──
+  /// SettingAlways · text on the page
+  /// shown through SettingAlways.word
+  text "Always on" => "Alltid på";
+
+  // ── SettingChoice ──
+  /// SettingChoice · text on the page
+  /// placeholders: {setFor} = setFor (string)
+  /// shown through SettingRowFace.chip
+  /// also in SettingNumber
+  /// also in SettingRow
+  text "Set for {setFor}" => "Satt för {setFor}";
+
+  // ── SettingNumber ──
+  /// SettingNumber · text on the page
+  /// placeholders: {min} = min.ToString(…) (int), {max} = max.ToString(…) (int) — {min} is a count: give one text per plural form
+  /// shown through problem
+  text "Enter a number from {min} to {max}." => { one: "Ange ett tal från {min} till {max}.", other: "Ange ett tal från {min} till {max}." };
+
+  // ── SettingProvenance ──
+  /// SettingProvenance · a link · at most ~23 characters
+  /// shown through SettingLink.words
+  link "Reset to default" => "Återställ till standard";
+  /// SettingProvenance · a link · at most ~26 characters
+  /// placeholders: {resetTo} = resetTo (string)
+  /// shown through SettingLink.words
+  link "Reset to {resetTo}" => "Återställ till {resetTo}";
+  /// SettingProvenance · text on the page
+  /// shown through SettingChip.words
+  text "Default" => "Standard";
+  /// SettingProvenance · text on the page
+  /// shown through SettingChip.words
+  text "Locked" => "Låst";
+  /// SettingProvenance · text on the page
+  /// placeholders: {lockedBy} = lockedBy (string)
+  /// beside: "Locked"
+  text "by {lockedBy}" => "av {lockedBy}";
+  /// SettingProvenance · text on the page
+  /// placeholders: {setBy} = setBy (string)
+  text "by {setBy}" => "av {setBy}";
+  /// SettingProvenance · text on the page
+  /// placeholders: {setBy} = setBy (string), {setWhen} = setWhen (string)
+  text "by {setBy} · {setWhen}" => "av {setBy} · {setWhen}";
+
+  // ── SettingRow ──
+  /// SettingRow · text on the page
+  /// shown through SettingRowFace.lockedBy
+  text "your organization" => "din organisation";
+
+  // ── SettingSavedNote ──
+  /// SettingSavedNote · a control's name for screen readers
+  accessibleName "Undo" => "Ångra";
+  /// SettingSavedNote · text on the page
+  text "Undo" => "Ångra";
+
+  // ── SettingSwitch ──
+  /// SettingSwitch · text on the page
+  /// placeholders: {why} = why (string)
+  /// shown through problem
+  /// also in SettingChoice
+  /// also in SettingNumber
+  /// also in SaveBar
+  text "Not saved — {why}" => "Inte sparat: {why}";
+  /// SettingSwitch · text on the page
+  /// shown through SettingSwitch.offWord
+  text "Off" => "Av";
+  /// SettingSwitch · text on the page
+  /// shown through SettingSwitch.onWord
+  text "On" => "På";
+  /// SettingSwitch · text on the page
+  /// placeholders: {setFor} = setFor (string)
+  /// shown through SettingRowFace.chip
+  text "Turned off for {setFor}" => "Avstängd för {setFor}";
+  /// SettingSwitch · text on the page
+  /// placeholders: {setFor} = setFor (string)
+  /// shown through SettingRowFace.chip
+  text "Turned on for {setFor}" => "Påslagen för {setFor}";
 
   // ── SettingsArea ──
   /// SettingsArea · a control's name for screen readers
@@ -570,6 +760,17 @@ translations sv {
   /// also in SettingsOverview
   title "Settings" => "Inställningar";
 
+  // ── SettingsKeys ──
+  /// SettingsKeys · a description
+  /// shown through SettingsSection.description
+  description "The keys these settings are known by." => "Nycklarna som de här inställningarna är kända under.";
+  /// SettingsKeys · a label (a field, a list item, a menu entry) · at most ~10 characters
+  /// shown through SettingsKeys.copy
+  label "Copy" => "Kopiera";
+  /// SettingsKeys · a title
+  /// shown through SettingsKeys.title
+  title "Technical details" => "Tekniska detaljer";
+
   // ── SettingsOverview ──
   /// SettingsOverview · a control's name for screen readers
   accessibleName "All settings" => "Alla inställningar";
@@ -585,11 +786,35 @@ translations sv {
   /// placeholders: {title} = title (string)
   accessibleName "{title} page" => "{title}, sida";
 
+  // ── SettingsReview ──
+  /// SettingsReview · a control's name for screen readers
+  accessibleName "When it applies" => "När det börjar gälla";
+  /// SettingsReview · a button's label · at most ~21 characters
+  /// shown through SettingsReview.back
+  button "Back to editing" => "Tillbaka till redigering";
+  /// SettingsReview · a hint under a field
+  /// shown through TextAreaField.hint
+  hint "Optional. It is kept with the change." => "Valfritt. Det sparas med ändringen.";
+  /// SettingsReview · a hint under a field
+  /// shown through TextAreaField.hint
+  hint "Required. It is kept with the change." => "Krävs. Det sparas med ändringen.";
+  /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~18 characters
+  /// shown through Bullets.label
+  label "What changes" => "Vad som ändras";
+  /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~9 characters
+  /// shown through TextAreaField.label
+  label "Why" => "Varför";
+  /// SettingsReview · text on the page
+  /// shown through SettingsReview.overline
+  text "Review and save" => "Granska och spara";
+  /// SettingsReview · text on the page
+  text "When it applies" => "När det börjar gälla";
+
   // ── SettingsSection ──
   /// SettingsSection · a control's name for screen readers
   accessibleName "Set by your organization" => "Bestäms av din organisation";
   /// SettingsSection · text on the page
-  /// also in SettingRow
+  /// also in SettingRowNotes
   text "Set by your organization" => "Bestäms av din organisation";
   /// SettingsSection · text on the page
   text "You can see this, but not change it." => "Du kan se det här, men inte ändra det.";
@@ -666,12 +891,6 @@ translations sv {
   /// StorefrontBagButton · a control's name for screen readers
   /// placeholders: {label} = label (string), {count} = count (int) — {count} is a count: give one text per plural form
   accessibleName "{label}, {count} item(s)" => "{label}, {count} varor";
-
-  // ── StorefrontBagPanel ──
-  /// StorefrontBagPanel · a button's label · at most ~11 characters
-  /// shown through IconButton.label
-  /// also in StorefrontMenuDrawer
-  button "Close" => "Stäng";
 
   // ── StorefrontCategoryPanel ──
   /// StorefrontCategoryPanel · a control's name for screen readers
@@ -816,4 +1035,8 @@ translations sv {
   // ── WorkbenchStatus ──
   /// WorkbenchStatus · a control's name for screen readers
   accessibleName "Status" => "Status";
+  /// WorkbenchStatus · text on the page
+  /// placeholders: {App.PlatformVersion} = App.PlatformVersion (string)
+  /// also in ShellBrandFace
+  text "platform {App.PlatformVersion}" => "plattform {App.PlatformVersion}";
 }
