@@ -228,7 +228,7 @@ theme Ui {
                // phone, where the control is 44 high), the chip, and a settings card's title.
                SettingName = FontSize.Label; SettingNameTouch = FontSize.Body;
                SettingControlFont = FontSize.Label; SettingControlFontTouch = FontSize.Body;
-               SettingChipFont = FontSize.Overline; SettingsCardTitle = FontSize.Body; }
+               SettingChipFont = FontSize.Overline; SettingsCardTitle = FontSize.Body; SettingsCardTitleTouch = FontSize.Body; }
   // A VARIABLE face sits between the usual stops, and the tools people live in use that (Linear sets text at 510,
   // Superhuman at 540): text a touch fuller than 400 reads better at 13-14px on a screen, and headings a little short
   // of a full 600 keep a dense page calm.

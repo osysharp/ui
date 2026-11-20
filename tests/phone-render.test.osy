@@ -1,0 +1,52 @@
+// PM1 — what an iPhone showed and Chromium could not (Foundry, 2026-11-18). Run in BOTH engines:
+//   osy test --pixels --filter phone_render                    (Chromium)
+//   osy test --pixels --engine webkit --filter phone_render    (WebKit, Safari's engine)
+// Under plain `osy test` the geometry reports NOT CHECKED.
+
+/// A press styled `display: flex` at 46px with a full-width row of words in it and no `alignItems` of its own: its words
+/// sit in the middle. Its row is placed by the browser's `<button>` default unless the platform resets it
+/// (`.osy-pressable { align-items: normal }` in osy-base.css). No engine the pixel tier starts has iOS Safari's default,
+/// so this holds the line in both; the reset itself is guarded by osy-client/tests/style/button-align-items.test.ts.
+[Test]
+void phone_render_a_styled_press_keeps_its_words_in_the_middle() {
+  Ui.Viewport(390);
+  Ui.Visit("/phone-render");
+  Assert.VerticallyCentred("Sign in with a passkey");
+  Ui.Shot("phone-render-press");
+}
+
+/// A non-modal drawer fixed to the window, the window tall, opened at a phone's width: every row in it is on the screen
+/// and can be pressed — the last one too. It used to be fitted against ITSELF (it hangs off no trigger): cut to 120px in
+/// Chromium, flipped wholly above the window in Safari.
+[Test]
+void phone_render_a_window_tall_drawer_shows_every_row() {
+  Ui.Viewport(390);
+  Ui.Visit("/phone-render");
+  Ui.Click("Open the drawer");
+  Assert.Visible("Overview", within: "Navigation drawer");
+  Assert.Clickable("Overview");
+  Assert.Clickable("Settings");
+  Assert.Inside("Settings", "Navigation drawer");
+  Ui.Shot("phone-render-drawer");
+  Ui.Click("Settings");
+  Assert.Visible("Picked Settings");
+}
+
+/// A tap OUTSIDE an open modal, on its dim, closes it — the kit's `Dialog` and the drawer's `Scrim` alike. The driver
+/// reaches only inside an open modal (everything behind it is inert), so this needs its own verb: `Ui.Dismiss()` presses
+/// the open layer's scrim where nothing of the layer is.
+[Test]
+void phone_render_a_press_outside_closes_the_dialog_and_the_drawer() {
+  Ui.Viewport(390);
+  Ui.Visit("/phone-render");
+  Ui.Click("Ask before leaving");
+  Assert.Dialog("Leave the page?");
+  Ui.Dismiss();
+  Assert.Hidden("Leave the page?");
+  Assert.Visible("Picked stay");
+  Assert.Focused("Ask before leaving");
+  Ui.Click("Open the drawer");
+  Assert.Visible("Overview", within: "Navigation drawer");
+  Ui.Dismiss();
+  Assert.Hidden("Navigation drawer");
+}

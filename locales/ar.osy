@@ -706,6 +706,18 @@ translations ar {
   /// placeholders: {setBy} = setBy (string), {setWhen} = setWhen (string)
   text "by {setBy} · {setWhen}" => "بواسطة {setBy} · {setWhen}";
 
+  // ── SettingReasonBox ──
+  /// SettingReasonBox · a control's name for screen readers
+  /// placeholders: {setting} = setting (string)
+  accessibleName "Why {setting}" => "لماذا {setting}";
+  /// SettingReasonBox · a label (a field, a list item, a menu entry) · at most ~9 characters
+  /// shown through Field.label
+  /// also in SettingsReview
+  label "Why" => "السبب";
+  /// SettingReasonBox · placeholder text inside an empty field · at most ~26 characters
+  /// shown through Field.placeholder
+  placeholder "Why is it changed?" => "لماذا تم تغييره؟";
+
   // ── SettingRow ──
   /// SettingRow · text on the page
   /// shown through SettingRowFace.lockedBy
@@ -731,6 +743,11 @@ translations ar {
   /// SettingSwitch · text on the page
   /// shown through SettingSwitch.onWord
   text "On" => "تشغيل";
+  /// SettingSwitch · text on the page
+  /// shown through problem
+  /// also in SettingChoice
+  /// also in SettingNumber
+  text "Say why first." => "اذكر السبب أولاً.";
   /// SettingSwitch · text on the page
   /// placeholders: {setFor} = setFor (string)
   /// shown through SettingRowFace.chip
@@ -784,6 +801,9 @@ translations ar {
   // ── SettingsPage ──
   /// SettingsPage · a control's name for screen readers
   /// placeholders: {title} = title (string)
+  accessibleName "{title} head" => "رأس {title}";
+  /// SettingsPage · a control's name for screen readers
+  /// placeholders: {title} = title (string)
   accessibleName "{title} page" => "صفحة {title}";
 
   // ── SettingsReview ──
@@ -801,9 +821,6 @@ translations ar {
   /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~18 characters
   /// shown through Bullets.label
   label "What changes" => "ما الذي يتغير";
-  /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~9 characters
-  /// shown through TextAreaField.label
-  label "Why" => "السبب";
   /// SettingsReview · text on the page
   /// shown through SettingsReview.overline
   text "Review and save" => "مراجعة وحفظ";

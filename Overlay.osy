@@ -5,7 +5,7 @@ namespace Osysharp.Ui;
 /// A full-viewport, invisible click-catcher rendered UNDER an open panel. A click anywhere outside the panel lands
 /// here and runs `onDismiss` — and so does Escape.
 /// Render it immediately BEFORE the panel so the panel paints on top.
-/// In a test drive the thing it sits behind; the backdrop itself carries no text.
+/// In a test drive the thing it sits behind; the backdrop itself carries no text, and a tap on it is `Ui.Dismiss()`.
 /// e.g. `Backdrop(CloseMenu)`
 [Composable] component Backdrop(Action onDismiss) {
   variants { base { Position = Position.Fixed; Top = "0"; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Sticky; } }
@@ -13,7 +13,7 @@ namespace Osysharp.Ui;
 }
 
 /// A dimmed backdrop — the one a modal sits on. Click it or press Escape to dismiss.
-/// In a test drive the thing it sits behind; the scrim itself carries no text.
+/// In a test drive the thing it sits behind; the scrim itself carries no text, and a tap on it is `Ui.Dismiss()`.
 /// e.g. `Scrim(CloseDrawer)`
 [Composable] component Scrim(Action onDismiss) {
   variants { base { Position = Position.Fixed; Top = "0"; Left = "0"; Right = "0"; Bottom = "0"; Z = ZIndex.Overlay; Bg = Colors.Scrim; } }
@@ -44,7 +44,7 @@ public enum DialogSize {
 /// holds it still for every modal, and it is where it was when the dialog closes).
 /// ⚠ IT CARRIES NO UNIT OF WORK. Being Composable it inlines into the page's own render tree, so it has no mount of its own and nothing it could savepoint: what you edit inside it is edited in the PAGE's unit of work, and the page's Save is what decides.
 /// ⭐ The overlay that DOES own one is `Dialog.Open(SomeComponent(…), unitOfWork: Inherit|Root)`, with `Dialog.Ask` / `Confirm` / `Discard` — run `osy docs ui-dialogs`, which is where that choice is explained.
-/// In a test assert it is open with `Assert.Dialog("Delete order?")`, and drive its buttons with `Ui.Click(...)` — scope with `within:` when the label also appears behind it.
+/// In a test assert it is open with `Assert.Dialog("Delete order?")`, and drive its buttons with `Ui.Click(...)` — scope with `within:` when the label also appears behind it. A press on the dim outside it is `Ui.Dismiss()`.
 /// need: a modal over the page, ask before doing something, a popup form, confirm or cancel, a sheet to read
 /// e.g. `Dialog("Delete this order?", onDismiss: Cancel) { slot actions { Button("Delete", onPress: Delete, tone: Tone.Danger); } }`
 [Composable] component Dialog(string title, Action onDismiss, string subtitle = "", DialogSize size = DialogSize.Medium) {

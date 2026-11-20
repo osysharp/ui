@@ -706,6 +706,18 @@ translations sv {
   /// placeholders: {setBy} = setBy (string), {setWhen} = setWhen (string)
   text "by {setBy} · {setWhen}" => "av {setBy} · {setWhen}";
 
+  // ── SettingReasonBox ──
+  /// SettingReasonBox · a control's name for screen readers
+  /// placeholders: {setting} = setting (string)
+  accessibleName "Why {setting}" => "Varför {setting}";
+  /// SettingReasonBox · a label (a field, a list item, a menu entry) · at most ~9 characters
+  /// shown through Field.label
+  /// also in SettingsReview
+  label "Why" => "Varför";
+  /// SettingReasonBox · placeholder text inside an empty field · at most ~26 characters
+  /// shown through Field.placeholder
+  placeholder "Why is it changed?" => "Varför ändras det?";
+
   // ── SettingRow ──
   /// SettingRow · text on the page
   /// shown through SettingRowFace.lockedBy
@@ -731,6 +743,11 @@ translations sv {
   /// SettingSwitch · text on the page
   /// shown through SettingSwitch.onWord
   text "On" => "På";
+  /// SettingSwitch · text on the page
+  /// shown through problem
+  /// also in SettingChoice
+  /// also in SettingNumber
+  text "Say why first." => "Säg först varför.";
   /// SettingSwitch · text on the page
   /// placeholders: {setFor} = setFor (string)
   /// shown through SettingRowFace.chip
@@ -784,6 +801,9 @@ translations sv {
   // ── SettingsPage ──
   /// SettingsPage · a control's name for screen readers
   /// placeholders: {title} = title (string)
+  accessibleName "{title} head" => "{title}, rubrik";
+  /// SettingsPage · a control's name for screen readers
+  /// placeholders: {title} = title (string)
   accessibleName "{title} page" => "{title}, sida";
 
   // ── SettingsReview ──
@@ -801,9 +821,6 @@ translations sv {
   /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~18 characters
   /// shown through Bullets.label
   label "What changes" => "Vad som ändras";
-  /// SettingsReview · a label (a field, a list item, a menu entry) · at most ~9 characters
-  /// shown through TextAreaField.label
-  label "Why" => "Varför";
   /// SettingsReview · text on the page
   /// shown through SettingsReview.overline
   text "Review and save" => "Granska och spara";

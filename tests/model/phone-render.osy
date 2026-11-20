@@ -1,0 +1,56 @@
+// PM1 — two faults a phone showed and Chromium could not (Foundry, 2026-11-18), on one page drawn at a phone's width:
+// a styled press whose label sat at the TOP of it in Safari, and a window-fixed drawer that was cut to 120px (Chromium)
+// or flipped wholly above the window (Safari). Both engines draw the drawer fault on the old client. Neither draws the
+// button's: Playwright's WebKit is the desktop build, without iOS Safari's `button { align-items: flex-start }`, so that
+// reset is guarded by osy-client/tests/style/button-align-items.test.ts.
+
+[Route("/phone-render"), AllowAnonymous] [Render(CSR)] [Title("Phone render")]
+component PhoneRenderPage() {
+  bool drawerOpen = false;
+  bool asking = false;
+  string picked = "nothing";
+
+  action OpenDrawer() { drawerOpen = true; }
+  action CloseDrawer() { drawerOpen = false; }
+  action Pick(string row) { picked = row; drawerOpen = false; }
+  action SignIn() { picked = "signed in"; }
+  action Ask() { asking = true; }
+  action StopAsking() { asking = false; picked = "stay"; }
+
+  render {
+    Stack(gap: 4, p: 4) {
+      // The sign-in press as Foundry drew it: a flex box of a fixed height with a full-width row of words in it, and
+      // no `alignItems` of its own — so where the row sits is the browser's `<button>` default.
+      Pressable(onClick: SignIn, label: "Sign in with a passkey", display: Display.Flex, h: "46px", w: "100%",
+                borderW: 1, rounded: Radius.Md, px: 4) {
+        Row(w: "100%", justify: Justify.Center) { Text("Sign in with a passkey"); }
+      }
+      Button("Open the drawer", onPress: OpenDrawer);
+      Button("Ask before leaving", onPress: Ask);
+      Text("Picked " + picked);
+    }
+    // The drawer as Foundry's ConsoleShell drew it: a NON-modal dialog fixed to the window's left edge, the whole window
+    // tall, over a dim. Nothing positions it against a trigger — it hangs off the window.
+    if (drawerOpen) {
+      Scrim(CloseDrawer);
+      Stack(role: UiRole.Dialog, label: "Navigation drawer", position: Position.Fixed, top: "0", left: "0", h: "100vh",
+            w: "280px", z: ZIndex.Modal, bg: Colors.Surface, p: 4, gap: 2, overflowY: Overflow.Auto) {
+        Button("Overview", onPress: () => Pick("Overview"));
+        Button("Products", onPress: () => Pick("Products"));
+        Button("Releases", onPress: () => Pick("Releases"));
+        Button("Slices", onPress: () => Pick("Slices"));
+        Button("Hosts", onPress: () => Pick("Hosts"));
+        Button("Sessions", onPress: () => Pick("Sessions"));
+        Button("Accounts", onPress: () => Pick("Accounts"));
+        Button("Standards", onPress: () => Pick("Standards"));
+        Button("Settings", onPress: () => Pick("Settings"));
+      }
+    }
+    // The kit's modal: a press on its dim, beside the panel, is its `onDismiss` (`Ui.Dismiss()` in a test).
+    if (asking) {
+      Dialog("Leave the page?", onDismiss: StopAsking) {
+        Text("What you typed is kept.");
+      }
+    }
+  }
+}

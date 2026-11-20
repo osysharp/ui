@@ -69,6 +69,13 @@ component WorkbenchShell(AppChrome chrome) {
   string target = "";           // where the reader asked to go
   bool canSaveLeaving = false;  // snapshot of `Navigation.CanSave` — a render expression cannot call a client verb
   string leaveError = "";       // a refused save, in the words the server used
+  // ⭐ A LEAVE THE PROMPT STARTED KEEPS THE MARKS AS THEY WERE PRESSED UNTIL IT LANDS. "Save and leave" makes the page
+  //    clean BEFORE the move lands, so marks read straight from `Navigation.IsDirty` turned into links for that moment
+  //    and the one pressed was lit a moment later: the same mark taken off and put back. `seen` is the route the shell
+  //    last saw arrive; the prompt's answers empty it, and the next arrival fills it again.
+  bool leaveStarted = false;
+  string seen = "";
+  on change { seen = path; }
 
   // ⛔ ASKED AGAIN HERE, AGAINST THE ROUTER AS IT IS NOW — the row chose Link or button at render time, and a guard
   //    that acts on a snapshot is the bug it exists to prevent.
@@ -82,9 +89,11 @@ component WorkbenchShell(AppChrome chrome) {
     }
   }
   action KeepEditing() { leaving = ""; target = ""; leaveError = ""; }
-  // Discard: force-close the dirty route so its unit of work is really dropped, and only THEN go, so the close's own
-  // fallback navigation cannot override the one asked for.
+  // Discard: force-close the dirty route so its unit of work is really dropped, then go. The close of the page on
+  // screen is completed by the move that follows it (the router shows nothing in between), so the close comes first:
+  // gone before the move, the edits are not asked about again by the move's own guard.
   action DiscardAndLeave() {
+    leaveStarted = true; seen = "";
     Navigation.Close(leaving, true);
     Navigation.Go(target);
     leaving = ""; target = "";
@@ -93,13 +102,15 @@ component WorkbenchShell(AppChrome chrome) {
   // Save & leave: a save CAN be refused, so the prompt stays up saying why, with the edits intact.
   action SaveAndLeave() {
     leaveError = "";
+    // Before the save: the page is clean the moment it lands, and the marks are drawn again then, before this resumes.
+    leaveStarted = true; seen = "";
     try {
       Navigation.Save(leaving);
       Navigation.Go(target);
       leaving = ""; target = "";
       drawerOpen = false;
     }
-    catch (ValidationException ex) { leaveError = ex.Message; }
+    catch (ValidationException ex) { leaveError = ex.Message; leaveStarted = false; }
   }
 
   /// The top-level section the current page belongs to — the one whose pages the explorer lists.
@@ -152,13 +163,16 @@ component WorkbenchShell(AppChrome chrome) {
           WorkbenchActivityBar(label: "Main navigation") {
             Row(align: Align.Center, justify: Justify.Center, minH: Length.AppBarH) { ShellBrandGuarded(chrome, markOnly: true); }
             Stack(gap: 1, grow: 1, minH: "0", py: 1, overflowY: Overflow.Auto, scrollbarWidth: ScrollbarWidth.None) {
+              // ⭐ ONE PART PER MARK, whatever state it is in — the section you are in (its mark folds the explorer, the way
+              //    it does in every editor), the trail, or an idle one — so a move patches the mark rather than drawing a
+              //    new one. Two parts here (the lit mark and the leading one) took the mark the reader pressed off the
+              //    screen and put it back the same button when a page with unsaved edits was left through it.
               foreach (var item in Marks()) {
-                if (ExplorerSection(current) != null && ExplorerSection(current).Key() == item.Key()) {
-                  // The section you are in: its mark folds the explorer, the way it does in every editor.
-                  WorkbenchMark(item, NavState.Current, explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer);
-                } else {
-                  WorkbenchMarkLinkGuarded(item, item.HasRoute(current) ? NavState.Trail : NavState.Idle, Navigated, AskBeforeLeave);
-                }
+                WorkbenchMarkLinkGuarded(item,
+                  ExplorerSection(current) != null && ExplorerSection(current).Key() == item.Key()
+                    ? NavState.Current : (item.HasRoute(current) ? NavState.Trail : NavState.Idle),
+                  Navigation.IsDirty || (leaveStarted && seen == ""),
+                  explorerShut ? "Show the explorer" : "Hide the explorer", ToggleExplorer, Navigated, AskBeforeLeave);
               }
             }
             if (hasUser) {
@@ -232,18 +246,28 @@ component WorkbenchActivityBar(string label) {
   render { Stack(gap: 0, align: Align.Center, role: UiRole.Navigation, label: label) { Slot; } }
 }
 
-/// One section's mark that LEADS somewhere — to the section's first page.
+/// One section's mark in the activity bar, in every state it can be in: the section you are IN (lit, with the accent's
+/// edge — pressing it folds the explorer, `fold` names that), or one that LEADS to the section's first page.
+/// ⚑ ONE PART, SO A MOVE PATCHES IT. The lit mark and the button a dirty page draws are the same element (a button),
+///   told apart by what they say and do, so the mark the reader pressed to leave a page with unsaved edits is lit in
+///   place when the move lands, never drawn again.
 [Composable, Part]
-internal component WorkbenchMarkLinkGuarded(NavItem item, NavState state, Action onNavigated, Action<string> onAsk) {
+/// `guarded` — the page cannot simply be left by a link (it holds unsaved edits, or a leave is underway): the mark asks.
+internal component WorkbenchMarkLinkGuarded(NavItem item, NavState state, bool guarded, string fold, Action onFold,
+                                            Action onNavigated, Action<string> onAsk) {
   variants {
     base { Position = Position.Relative; Display = Display.Flex; W = Length.ActivityW; MinH = Length.TouchDense;
            Color = Colors.TextMuted; Transition = Motion.Fast;
            Hover { Color = Colors.OnSurface; }
            Focus { OutlineW = 2; OutlineColor = Colors.Focus; OutlineOffset = "-2px"; OutlineStyle = OutlineStyle.Solid; } }
-    state { Current { Color = Colors.OnSurface; } Trail { Color = Colors.OnSurface; } Idle { } }
+    state { Current { Color = Colors.OnSurface; BorderLW = 2; Border = Colors.Primary; } Trail { Color = Colors.OnSurface; } Idle { } }
+  }
+  action Press() {
+    if (state == NavState.Current) { onFold(); }
+    else { onAsk(item.FirstRoute()); }
   }
   render {
-    if (!Navigation.IsDirty) {
+    if (state != NavState.Current && !guarded) {
       Link(href: item.FirstRoute(), label: item.NameWithBadge(), current: false, onClick: onNavigated, shortcut: item.Shortcut) {
         Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone); }
         WorkbenchTip(item.Named(), item.Badge);
@@ -251,9 +275,12 @@ internal component WorkbenchMarkLinkGuarded(NavItem item, NavState state, Action
     }
     // ⭐ A PAGE WITH UNSAVED EDITS ASKS BEFORE IT IS LEFT: a `Link` cannot decline to go, so while the page is dirty
     //    the mark is a button that raises the shell's `LeavePrompt` (the same two arms as `SidebarNavRow`).
-    if (Navigation.IsDirty) {
-      Pressable(label: item.NameWithBadge(), onClick: () => onAsk(item.FirstRoute())) {
-        Row(align: Align.Center, justify: Justify.Center, w: "100%") { ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone); }
+    else {
+      Pressable(label: state == NavState.Current ? item.NameWithBadge() + " — " + fold : item.NameWithBadge(), onClick: Press,
+                current: state == NavState.Current) {
+        Row(align: Align.Center, justify: Justify.Center, w: "100%", ml: state == NavState.Current ? "-2px" : "0") {
+          ShellNavMark(item.Icon, state, item.Monogram, item.Badge, item.BadgeTone);
+        }
         WorkbenchTip(item.Named(), item.Badge);
       }
     }

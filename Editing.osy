@@ -233,11 +233,15 @@ component ProvenanceLine(string text, SettingFrom from = SettingFrom.Inherited, 
 [Composable]
 component HistoryRow(string when, string who, string what, string why = "", Action? onUndo = null, string undo = "Undo") {
   variants {
-    base { Display = Display.Grid; Cols = Length.HistoryCols; Px = Space.HistoryX; Py = Space.HistoryY; BorderTW = 1;
-           Border = Colors.RowLine; FontSize = FontSize.Label; LineHeight = Length.HistoryLine; AlignItems = Align.Baseline; }
+    // ⚑ PHONE FIRST: one column, when over who over what. The board's four columns (`Length.HistoryCols`, 356px of
+    //   fixed tracks before the gaps and the padding) are wider than a phone, and the row's box cut "what" off past its
+    //   right edge at 390 — measured by `Assert.NoOverflow` on Admin's machine and alert-cause histories, 18 Nov.
+    base { Display = Display.Grid; Cols = "minmax(0, 1fr)"; Gap = 1; Px = Space.HistoryX; Py = Space.HistoryY; BorderTW = 1;
+           Border = Colors.RowLine; FontSize = FontSize.Label; LineHeight = Length.HistoryLine; AlignItems = Align.Baseline;
+           Tablet { Cols = Length.HistoryCols; Gap = 3; } }
   }
   render {
-    Box(gap: 3, role: UiRole.Group, label: when + " · " + who) {
+    Box(role: UiRole.Group, label: when + " · " + who) {
       Text(when, color: Colors.MetaText);
       Text(who, fontWeight: FontWeight.Semibold);
       // A block, not a Stack: the change is an INLINE run in the row's own line (the key face, a size down), so its line is

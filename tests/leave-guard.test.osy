@@ -129,3 +129,15 @@ void the_workbench_discards_and_leaves() {
   Assert.OnPage("/desk/quote");
   runas (Tom) { Assert.Equal("Harbour at dusk, oil on board", FrameOrder.Single(o => o.Customer == "Ada Byrne").Artwork); }
 }
+
+/// Save and leave keeps the edit and goes where the reader asked — the frame around the page staying as it was.
+[Test(Workshop)]
+void the_workbench_saves_and_leaves() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/desk");
+  Ui.Fill("Artwork", "Harbour at dawn");
+  Ui.Click("Quote", within: "Main navigation");
+  Ui.Click("Save and leave");
+  Assert.OnPage("/desk/quote");
+  runas (Tom) { Assert.Equal("Harbour at dawn", FrameOrder.Single(o => o.Customer == "Ada Byrne").Artwork); }
+}

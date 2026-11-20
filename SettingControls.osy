@@ -39,7 +39,7 @@ component SettingsCard(string title, string description = "") {
     Stack(gap: 0, role: UiRole.Region, label: title) {
       Stack(gap: "2px", px: Layout.AtLeast(Tablet) ? Space.SettingRowX : Space.SettingRowXTouch,
             pt: Space.SettingsCardHeadTop, pb: Space.SettingsCardHeadBottom) {
-        Text(title, role: UiRole.Heading, level: 3, fontSize: FontSize.SettingsCardTitle, fontWeight: FontWeight.Semibold,
+        Text(title, role: UiRole.Heading, level: 3, fontSize: Layout.AtLeast(Tablet) ? FontSize.SettingsCardTitle : FontSize.SettingsCardTitleTouch, fontWeight: FontWeight.Semibold,
              color: Colors.SettingNameInk, lineHeight: "normal");
         if (description != "") { Text(description, fontSize: FontSize.Caption, color: Colors.SettingHelpInk, lineHeight: "normal"); }
       }
