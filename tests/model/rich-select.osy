@@ -29,3 +29,17 @@ string GlazingMeans(Glazing g) {
   if (g == Glazing.NonGlare) { return "Etched, so lamps do not shine back."; }
   return "Blocks 99% of UV light and nearly all reflection.";
 }
+
+// PLATFORM-458 — `words:` WITHOUT `detail:`. The options are rows, so the field must word each by `words`, never by the
+// row itself (which read "[object Object]").
+[Route("/words-select")] [Authorize(IsFramer)] [Render(CSR)] [Title("Words select")]
+component WordsSelectPage() {
+  live var mats = Mat.OrderBy(m => m.Code).ToList();
+  Mat? mat = null;
+  render {
+    Stack(gap: 4, p: 6, w: "420px") {
+      SelectField("Mat", value: mat, options: mats, words: m => m.Name);
+      Text(mat == null ? "No mat" : "Mat is " + mat.Name);
+    }
+  }
+}

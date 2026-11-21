@@ -95,3 +95,17 @@ void a_listed_select_over_rows_is_chosen_by_the_row_and_shows_its_words() {
   Ui.Theme("dark");
   Ui.Shot("rich-select-open-dark");
 }
+
+[Test(Glass)]
+void a_select_over_rows_with_words_and_no_detail_shows_each_rows_words() {
+  Ui.SignInAs(Tom);
+  Ui.Visit("/words-select");
+  Assert.Visible("No mat");
+  Ui.Click("Mat");
+  Assert.Visible("Ivory, 2 mm");
+  Assert.Visible("Black core, 1.4 mm");
+  Assert.Hidden("[object Object]");
+  Ui.Click("Ivory, 2 mm");
+  Assert.Visible("Mat is Ivory, 2 mm");
+  Assert.Visible("Ivory, 2 mm", within: "Mat");
+}

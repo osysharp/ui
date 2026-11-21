@@ -187,7 +187,7 @@ component ActionArgumentField(ActionParameter p, List<ActionChoice> choices, Bin
 /// options each show their words over a line saying what they mean — "Business" over "$199 a month, 25 applications".
 /// Closed, the box shows the chosen one's words, at the same size and with the same chevron. `words:` says what an
 /// option is called when it is not an enum member — a row (`options: plans, words: p => p.Name`); without it an
-/// option is worded by its `[Label]`. The keyboard is the listbox's: ↓/↑ (or Enter, Space) open it on the chosen option, ↓/↑ move,
+/// option is worded by its `[Label]`. `words:` alone, with no `detail:`, also opens the list (an option's second line is then empty): the native select can word an option only by its value, which for a row is the row itself. The keyboard is the listbox's: ↓/↑ (or Enter, Space) open it on the chosen option, ↓/↑ move,
 /// Home/End go to the ends, a letter (or a quick run of them, within half a second) goes to the next option whose words
 /// start with it, Enter or Space chooses, Escape or Tab closes it without choosing, and the keyboard is back
 /// on the box after either. A screen reader hears each option by its words, then what it means.
@@ -280,7 +280,10 @@ component SelectField<T>(
 
   render {
     Stack(gap: 1) {
-      if (detail != null) {
+      // ⭐ `words:` ALONE IS THE LISTED FACE TOO. The native `<select>` words an option by the VALUE it is given, which
+      //   for a row is the row itself — "[object Object]" (PLATFORM-458). Only a caller with neither `detail:` nor
+      //   `words:` keeps the native select.
+      if (detail != null || words != null) {
         if (label != "" && showLabel) { Text(label, labelFor: trigger, fontSize: FontSize.Label, fontWeight: FontWeight.LabelWeight, color: Colors.LabelInk); }
         // ⭐ THE SAME BOX, A LIST UNDER IT. The trigger wears exactly the native face's geometry and chevron, so a form
         //   that mixes the two faces lines up; it is a `combobox` naming its list's state (`aria-expanded`), and owns
@@ -322,7 +325,7 @@ component SelectField<T>(
                   maxH: Length.OptionListMaxH, overflowY: Overflow.Auto, bg: Colors.Elevated, borderW: 1, border: Colors.Border,
                   rounded: Radius.Md, shadow: Shadow.Floating, p: 1, gap: "2px") {
               foreach (var m in options) {
-                SelectOption(detail: detail(m), chosen: m == value, active: IndexOf(m) == at,
+                SelectOption(detail: detail != null ? detail(m) : "", chosen: m == value, active: IndexOf(m) == at,
                              onPick: () => Choose(m), onArrive: () => Arrive(IndexOf(m))) {
                   if (words != null) { Text(words(m)); } else { Text(m); }
                 }
