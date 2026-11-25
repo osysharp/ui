@@ -65,22 +65,22 @@ component ShelvesPage() {
   }
 }
 
-/// The mouldings on the books — a server read the stockroom's frame below asks as a live call.
-List<Moulding> OnTheBooks() { return Moulding.ToList(); }
-
 /// The stockroom's frame: a layout that reads the server itself — a live list and a live server call, with no
-/// `skeleton { }` — so its Outlet, and the page in it, wait until both land (FM-41, FM-70). Under a held server that is
-/// the screen `Ui.Visit` returns on (FM-95).
+/// `skeleton { }`. The card its Outlet sits in is titled by both, and a part holding the Outlet waits on a live call
+/// that answers one value (it is null until it lands; a list's is an empty one, drawn at once), so the page in it waits
+/// until the call lands (FM-41, FM-70); the frame's own name paints at once. Under a held server that is the screen
+/// `Ui.Visit` returns on (FM-95).
 [Layout]
 [Authorize(IsFramer)]
 component StockroomFrame() {
   live var shelved = Moulding.ToList();
-  live var books = OnTheBooks();
+  live var books = StockReport();
   render {
     Stack(gap: 3, p: 6) {
       Text("Stockroom");
-      Text($"{books.Count()} on the books, {shelved.Count()} shelved");
-      Outlet();
+      Card($"{books.Mouldings} on the books, {shelved.Count()} shelved") {
+        Outlet();
+      }
     }
   }
 }

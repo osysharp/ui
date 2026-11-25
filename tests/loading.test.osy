@@ -46,15 +46,19 @@ void the_shelves_show_their_shape_while_the_rows_load_then_fill_in() {
   Assert.Hidden("Reading the shelves…");
 }
 
-/// A page inside a layout that waits on its OWN reads (a live server call and a live list, no skeleton) is held with
-/// it: the visit returns on that waiting screen instead of waiting for answers that cannot come (FM-95 — it used to
-/// hang the driver for 300 s and be reported as a client that stopped responding), and the page arrives on release.
+/// A page inside a layout that waits on its OWN reads (a live server call and a live list, no skeleton, the Outlet in the
+/// part that reads them) is held with it: the visit returns on that waiting screen instead of waiting for answers that
+/// cannot come (FM-95 — it used to hang the driver for 300 s and be reported as a client that stopped responding), and
+/// the page arrives on release. The screen it returns on is PAINTED — the frame's name is there (PGF-9789-1: it used to
+/// return inside the first paint's grace, so `Hidden` was asked of a screen not yet drawn, and passed on a quick machine).
 [Test(ThreeMouldings)]
 void a_page_in_a_layout_waiting_on_its_own_reads_is_visited_while_held_then_fills_in() {
   Ui.SignInAs(StockKeeper);
   Ui.HoldServer();
   Ui.Visit("/stock/counter");
+  Assert.Visible("Stockroom");
   Assert.Hidden("The counter is open");
+  Assert.Hidden("3 on the books, 3 shelved");
 
   Ui.ReleaseServer();
   Assert.Visible("The counter is open");

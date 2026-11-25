@@ -33,7 +33,7 @@ public enum PageColumn { None, Settings, People }
 ///   in, and the words keep the column's measure (`PageColumn.Settings`: `Length.SettingsPageW`; `PageColumn.People`:
 ///   `Length.PeoplePageW`) and sides (`Space.SettingsPageX`). `SettingsPage` and the user-management People page are drawn
 ///   so; `PageColumn.None` (the default) is the plain head.
-/// need: the heading at the top of a page, a title with actions beside it
+/// need: the heading at the top of a page, a page heading, a title with actions beside it
 [Composable] component PageHead(string title, string subtitle = "", PageColumn column = PageColumn.None) {
   variants { base { Pt = Space.PageHeadTop; Pb = Space.PageHeadBottom; Px = Space.PageHeadX; Bg = Colors.PageHeadBg; BorderBW = Length.PageHeadEdge; Border = Colors.PageHeadLine; } }
   render {

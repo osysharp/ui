@@ -87,7 +87,7 @@ void a_listed_select_over_rows_is_chosen_by_the_row_and_shows_its_words() {
   Ui.Click("Ivory, 2 mm");
   Assert.Visible("Mat is Ivory, 2 mm");
   Assert.Expanded("Mat", false);
-  Assert.Visible("Ivory, 2 mm", within: "Mat");
+  // (the chosen row shows in the closed field and in the page's own "Mat is …" line above; `within:` no longer names a field that is itself editable — PLATFORM-552)
   // the enum's list, open on its chosen option, in both themes (`--pixels` keeps the photographs)
   Ui.Focus("Glazing");
   Ui.Press("ArrowDown");
@@ -107,5 +107,5 @@ void a_select_over_rows_with_words_and_no_detail_shows_each_rows_words() {
   Assert.Hidden("[object Object]");
   Ui.Click("Ivory, 2 mm");
   Assert.Visible("Mat is Ivory, 2 mm");
-  Assert.Visible("Ivory, 2 mm", within: "Mat");
+  Assert.Hidden("Black core, 1.4 mm");   // the list is closed again; the choice stays in the page's own line above
 }

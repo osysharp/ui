@@ -507,11 +507,12 @@ component SettingSavedNote(Action? onUndo) {
 
 /// WHY A SETTING IS CHANGED — the box a setting's `reason:` draws under its control: what is typed goes into the page's
 /// `reason` binding, and the app's save (`saveWith`) reads it from there. Named by the setting it belongs to
-/// ("Why" within the row's group in a test: `Ui.Fill("Why", "Cheaper sessions", within: "Session size")`).
+/// ("Why" within the row's group in a test: `Ui.Fill("Why", "Cheaper sessions", within: "Session size")`). Read as every
+/// value-entry control reads: the setting's caption first, then the binding.
 [Composable, Part]
-component SettingReasonBox(string setting, Binding<string> reason) {
+component SettingReasonBox(string label, Binding<string> value) {
   render {
-    Box(w: "100%", label: "Why " + setting) { Field("Why", value: reason, placeholder: "Why is it changed?"); }
+    Box(w: "100%", label: "Why " + label) { Field("Why", value: value, placeholder: "Why is it changed?"); }
   }
 }
 

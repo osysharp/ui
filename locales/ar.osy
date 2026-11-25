@@ -708,8 +708,8 @@ translations ar {
 
   // ── SettingReasonBox ──
   /// SettingReasonBox · a control's name for screen readers
-  /// placeholders: {setting} = setting (string)
-  accessibleName "Why {setting}" => "لماذا {setting}";
+  /// placeholders: {label} = label (string)
+  accessibleName "Why {label}" => "لماذا {label}";
   /// SettingReasonBox · a label (a field, a list item, a menu entry) · at most ~9 characters
   /// shown through Field.label
   /// also in SettingsReview
