@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { launchChromium } from '../../../osy-client/scripts/lib/browser-launch.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(path.join(here, '../../../osy-client/package.json'));
@@ -44,7 +45,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 <h1>${esc(spec.title)}${spec.subtitle ? ` <span>— ${esc(spec.subtitle)}</span>` : ''}</h1>
 <div class="grid">${panels}</div></body></html>`;
 
-const browser = await chromium.launch();
+const browser = await launchChromium(chromium);
 const page = await browser.newPage({ viewport: { width: width + 56, height: 800 }, deviceScaleFactor: 1 });
 await page.setContent(html, { waitUntil: 'load' });
 await page.screenshot({ path: outPath, fullPage: true, type: 'jpeg', quality: 82 });
